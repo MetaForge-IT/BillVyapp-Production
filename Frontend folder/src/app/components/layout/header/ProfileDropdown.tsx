@@ -85,8 +85,20 @@ export function ProfileDropdown({
   const displayInitials = user ? initialsFromName(user.fullName) : "—";
   const displayShortName = user ? shortName(user.fullName) : "User";
 
+  const handleSignOut = () => {
+    void authService.logout().finally(() => {
+      navigate("/login", { replace: true });
+      onNavigate?.();
+      onClose();
+    });
+  };
+
   const handleMenuSelect = (index: number) => {
     const item = profileMenuItems[index];
+    if (item.id === "signout") {
+      handleSignOut();
+      return;
+    }
     if (item.href) {
       navigate(item.href);
       onNavigate?.();
@@ -102,6 +114,10 @@ export function ProfileDropdown({
   );
 
   const handleItemClick = (item: (typeof profileMenuItems)[number]) => {
+    if (item.id === "signout") {
+      handleSignOut();
+      return;
+    }
     if (item.href) {
       navigate(item.href);
       onNavigate?.();
