@@ -86,11 +86,13 @@ export function ProfileDropdown({
   const displayShortName = user ? shortName(user.fullName) : "User";
 
   const handleSignOut = () => {
-    void authService.logout().finally(() => {
-      navigate("/login", { replace: true });
-      onNavigate?.();
-      onClose();
-    });
+    void authService
+      .logout()
+      .finally(() => {
+        navigate("/login", { replace: true });
+        onNavigate?.();
+        onClose();
+      });
   };
 
   const handleMenuSelect = (index: number) => {

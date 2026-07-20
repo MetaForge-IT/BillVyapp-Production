@@ -100,6 +100,7 @@ apiClient.interceptors.response.use(
       originalRequest &&
       !originalRequest._retry &&
       !shouldSkipRefreshRetry(originalRequest.url) &&
+      useAuthStore.getState().isAuthenticated &&
       getAccessToken()
     ) {
       if (isRefreshing) {

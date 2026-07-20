@@ -45,13 +45,16 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: async () => {
+    // Clear local auth immediately to prevent other in-flight requests
+    // from triggering /auth/refresh after cookies may already be cleared.
+    clearAccessToken();
+    set({ isAuthenticated: false });
+
     try {
       await authApi.logout();
     } catch {
-      /* server logout is best-effort; local session must still be cleared */
-    } finally {
-      clearAccessToken();
-      set({ isAuthenticated: false });
+      // Best-effort. If refresh cookie is already missing, we still consider
+      // the user logged out locally.
     }
   },
 }));

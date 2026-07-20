@@ -35,7 +35,7 @@ export interface LoginOtpChallengeResponse {
   challengeId: string;
   expiresIn: number;
   message: string;
-  emailHint: string;
+  phoneHint: string;
   /** Dev-only when LOGIN_OTP_RETURN_IN_RESPONSE=true */
   otp?: string;
 }
