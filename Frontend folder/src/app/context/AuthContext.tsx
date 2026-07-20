@@ -1,66 +1,22 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
-import * as authApi from "../../api/auth";
-import { clearAccessToken, getAccessToken, saveAccessToken } from "../../lib/tokenStorage";
+import { useEffect, type ReactNode } from "react";
+import { useAuthStore } from "../../stores/authStore";
 
-interface AuthContextValue {
-  isReady: boolean;
-  isAuthenticated: boolean;
-  bootstrap: () => Promise<void>;
-  syncAuth: () => void;
+/** @deprecated Use `useAuthStore` directly. Kept for gradual migration. */
+export function useAuth() {
+  const isReady = useAuthStore((state) => state.isReady);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const bootstrap = useAuthStore((state) => state.bootstrap);
+  const syncAuth = useAuthStore((state) => state.syncAuth);
+
+  return { isReady, isAuthenticated, bootstrap, syncAuth };
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null);
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isReady, setIsReady] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  const syncAuth = useCallback(() => {
-    setIsAuthenticated(Boolean(getAccessToken()));
-  }, []);
-
-  const bootstrap = useCallback(async () => {
-    try {
-      if (!getAccessToken()) {
-        try {
-          const response = await authApi.refresh();
-          if (response.data?.accessToken) {
-            saveAccessToken(response.data.accessToken);
-          }
-        } catch {
-          clearAccessToken();
-        }
-      }
-    } finally {
-      setIsAuthenticated(Boolean(getAccessToken()));
-      setIsReady(true);
-    }
-  }, []);
+  const bootstrap = useAuthStore((state) => state.bootstrap);
 
   useEffect(() => {
     void bootstrap();
   }, [bootstrap]);
 
-  const value = useMemo(
-    () => ({ isReady, isAuthenticated, bootstrap, syncAuth }),
-    [isReady, isAuthenticated, bootstrap, syncAuth],
-  );
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
-  return ctx;
+  return children;
 }
