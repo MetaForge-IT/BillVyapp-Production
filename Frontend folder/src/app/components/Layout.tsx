@@ -13,7 +13,7 @@ import { useAppBackNavigation } from "../hooks/useAppBackNavigation";
 
 function HeaderSalonTagline() {
   return (
-    <p
+    <div
       className="inline-flex max-w-full items-center gap-2 rounded-lg border border-[#D4AF37]/18 bg-[#D4AF37]/[0.05] px-2.5 py-1 shadow-[0_0_20px_rgba(212,175,55,0.08)] sm:gap-2.5 sm:px-3 sm:py-1.5 md:px-3.5"
       aria-label={BRAND.clientTagline}
     >
@@ -23,12 +23,12 @@ function HeaderSalonTagline() {
           aria-hidden
         />
       </span>
-      <span className="min-w-0 text-[11px] font-bold uppercase leading-tight tracking-[0.06em] sm:text-xs sm:tracking-[0.07em] md:text-sm md:tracking-[0.08em] lg:text-base lg:tracking-[0.09em] font-['Poppins']">
+      <span className="min-w-0 border-b border-dashed border-[#D4AF37]/40 pb-0.5 text-[11px] font-bold uppercase leading-tight tracking-[0.06em] sm:text-xs sm:tracking-[0.07em] md:text-sm md:tracking-[0.08em] lg:text-base lg:tracking-[0.09em] font-['Poppins']">
         <span className="bg-gradient-to-r from-[#F5E6B8] via-[#D4AF37] to-[#F5E6B8] bg-clip-text text-transparent">
           {BRAND.clientTagline}
         </span>
       </span>
-    </p>
+    </div>
   );
 }
 
