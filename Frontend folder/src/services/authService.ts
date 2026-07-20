@@ -1,5 +1,6 @@
 import * as authApi from "../api/auth";
 import { clearAccessToken, getAccessToken, saveAccessToken } from "../lib/tokenStorage";
+import { useAuthStore } from "../stores/authStore";
 import type { AuthUser, LoginPayload, RegisterPayload } from "../types/auth";
 import { isLoginOtpChallenge } from "../types/auth";
 
@@ -29,6 +30,7 @@ export const authService = {
     // Password step only — tokens are issued after OTP verification.
     if (response.data && !isLoginOtpChallenge(response.data) && response.data.accessToken) {
       saveAccessToken(response.data.accessToken);
+      useAuthStore.getState().syncAuth();
     }
 
     return response;
@@ -39,6 +41,7 @@ export const authService = {
 
     if (response.data?.accessToken) {
       saveAccessToken(response.data.accessToken);
+      useAuthStore.getState().syncAuth();
     }
 
     return response;
@@ -49,11 +52,7 @@ export const authService = {
   },
 
   async logout() {
-    try {
-      await authApi.logout();
-    } finally {
-      clearAccessToken();
-    }
+    await useAuthStore.getState().logout();
   },
 
   async refresh() {
@@ -61,6 +60,7 @@ export const authService = {
 
     if (response.data?.accessToken) {
       saveAccessToken(response.data.accessToken);
+      useAuthStore.getState().syncAuth();
     }
 
     return response;
@@ -75,7 +75,7 @@ export const authService = {
       const response = await authApi.getCurrentUser();
       return response.data?.user ?? null;
     } catch {
-      clearAccessToken();
+      useAuthStore.getState().clearSession();
       return null;
     }
   },
