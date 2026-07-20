@@ -1,0 +1,217 @@
+
+> @figma/my-make-file@0.0.1 dev
+> vite
+
+Port 5173 is in use, trying another one...
+
+  [32m[1mVITE[22m v6.3.5[39m  [2mready in [0m[1m622[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5174[22m/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[2m7:42:29 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Appointments.tsx, /src/styles/index.css[22m
+[2m7:42:47 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Employees.tsx, /src/styles/index.css[22m
+[2m7:43:01 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Inventory.tsx, /src/styles/index.css[22m
+[2m7:43:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Reports.tsx, /src/styles/index.css[22m
+[2m7:43:36 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Customers.tsx, /src/styles/index.css[22m
+[2m7:43:53 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Services.tsx, /src/styles/index.css[22m
+[2m7:44:07 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Services.tsx, /src/styles/index.css[22m
+[2m7:44:28 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Services.tsx, /src/styles/index.css[22m
+[2m7:44:37 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/styles/index.css[22m
+[2m7:48:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Dashboard.tsx, /src/styles/index.css[22m
+[2m7:48:24 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Dashboard.tsx, /src/styles/index.css[22m
+[2m7:48:29 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Dashboard.tsx, /src/styles/index.css[22m
+[2m7:48:34 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Dashboard.tsx, /src/styles/index.css[22m
+[2m7:48:42 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Dashboard.tsx, /src/styles/index.css[22m
+[2m7:48:50 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Dashboard.tsx, /src/styles/index.css[22m
+[2m7:48:54 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Dashboard.tsx, /src/styles/index.css[22m
+[2m7:49:03 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Dashboard.tsx, /src/styles/index.css[22m
+[2m7:49:12 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Dashboard.tsx, /src/styles/index.css[22m
+[2m7:49:26 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Dashboard.tsx, /src/styles/index.css[22m
+[2m7:49:31 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Dashboard.tsx, /src/styles/index.css[22m
+[2m7:49:45 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Dashboard.tsx, /src/styles/index.css[22m
+[2m7:49:53 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Dashboard.tsx, /src/styles/index.css[22m
+[2m7:49:57 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Dashboard.tsx, /src/styles/index.css[22m
+[2m7:50:07 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/F:\salonproject\src\app\components\shared\MetricCard.tsx, /src/styles/index.css[22m
+[2m7:50:13 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/F:\salonproject\src\app\components\shared\MetricCard.tsx, /src/styles/index.css[22m
+[2m7:50:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/F:\salonproject\src\app\components\shared\MetricCard.tsx, /src/styles/index.css[22m
+[2m7:50:30 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/F:\salonproject\src\app\components\shared\BusinessPipeline.tsx, /src/styles/index.css[22m
+[2m7:50:35 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/F:\salonproject\src\app\components\shared\BusinessPipeline.tsx, /src/styles/index.css[22m
+[2m7:50:40 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/F:\salonproject\src\app\components\shared\BusinessPipeline.tsx, /src/styles/index.css[22m
+[2m7:50:44 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/F:\salonproject\src\app\components\shared\BusinessPipeline.tsx, /src/styles/index.css[22m
+[2m7:50:50 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/F:\salonproject\src\app\components\shared\BusinessPipeline.tsx, /src/styles/index.css[22m
+[2m7:51:05 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/F:\salonproject\src\app\components\shared\ActivityFeed.tsx, /src/styles/index.css[22m
+[2m7:51:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/app/components/shared/AIInsightsPanel.tsx[22m
+[2m8:04:08 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/App.tsx, /src/styles/index.css[22m
+[2m8:04:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/App.tsx, /src/styles/index.css[22m
+[2m8:04:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/styles/index.css, /@fs/F:\salonproject\src\app\components\layout\EnterpriseSidebar.tsx[22m
+[2m8:04:11 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/styles/index.css, /@fs/F:\salonproject\src\app\components\layout\EnterpriseSidebar.tsx[22m
+[2m8:04:14 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/styles/index.css, /@fs/F:\salonproject\src\app\components\layout\EnterpriseSidebar.tsx[22m
+[2m8:04:15 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/app/components/shared/index.ts[22m
+[2m8:04:15 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Settings.tsx, /src/styles/index.css[22m
+[2m8:04:16 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Administration.tsx, /src/styles/index.css[22m
+[2m8:04:16 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/app/components/shared/SettingsPage.tsx[22m
+[2m8:04:16 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/app/components/shared/AdministrationPage.tsx[22m
+[2m8:11:09 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Customers.tsx, /src/styles/index.css[22m
+[2m8:11:13 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Customers.tsx, /src/styles/index.css[22m
+[2m8:11:24 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Customers.tsx, /src/styles/index.css[22m
+[2m8:11:27 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Customers.tsx, /src/styles/index.css[22m
+[2m8:11:32 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Customers.tsx, /src/styles/index.css[22m
+[2m8:11:36 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Customers.tsx, /src/styles/index.css[22m
+[2m8:11:36 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: F:\salonproject\src\app\pages\Customers.tsx: Missing semicolon. (344:88)
+
+[0m [90m 342 |[31m     [36mconst[31m matchI [33m=[31m filterInactive [33m===[31m [32m"all"[31m [33m?[31m [36mtrue[31m [33m:[31m days [33m>=[31m [33mNumber[31m(filterInactive)[33m;[31m
+ [90m 343 |[31m     [36mreturn[31m matchQ [33m&&[31m matchT [33m&&[31m matchS [33m&&[31m matchB [33m&&[31m matchI [33m&&[31m matchG [33m&&[31m matchFrom [33m&&[31m matchTo[33m;[31m
+[31m[1m>[22m[31m[90m 344 |[31m   })[33m,[31m [customers[33m,[31m searchQuery[33m,[31m filterTier[33m,[31m filterStatus[33m,[31m filterBirthday[33m,[31m filterInactive])[33m;[31m
+ [90m     |[31m                                                                                         [31m[1m^[22m[31m
+ [90m 345 |[31m
+ [90m 346 |[31m   [36mconst[31m pagedCustomers [33m=[31m useMemo(() [33m=>[31m filtered[33m.[31mslice((custPage [33m-[31m [35m1[31m) [33m*[31m custPageSize[33m,[31m custPage [33m*[31m custPageSize)[33m,[31m [filtered[33m,[31m custPage[33m,[31m custPageSize])[33m;[31m
+ [90m 347 |[31m   [36mconst[31m birthdayCustomers [33m=[31m useMemo(() [33m=>[31m customers[33m.[31mfilter(c [33m=>[31m isBirthdayThisMonth(c[33m.[31mbirthday))[33m,[31m [customers])[33m;[31m[0m[39m
+  Plugin: [35mvite:react-babel[39m
+  File: [36mF:/salonproject/src/app/pages/Customers.tsx[39m:344:88
+[33m  342|      const matchI = filterInactive === "all" ? true : days >= Number(filterInactive);
+  343|      return matchQ && matchT && matchS && matchB && matchI && matchG && matchFrom && matchTo;
+  344|    }), [customers, searchQuery, filterTier, filterStatus, filterBirthday, filterInactive]);
+     |                                                                                          ^
+  345|  
+  346|    const pagedCustomers = useMemo(() => filtered.slice((custPage - 1) * custPageSize, custPage * custPageSize), [filtered, custPage, custPageSize]);[39m
+      at constructor (F:\salonproject\node_modules\@babel\parser\lib\index.js:365:19)
+      at TypeScriptParserMixin.raise (F:\salonproject\node_modules\@babel\parser\lib\index.js:6616:19)
+      at TypeScriptParserMixin.semicolon (F:\salonproject\node_modules\@babel\parser\lib\index.js:6912:10)
+      at TypeScriptParserMixin.parseReturnStatement (F:\salonproject\node_modules\@babel\parser\lib\index.js:13160:12)
+      at TypeScriptParserMixin.parseStatementContent (F:\salonproject\node_modules\@babel\parser\lib\index.js:12815:21)
+      at TypeScriptParserMixin.parseStatementContent (F:\salonproject\node_modules\@babel\parser\lib\index.js:9525:18)
+      at TypeScriptParserMixin.parseStatementLike (F:\salonproject\node_modules\@babel\parser\lib\index.js:12784:17)
+      at TypeScriptParserMixin.parseStatementListItem (F:\salonproject\node_modules\@babel\parser\lib\index.js:12764:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (F:\salonproject\node_modules\@babel\parser\lib\index.js:13333:61)
+      at TypeScriptParserMixin.parseBlockBody (F:\salonproject\node_modules\@babel\parser\lib\index.js:13326:10)
+      at TypeScriptParserMixin.parseBlock (F:\salonproject\node_modules\@babel\parser\lib\index.js:13314:10)
+      at TypeScriptParserMixin.parseFunctionBody (F:\salonproject\node_modules\@babel\parser\lib\index.js:12117:24)
+      at TypeScriptParserMixin.parseArrowExpression (F:\salonproject\node_modules\@babel\parser\lib\index.js:12092:10)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (F:\salonproject\node_modules\@babel\parser\lib\index.js:11704:12)
+      at TypeScriptParserMixin.parseExprAtom (F:\salonproject\node_modules\@babel\parser\lib\index.js:11348:23)
+      at TypeScriptParserMixin.parseExprAtom (F:\salonproject\node_modules\@babel\parser\lib\index.js:4776:20)
+      at TypeScriptParserMixin.parseExprSubscripts (F:\salonproject\node_modules\@babel\parser\lib\index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (F:\salonproject\node_modules\@babel\parser\lib\index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (F:\salonproject\node_modules\@babel\parser\lib\index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (F:\salonproject\node_modules\@babel\parser\lib\index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (F:\salonproject\node_modules\@babel\parser\lib\index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (F:\salonproject\node_modules\@babel\parser\lib\index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (F:\salonproject\node_modules\@babel\parser\lib\index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (F:\salonproject\node_modules\@babel\parser\lib\index.js:10848:21)
+      at TypeScriptParserMixin.parseMaybeAssign (F:\salonproject\node_modules\@babel\parser\lib\index.js:9803:20)
+      at F:\salonproject\node_modules\@babel\parser\lib\index.js:10817:39
+      at TypeScriptParserMixin.allowInAnd (F:\salonproject\node_modules\@babel\parser\lib\index.js:12443:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (F:\salonproject\node_modules\@babel\parser\lib\index.js:10817:17)
+      at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (F:\salonproject\node_modules\@babel\parser\lib\index.js:12510:17)
+      at TypeScriptParserMixin.parseExprListItem (F:\salonproject\node_modules\@babel\parser\lib\index.js:12192:18)
+      at TypeScriptParserMixin.parseCallExpressionArguments (F:\salonproject\node_modules\@babel\parser\lib\index.js:11269:22)
+      at TypeScriptParserMixin.parseCoverCallAndAsyncArrowHead (F:\salonproject\node_modules\@babel\parser\lib\index.js:11203:29)
+      at TypeScriptParserMixin.parseSubscript (F:\salonproject\node_modules\@babel\parser\lib\index.js:11137:19)
+      at TypeScriptParserMixin.parseSubscript (F:\salonproject\node_modules\@babel\parser\lib\index.js:9289:18)
+      at TypeScriptParserMixin.parseSubscripts (F:\salonproject\node_modules\@babel\parser\lib\index.js:11111:19)
+      at TypeScriptParserMixin.parseExprSubscripts (F:\salonproject\node_modules\@babel\parser\lib\index.js:11102:17)
+      at TypeScriptParserMixin.parseUpdate (F:\salonproject\node_modules\@babel\parser\lib\index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (F:\salonproject\node_modules\@babel\parser\lib\index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (F:\salonproject\node_modules\@babel\parser\lib\index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (F:\salonproject\node_modules\@babel\parser\lib\index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (F:\salonproject\node_modules\@babel\parser\lib\index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (F:\salonproject\node_modules\@babel\parser\lib\index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (F:\salonproject\node_modules\@babel\parser\lib\index.js:10848:21)
+      at TypeScriptParserMixin.parseMaybeAssign (F:\salonproject\node_modules\@babel\parser\lib\index.js:9803:20)
+      at F:\salonproject\node_modules\@babel\parser\lib\index.js:10817:39
+      at TypeScriptParserMixin.allowInAnd (F:\salonproject\node_modules\@babel\parser\lib\index.js:12438:16)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (F:\salonproject\node_modules\@babel\parser\lib\index.js:10817:17)
+      at TypeScriptParserMixin.parseVar (F:\salonproject\node_modules\@babel\parser\lib\index.js:13401:91)
+      at TypeScriptParserMixin.parseVarStatement (F:\salonproject\node_modules\@babel\parser\lib\index.js:13247:10)
+      at TypeScriptParserMixin.parseVarStatement (F:\salonproject\node_modules\@babel\parser\lib\index.js:9425:31)
+[2m8:11:40 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Customers.tsx, /src/styles/index.css[22m
+[2m8:11:44 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Employees.tsx, /src/styles/index.css[22m
+[2m8:11:48 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Employees.tsx, /src/styles/index.css[22m
+[2m8:12:02 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Employees.tsx, /src/styles/index.css[22m
+[2m8:12:05 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Employees.tsx, /src/styles/index.css[22m
+[2m8:12:11 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Employees.tsx, /src/styles/index.css[22m
+[2m8:12:14 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Inventory.tsx, /src/styles/index.css[22m
+[2m8:12:17 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Inventory.tsx, /src/styles/index.css[22m
+[2m8:12:24 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Inventory.tsx, /src/styles/index.css[22m
+[2m8:12:26 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Inventory.tsx, /src/styles/index.css[22m
+[2m8:12:37 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Inventory.tsx, /src/styles/index.css[22m
+[2m8:12:40 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Services.tsx, /src/styles/index.css[22m
+[2m8:12:43 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Services.tsx, /src/styles/index.css[22m
+[2m8:12:51 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Services.tsx, /src/styles/index.css[22m
+[2m8:12:54 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Services.tsx, /src/styles/index.css[22m
+[2m8:12:58 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Services.tsx, /src/styles/index.css[22m
+[2m8:13:09 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Appointments.tsx, /src/styles/index.css[22m
+[2m8:13:13 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Appointments.tsx, /src/styles/index.css[22m
+[2m8:13:23 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Appointments.tsx, /src/styles/index.css[22m
+[2m8:13:27 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Appointments.tsx, /src/styles/index.css[22m
+[2m8:13:32 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Customers.tsx, /src/styles/index.css[22m
+[2m8:13:32 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: F:\salonproject\src\app\pages\Customers.tsx: Unexpected token, expected "," (344:4)
+
+[0m [90m 342 |[31m     [36mconst[31m matchI [33m=[31m filterInactive [33m===[31m [32m"all"[31m [33m?[31m [36mtrue[31m [33m:[31m days [33m>=[31m [33mNumber[31m(filterInactive)[33m;[31m
+ [90m 343 |[31m     [36mreturn[31m matchQ [33m&&[31m matchT [33m&&[31m matchS [33m&&[31m matchB [33m&&[31m matchI [33m&&[31m matchG [33m&&[31m matchFrom [33m&&[31m matchTo[33m;[31m
+[31m[1m>[22m[31m[90m 344 |[31m   })[33m;[31m }[33m,[31m [customers[33m,[31m searchQuery[33m,[31m filterTier[33m,[31m filterStatus[33m,[31m filterBirthday[33m,[31m filterInactive])[33m;[31m
+ [90m     |[31m     [31m[1m^[22m[31m
+ [90m 345 |[31m
+ [90m 346 |[31m   [36mconst[31m pagedCustomers [33m=[31m useMemo(() [33m=>[31m filtered[33m.[31mslice((custPage [33m-[31m [35m1[31m) [33m*[31m custPageSize[33m,[31m custPage [33m*[31m custPageSize)[33m,[31m [filtered[33m,[31m custPage[33m,[31m custPageSize])[33m;[31m
+ [90m 347 |[31m   [36mconst[31m birthdayCustomers [33m=[31m useMemo(() [33m=>[31m customers[33m.[31mfilter(c [33m=>[31m isBirthdayThisMonth(c[33m.[31mbirthday))[33m,[31m [customers])[33m;[31m[0m[39m
+  Plugin: [35mvite:react-babel[39m
+  File: [36mF:/salonproject/src/app/pages/Customers.tsx[39m:344:4
+[33m  342|      const matchI = filterInactive === "all" ? true : days >= Number(filterInactive);
+  343|      return matchQ && matchT && matchS && matchB && matchI && matchG && matchFrom && matchTo;
+  344|    }); }, [customers, searchQuery, filterTier, filterStatus, filterBirthday, filterInactive]);
+     |      ^
+  345|  
+  346|    const pagedCustomers = useMemo(() => filtered.slice((custPage - 1) * custPageSize, custPage * custPageSize), [filtered, custPage, custPageSize]);[39m
+      at constructor (F:\salonproject\node_modules\@babel\parser\lib\index.js:365:19)
+      at TypeScriptParserMixin.raise (F:\salonproject\node_modules\@babel\parser\lib\index.js:6616:19)
+      at TypeScriptParserMixin.unexpected (F:\salonproject\node_modules\@babel\parser\lib\index.js:6636:16)
+      at TypeScriptParserMixin.expect (F:\salonproject\node_modules\@babel\parser\lib\index.js:6916:12)
+      at TypeScriptParserMixin.parseCallExpressionArguments (F:\salonproject\node_modules\@babel\parser\lib\index.js:11260:14)
+      at TypeScriptParserMixin.parseCoverCallAndAsyncArrowHead (F:\salonproject\node_modules\@babel\parser\lib\index.js:11203:29)
+      at TypeScriptParserMixin.parseSubscript (F:\salonproject\node_modules\@babel\parser\lib\index.js:11137:19)
+      at TypeScriptParserMixin.parseSubscript (F:\salonproject\node_modules\@babel\parser\lib\index.js:9289:18)
+      at TypeScriptParserMixin.parseSubscripts (F:\salonproject\node_modules\@babel\parser\lib\index.js:11111:19)
+      at TypeScriptParserMixin.parseExprSubscripts (F:\salonproject\node_modules\@babel\parser\lib\index.js:11102:17)
+      at TypeScriptParserMixin.parseUpdate (F:\salonproject\node_modules\@babel\parser\lib\index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (F:\salonproject\node_modules\@babel\parser\lib\index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (F:\salonproject\node_modules\@babel\parser\lib\index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (F:\salonproject\node_modules\@babel\parser\lib\index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (F:\salonproject\node_modules\@babel\parser\lib\index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (F:\salonproject\node_modules\@babel\parser\lib\index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (F:\salonproject\node_modules\@babel\parser\lib\index.js:10848:21)
+      at TypeScriptParserMixin.parseMaybeAssign (F:\salonproject\node_modules\@babel\parser\lib\index.js:9803:20)
+      at F:\salonproject\node_modules\@babel\parser\lib\index.js:10817:39
+      at TypeScriptParserMixin.allowInAnd (F:\salonproject\node_modules\@babel\parser\lib\index.js:12438:16)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (F:\salonproject\node_modules\@babel\parser\lib\index.js:10817:17)
+      at TypeScriptParserMixin.parseVar (F:\salonproject\node_modules\@babel\parser\lib\index.js:13401:91)
+      at TypeScriptParserMixin.parseVarStatement (F:\salonproject\node_modules\@babel\parser\lib\index.js:13247:10)
+      at TypeScriptParserMixin.parseVarStatement (F:\salonproject\node_modules\@babel\parser\lib\index.js:9425:31)
+      at TypeScriptParserMixin.parseStatementContent (F:\salonproject\node_modules\@babel\parser\lib\index.js:12868:23)
+      at TypeScriptParserMixin.parseStatementContent (F:\salonproject\node_modules\@babel\parser\lib\index.js:9525:18)
+      at TypeScriptParserMixin.parseStatementLike (F:\salonproject\node_modules\@babel\parser\lib\index.js:12784:17)
+      at TypeScriptParserMixin.parseStatementListItem (F:\salonproject\node_modules\@babel\parser\lib\index.js:12764:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (F:\salonproject\node_modules\@babel\parser\lib\index.js:13333:61)
+      at TypeScriptParserMixin.parseBlockBody (F:\salonproject\node_modules\@babel\parser\lib\index.js:13326:10)
+      at TypeScriptParserMixin.parseBlock (F:\salonproject\node_modules\@babel\parser\lib\index.js:13314:10)
+      at TypeScriptParserMixin.parseFunctionBody (F:\salonproject\node_modules\@babel\parser\lib\index.js:12117:24)
+      at TypeScriptParserMixin.parseFunctionBodyAndFinish (F:\salonproject\node_modules\@babel\parser\lib\index.js:12103:10)
+      at TypeScriptParserMixin.parseFunctionBodyAndFinish (F:\salonproject\node_modules\@babel\parser\lib\index.js:9189:18)
+      at F:\salonproject\node_modules\@babel\parser\lib\index.js:13462:12
+      at TypeScriptParserMixin.withSmartMixTopicForbiddingContext (F:\salonproject\node_modules\@babel\parser\lib\index.js:12420:14)
+      at TypeScriptParserMixin.parseFunction (F:\salonproject\node_modules\@babel\parser\lib\index.js:13461:10)
+      at TypeScriptParserMixin.parseFunctionStatement (F:\salonproject\node_modules\@babel\parser\lib\index.js:13142:17)
+      at TypeScriptParserMixin.parseStatementContent (F:\salonproject\node_modules\@babel\parser\lib\index.js:12808:21)
+      at TypeScriptParserMixin.parseStatementContent (F:\salonproject\node_modules\@babel\parser\lib\index.js:9525:18)
+      at TypeScriptParserMixin.parseStatementLike (F:\salonproject\node_modules\@babel\parser\lib\index.js:12784:17)
+      at TypeScriptParserMixin.parseStatementListItem (F:\salonproject\node_modules\@babel\parser\lib\index.js:12764:17)
+      at TypeScriptParserMixin.parseExportDeclaration (F:\salonproject\node_modules\@babel\parser\lib\index.js:13951:17)
+      at TypeScriptParserMixin.parseExportDeclaration (F:\salonproject\node_modules\@babel\parser\lib\index.js:9646:85)
+      at TypeScriptParserMixin.maybeParseExportDeclaration (F:\salonproject\node_modules\@babel\parser\lib\index.js:13910:31)
+      at TypeScriptParserMixin.parseExport (F:\salonproject\node_modules\@babel\parser\lib\index.js:13829:29)
+      at TypeScriptParserMixin.parseExport (F:\salonproject\node_modules\@babel\parser\lib\index.js:9402:20)
+      at TypeScriptParserMixin.parseStatementContent (F:\salonproject\node_modules\@babel\parser\lib\index.js:12895:27)
+      at TypeScriptParserMixin.parseStatementContent (F:\salonproject\node_modules\@babel\parser\lib\index.js:9525:18)
+      at TypeScriptParserMixin.parseStatementLike (F:\salonproject\node_modules\@babel\parser\lib\index.js:12784:17)
+[2m8:13:36 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Customers.tsx, /src/styles/index.css[22m
+[2m8:13:40 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Customers.tsx, /src/styles/index.css[22m
+[2m8:13:44 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/pages/Customers.tsx, /src/styles/index.css[22m

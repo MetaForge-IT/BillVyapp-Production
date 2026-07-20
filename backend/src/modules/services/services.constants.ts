@@ -1,0 +1,10 @@
+export const SERVICE_STATUS = {
+  ACTIVE: "active",
+  INACTIVE: "inactive",
+} as const;
+
+export const SERVICE_ERROR_CODES = {
+  NOT_FOUND: "SERVICE_NOT_FOUND",
+  DUPLICATE_NAME: "SERVICE_DUPLICATE_NAME",
+  CATEGORY_NOT_FOUND: "SERVICE_CATEGORY_NOT_FOUND",
+} as const;

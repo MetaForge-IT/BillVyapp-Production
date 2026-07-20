@@ -1,0 +1,58 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build output
+dist/
+**/dist/
+build/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+!.env.docker.example
+!.env.prod.example
+backend/.env
+Frontend folder/.env
+
+# TLS private material (keep nginx/certs/.gitkeep)
+nginx/certs/*.pem
+nginx/certs/*.key
+nginx/certs/*.crt
+nginx/certs/live/
+nginx/certs/archive/
+nginx/certs/renewal/
+
+
+# Uploads (local dev storage)
+backend/uploads/
+uploads/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Prisma
+backend/prisma/*.db
+
+# Test / coverage
+coverage/
+
+# Cursor / local tooling
+.cursor/
+terminals/
+
+# Nested git repos (skill submodules)
+Frontend folder/ui-ux-pro-max-skill/.git/
+
+# Docker volumes (if mapped locally)
+data/mysql/
+data/redis/

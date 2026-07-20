@@ -1,0 +1,110 @@
+name: CD
+
+# Build → push GHCR → SSH deploy to EC2 on every push to main (after CI passes via workflow_run)
+# or manually via workflow_dispatch.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  publish-and-deploy:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Image names
+        id: meta
+        run: |
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          SHA="${{ github.event.workflow_run.head_sha || github.sha }}"
+          SHORT="${SHA:0:7}"
+          echo "api_image=${{ env.REGISTRY }}/${OWNER_LC}/salon-api" >> "$GITHUB_OUTPUT"
+          echo "frontend_image=${{ env.REGISTRY }}/${OWNER_LC}/salon-frontend" >> "$GITHUB_OUTPUT"
+          echo "tag_sha=$SHORT" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push API
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.api_image }}:latest
+            ${{ steps.meta.outputs.api_image }}:${{ steps.meta.outputs.tag_sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./Frontend folder
+          target: production
+          push: true
+          build-args: |
+            VITE_API_URL=/api
+            VITE_SENTRY_DSN=${{ vars.VITE_SENTRY_DSN }}
+          tags: |
+            ${{ steps.meta.outputs.frontend_image }}:latest
+            ${{ steps.meta.outputs.frontend_image }}:${{ steps.meta.outputs.tag_sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy to EC2 over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: ${{ secrets.EC2_SSH_PORT || 22 }}
+          script_stop: true
+          envs: GHCR_TOKEN,GHCR_USER,API_IMAGE,FRONTEND_IMAGE,DEPLOY_PATH
+          script: |
+            set -euo pipefail
+            if [ -z "${DEPLOY_PATH:-}" ]; then
+              echo "EC2_DEPLOY_PATH secret is required (absolute path to repo on the server)"
+              exit 1
+            fi
+            cd "$DEPLOY_PATH"
+
+            if [ -n "${GHCR_TOKEN:-}" ]; then
+              echo "$GHCR_TOKEN" | docker login ghcr.io -u "${GHCR_USER:-github}" --password-stdin
+            fi
+
+            touch .env.prod
+            grep -q '^API_IMAGE=' .env.prod && sed -i "s|^API_IMAGE=.*|API_IMAGE=${API_IMAGE}|" .env.prod || echo "API_IMAGE=${API_IMAGE}" >> .env.prod
+            grep -q '^FRONTEND_IMAGE=' .env.prod && sed -i "s|^FRONTEND_IMAGE=.*|FRONTEND_IMAGE=${FRONTEND_IMAGE}|" .env.prod || echo "FRONTEND_IMAGE=${FRONTEND_IMAGE}" >> .env.prod
+
+            docker compose -f docker-compose.prod.yml --env-file .env.prod pull api frontend
+            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --remove-orphans api frontend nginx
+            docker image prune -f
+
+            echo "Deployed to EC2"
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          GHCR_USER: ${{ secrets.GHCR_USER || github.actor }}
+          API_IMAGE: ${{ steps.meta.outputs.api_image }}:latest
+          FRONTEND_IMAGE: ${{ steps.meta.outputs.frontend_image }}:latest
+          DEPLOY_PATH: ${{ secrets.EC2_DEPLOY_PATH }}

@@ -1,0 +1,3 @@
+export const MEMBERSHIP_TIER_ERROR_CODES = {
+  NOT_FOUND: "MEMBERSHIP_TIER_NOT_FOUND",
+} as const;

@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "ignoreDeprecations": "6.0",
+    "noEmit": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+    "types": ["vite/client"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "include": ["src", "vite.config.ts", "vitest.config.ts"],
+  "exclude": [
+    "src/app/pages/Accounting*.tsx",
+    "src/app/pages/FinanceAccountingModule.tsx",
+    "src/app/pages/Branches.tsx",
+    "src/app/pages/Orders.tsx",
+    "src/app/pages/Invoices.tsx",
+    "src/app/pages/Payments.tsx",
+    "ui-ux-pro-max-skill"
+  ]
+}

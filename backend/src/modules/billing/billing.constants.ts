@@ -1,0 +1,51 @@
+export const INVOICE_STATUS = {
+  DRAFT: "draft",
+  PENDING: "pending",
+  PARTIALLY_PAID: "partially_paid",
+  PAID: "paid",
+  REFUND_PENDING: "refund_pending",
+  VOID: "void",
+  REFUNDED: "refunded",
+} as const;
+
+export const REFUND_NOTE_PREFIX = "[REFUND_REQUEST]";
+
+export const REFUND_APPROVAL_ROLES = ["manager", "accountant"] as const;
+
+export type InvoiceStatus = (typeof INVOICE_STATUS)[keyof typeof INVOICE_STATUS];
+
+export const APPOINTMENT_STATUS = {
+  PENDING: "pending",
+  CONFIRMED: "confirmed",
+  IN_PROGRESS: "in_progress",
+  COMPLETED: "completed",
+  CANCELLED: "cancelled",
+  NO_SHOW: "no_show",
+} as const;
+
+export const PAYMENT_METHODS = ["cash", "card", "upi", "wallet"] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
+export const LINE_ITEM_TYPES = ["service", "product", "package"] as const;
+export type LineItemType = (typeof LINE_ITEM_TYPES)[number];
+
+export const BILLING_ERROR_CODES = {
+  APPOINTMENT_NOT_FOUND: "APPOINTMENT_NOT_FOUND",
+  APPOINTMENT_INVALID_STATE: "APPOINTMENT_INVALID_STATE",
+  INVOICE_NOT_FOUND: "INVOICE_NOT_FOUND",
+  INVOICE_ALREADY_PAID: "INVOICE_ALREADY_PAID",
+  INVALID_PAYMENT_AMOUNT: "INVALID_PAYMENT_AMOUNT",
+  EMPTY_CART: "EMPTY_CART",
+  CUSTOMER_NOT_FOUND: "CUSTOMER_NOT_FOUND",
+  SERVICE_UNAVAILABLE: "SERVICE_UNAVAILABLE",
+  PRODUCT_UNAVAILABLE: "PRODUCT_UNAVAILABLE",
+  INSUFFICIENT_STOCK: "INSUFFICIENT_STOCK",
+  REFUND_NOT_ELIGIBLE: "REFUND_NOT_ELIGIBLE",
+  REFUND_ALREADY_PENDING: "REFUND_ALREADY_PENDING",
+  REFUND_NOT_PENDING: "REFUND_NOT_PENDING",
+  REFUND_PIN_INVALID: "REFUND_PIN_INVALID",
+  DISCOUNT_EXCEEDS_LIMIT: "DISCOUNT_EXCEEDS_LIMIT",
+  WALLET_INSUFFICIENT: "WALLET_INSUFFICIENT",
+  MEMBERSHIP_NOT_FOUND: "MEMBERSHIP_NOT_FOUND",
+  MEMBERSHIP_EXPIRED: "MEMBERSHIP_EXPIRED",
+} as const;

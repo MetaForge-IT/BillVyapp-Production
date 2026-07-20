@@ -1,0 +1,769 @@
+import { useState, useMemo } from "react";
+import { useSearchParams } from "react-router";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "../components/ui/dialog";
+import {
+  Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
+} from "../components/ui/table";
+import { Input } from "../components/ui/input";
+import {
+  Receipt, Search, Mail, Eye, IndianRupee, FileCheck,
+  Printer, Download, Send, Check, X, Paperclip, User,
+  Banknote, CreditCard, Smartphone, Wallet, TrendingUp, CalendarDays, Filter,
+  RotateCcw,
+} from "lucide-react";
+import { useReceipts, type ReceiptRecord } from "../context/ReceiptsContext";
+import { requestRefund } from "../../api/billing";
+import { getApiErrorMessage } from "../../lib/api";
+import { toast } from "sonner";
+import { Pagination } from "../components/shared/Pagination";
+import { useTablePagination } from "../hooks/useTablePagination";
+import { BRAND, RECEIPT_FOOTER } from "../config/brand";
+import { SalonReceiptBrandHeader, SalonReceiptPaper } from "../components/shared/SalonReceiptBrand";
+import {
+  FinanceStatCard,
+  FinanceStatGrid,
+  financeBadge,
+  financeBadgeGold,
+  financeFilterBar,
+  financeGoldBtn,
+  financePanel,
+  financePanelHeader,
+  financePanelTitle,
+} from "./finance/finance-ui";
+
+/* ── helpers ─────────────────────────────────────────────── */
+const methodIcon = (m: ReceiptRecord["paymentMethod"]) => {
+  if (m === "cash")   return <Banknote   className="h-3.5 w-3.5" />;
+  if (m === "card")   return <CreditCard className="h-3.5 w-3.5" />;
+  if (m === "upi")    return <Smartphone className="h-3.5 w-3.5" />;
+  if (m === "none")   return <IndianRupee className="h-3.5 w-3.5" />;
+  return                     <Wallet     className="h-3.5 w-3.5" />;
+};
+const methodLabel: Record<ReceiptRecord["paymentMethod"], string> = {
+  cash: "Cash", card: "Card", upi: "UPI", wallet: "Wallet", none: "Unpaid",
+};
+const methodColors: Record<ReceiptRecord["paymentMethod"], string> = {
+  cash:   `${financeBadge} flex items-center gap-1 w-fit border`,
+  card:   `${financeBadge} flex items-center gap-1 w-fit border`,
+  upi:    `${financeBadge} flex items-center gap-1 w-fit border`,
+  wallet: `${financeBadge} flex items-center gap-1 w-fit border`,
+  none:   `${financeBadge} flex items-center gap-1 w-fit border`,
+};
+
+function paymentMethodLabel(method: ReceiptRecord["paymentMethod"] | undefined): string {
+  if (!method) return "Unknown";
+  return methodLabel[method] ?? "Unknown";
+}
+
+const DATE_OPTIONS = [
+  { value: "all",   label: "All Time" },
+  { value: "today", label: "Today" },
+  { value: "week",  label: "This Week" },
+  { value: "month", label: "This Month" },
+];
+const METHOD_OPTIONS = [
+  { value: "all",    label: "All Methods" },
+  { value: "cash",   label: "Cash" },
+  { value: "card",   label: "Card" },
+  { value: "upi",    label: "UPI" },
+  { value: "wallet", label: "Wallet" },
+];
+
+/* ── component ───────────────────────────────────────────── */
+export function Receipts() {
+  const { receipts, refresh } = useReceipts();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const dateParam = searchParams.get("date");
+  const [search,       setSearch]       = useState("");
+  const [methodFilter, setMethodFilter] = useState("all");
+  const [dateFilter,   setDateFilter]   = useState("all");
+  const [viewReceipt,  setViewReceipt]  = useState<ReceiptRecord | null>(null);
+  const [refundReceipt, setRefundReceipt] = useState<ReceiptRecord | null>(null);
+  const [refundReason, setRefundReason] = useState("");
+  const [refundSubmitting, setRefundSubmitting] = useState(false);
+  const [emailReceipt, setEmailReceipt] = useState<ReceiptRecord | null>(null);
+  const [emailTo,      setEmailTo]      = useState("");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailMessage, setEmailMessage] = useState("");
+  const [emailSent,    setEmailSent]    = useState(false);
+
+  const TODAY = "2026-06-26";
+
+  const filtered = useMemo(() => receipts.filter(r => {
+    const q = search.toLowerCase();
+    const matchSearch  = r.receiptNo.toLowerCase().includes(q) || r.customer.toLowerCase().includes(q) || r.phone.includes(search);
+    const matchMethod  = methodFilter === "all" || r.paymentMethod === methodFilter;
+    let   matchDate    = true;
+    if (dateParam) matchDate = r.date === dateParam;
+    else if (dateFilter === "today") matchDate = r.date === TODAY;
+    else if (dateFilter === "week") {
+      const diff = (new Date(TODAY).getTime() - new Date(r.date).getTime()) / 86400000;
+      matchDate = diff >= 0 && diff < 7;
+    } else if (dateFilter === "month") matchDate = r.date.startsWith(TODAY.slice(0, 7));
+    return matchSearch && matchMethod && matchDate;
+  }), [search, methodFilter, dateFilter, dateParam, receipts]);
+
+  const { page, setPage, pageSize, setPageSize, paginate } = useTablePagination(
+    filtered.length,
+    [search, methodFilter, dateFilter, dateParam],
+  );
+  const paginatedReceipts = useMemo(() => paginate(filtered), [filtered, paginate]);
+
+
+  const totalRevenue = receipts.reduce((s, r) => s + r.total, 0);
+  const todayRevenue = receipts.filter(r => r.date === TODAY).reduce((s, r) => s + r.total, 0);
+  const avgBill      = receipts.length ? Math.round(totalRevenue / receipts.length) : 0;
+
+  const hasActiveFilter = search || methodFilter !== "all" || dateFilter !== "all" || Boolean(dateParam);
+  const clearFilters = () => {
+    setSearch("");
+    setMethodFilter("all");
+    setDateFilter("all");
+    if (dateParam) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("date");
+        return next;
+      }, { replace: true });
+    }
+  };
+
+  const suggestEmail = (name: string) =>
+    name.toLowerCase().replace(/\s+/g, ".") + "@email.com";
+
+  const openEmail = (r: ReceiptRecord) => {
+    setEmailReceipt(r);
+    setEmailTo(suggestEmail(r.customer));
+    setEmailSubject(`Receipt ${r.receiptNo} — ${BRAND.clientName}`);
+    setEmailMessage(`Dear ${r.customer},\n\nThank you for visiting ${BRAND.clientName}! Please find your receipt ${r.receiptNo} attached.\n\nTotal Paid: ₹${r.total.toLocaleString()} via ${paymentMethodLabel(r.paymentMethod)}\n\nWe look forward to seeing you again!\n\n${BRAND.clientName} Team`);
+    setEmailSent(false);
+  };
+
+  const openRefundRequest = (r: ReceiptRecord) => {
+    setRefundReceipt(r);
+    setRefundReason("");
+  };
+
+  const submitRefundRequest = async () => {
+    if (!refundReceipt || refundReason.trim().length < 3) {
+      toast.error("Please enter a refund reason (at least 3 characters)");
+      return;
+    }
+    setRefundSubmitting(true);
+    try {
+      await requestRefund(refundReceipt.id, { reason: refundReason.trim() });
+      toast.success("Refund request submitted for manager approval");
+      setRefundReceipt(null);
+      setViewReceipt(null);
+      setRefundReason("");
+      await refresh();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Failed to submit refund request"));
+    } finally {
+      setRefundSubmitting(false);
+    }
+  };
+
+  const canRequestRefund = (r: ReceiptRecord) =>
+    r.paymentStatus === "paid" && r.paidAmount > 0 && r.paymentMethod !== "none";
+
+  return (
+    <div className="space-y-5">
+
+      {/* ── Page header ── */}
+      <div className="flex items-center gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#D4AF37]/10 border border-[#D4AF37]/20 shrink-0">
+          <Receipt className="h-5 w-5 text-[#D4AF37]" />
+        </div>
+        <div>
+          <h2 className="text-lg font-bold text-[#111118]">Sales Receipts</h2>
+          <p className="text-xs text-[#9a9a9a] mt-0.5">All completed transactions and payment history</p>
+        </div>
+      </div>
+
+      {/* ── Stat cards ── */}
+      <FinanceStatGrid>
+        <FinanceStatCard
+          label="Total Revenue"
+          value={`₹${totalRevenue.toLocaleString()}`}
+          sub="View all receipts"
+          icon={IndianRupee}
+          index={0}
+          onClick={clearFilters}
+        />
+        <FinanceStatCard
+          label="Today's Revenue"
+          value={`₹${todayRevenue.toLocaleString()}`}
+          sub="Filter today's bills"
+          icon={TrendingUp}
+          index={1}
+          onClick={() => { setDateFilter("today"); setMethodFilter("all"); setSearch(""); }}
+        />
+        <FinanceStatCard
+          label="Avg. Bill Value"
+          value={`₹${avgBill.toLocaleString()}`}
+          sub="View this month"
+          icon={FileCheck}
+          index={2}
+          onClick={() => { setDateFilter("month"); setMethodFilter("all"); setSearch(""); }}
+        />
+        <FinanceStatCard
+          label="Total Receipts"
+          value={receipts.length}
+          sub={`All paid · ₹${totalRevenue.toLocaleString()}`}
+          icon={Receipt}
+          index={3}
+          onClick={clearFilters}
+        />
+      </FinanceStatGrid>
+
+      {/* ── Filter bar ── */}
+      <div className={financeFilterBar}>
+        <div className="flex items-center gap-3 flex-wrap">
+
+          {/* Search */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            <input
+              value={search}
+              onChange={e => { setSearch(e.target.value); }}
+              placeholder="Search by receipt #, customer or phone…"
+              className="w-full h-10 pl-10 pr-9 rounded-xl border border-gray-200 text-[13px] text-[#111] placeholder:text-gray-400 outline-none focus:border-[#d4af37]/60 focus:ring-2 focus:ring-[#d4af37]/10 bg-[#fafafa] transition-all"
+            />
+            {search && (
+              <button onClick={() => { setSearch(""); }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-colors">
+                <X className="h-3 w-3 text-gray-500" />
+              </button>
+            )}
+          </div>
+
+          {dateParam && (
+            <span className="inline-flex items-center gap-2 rounded-xl border border-[#d4af37]/40 bg-[#fffbea] px-3 py-1.5 text-[12px] font-semibold text-[#9a7d20] shrink-0">
+              <CalendarDays className="h-3.5 w-3.5" />
+              {new Date(`${dateParam}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+            </span>
+          )}
+
+          {/* Period dropdown */}
+          <div className="relative shrink-0">
+            <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#d4af37] pointer-events-none" />
+            <select
+              value={dateFilter}
+              onChange={e => { setDateFilter(e.target.value); }}
+              className={`h-10 pl-9 pr-8 rounded-xl border text-[13px] font-semibold appearance-none outline-none cursor-pointer transition-all focus:ring-2 focus:ring-[#d4af37]/20 ${
+                dateFilter !== "all"
+                  ? "border-[#d4af37]/60 bg-[#fffbea] text-[#9a7a1e]"
+                  : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300"
+              }`}
+            >
+              {[
+                { value: "all",   label: "All Time" },
+                { value: "today", label: "Today" },
+                { value: "week",  label: "This Week" },
+                { value: "month", label: "This Month" },
+              ].map(o => {
+                const count = receipts.filter(r => {
+                  if (o.value === "all")   return true;
+                  if (o.value === "today") return r.date === TODAY;
+                  if (o.value === "week")  return (new Date(TODAY).getTime() - new Date(r.date).getTime()) / 86400000 < 7;
+                  if (o.value === "month") return r.date.startsWith(TODAY.slice(0, 7));
+                  return false;
+                }).length;
+                return <option key={o.value} value={o.value}>{o.label} ({count})</option>;
+              })}
+            </select>
+            <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </span>
+            {dateFilter !== "all" && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-[#d4af37]" />}
+          </div>
+
+          {/* Method dropdown */}
+          <div className="relative shrink-0">
+            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#d4af37] pointer-events-none" />
+            <select
+              value={methodFilter}
+              onChange={e => { setMethodFilter(e.target.value); }}
+              className={`h-10 pl-9 pr-8 rounded-xl border text-[13px] font-semibold appearance-none outline-none cursor-pointer transition-all focus:ring-2 focus:ring-[#d4af37]/20 ${
+                methodFilter !== "all"
+                  ? "border-[#d4af37]/60 bg-[#fffbea] text-[#9a7a1e]"
+                  : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300"
+              }`}
+            >
+              {[
+                { value: "all",    label: "All Methods" },
+                { value: "cash",   label: "💵 Cash" },
+                { value: "upi",    label: "📱 UPI" },
+                { value: "card",   label: "💳 Card" },
+                { value: "wallet", label: "👛 Wallet" },
+              ].map(o => {
+                const count = o.value === "all" ? receipts.length : receipts.filter(r => r.paymentMethod === o.value).length;
+                return <option key={o.value} value={o.value}>{o.label} ({count})</option>;
+              })}
+            </select>
+            <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </span>
+            {methodFilter !== "all" && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-[#d4af37]" />}
+          </div>
+
+        </div>
+      </div>
+
+      {/* ── Receipt table ── */}
+      <div className={financePanel}>
+        <div className={`${financePanelHeader} border-b border-black/[0.07]`}>
+          <div className="flex items-center gap-2">
+            <h2 className={financePanelTitle}>Receipt List</h2>
+            <span className="text-[11px] font-semibold text-[#9a9a9a] bg-[#FAF8F2] border border-black/[0.07] px-2 py-0.5 rounded-full">{filtered.length}</span>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-gray-50/40 hover:bg-gray-50/40">
+                <TableHead className="text-[11px] font-bold uppercase tracking-wider text-gray-500 pl-5">Receipt #</TableHead>
+                <TableHead className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Date & Time</TableHead>
+                <TableHead className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Customer</TableHead>
+                <TableHead className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Services</TableHead>
+                <TableHead className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Payment</TableHead>
+                <TableHead className="text-[11px] font-bold uppercase tracking-wider text-gray-500 text-right">Amount</TableHead>
+                <TableHead className="text-[11px] font-bold uppercase tracking-wider text-gray-500 text-right pr-5">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedReceipts.map((r, idx) => (
+                <TableRow key={r.id} className="group hover:bg-[#FAF8F2]/60 transition-colors">
+                  <TableCell className="pl-5">
+                    <button onClick={() => setViewReceipt(r)}
+                      className="font-mono text-[13px] font-bold text-[#b8962e] hover:text-[#d4af37] hover:underline underline-offset-2 transition-colors">
+                      {r.receiptNo}
+                    </button>
+                  </TableCell>
+                  <TableCell>
+                    <p className="text-[12px] font-semibold text-[#111]">{r.date}</p>
+                    <p className="text-[11px] text-gray-400">{r.time}</p>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <div className="h-7 w-7 rounded-full bg-[#d4af37]/15 border border-[#d4af37]/25 flex items-center justify-center shrink-0">
+                        <span className="text-[11px] font-black text-[#b8962e]">{r.customer[0]}</span>
+                      </div>
+                      <div>
+                        <p className="text-[12px] font-semibold text-[#111]">{r.customer}</p>
+                        <p className="text-[11px] text-gray-400">{r.phone}</p>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {r.services.map((s, i) => (
+                        <span key={i} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">{s}</span>
+                      ))}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={`${methodColors[r.paymentMethod]} [&_svg]:text-[#D4AF37]`}>
+                      {methodIcon(r.paymentMethod)}
+                      {paymentMethodLabel(r.paymentMethod)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <span className="text-[14px] font-black text-[#111]">₹{r.total.toLocaleString()}</span>
+                  </TableCell>
+                  <TableCell className="pr-5">
+                    <div className="flex justify-end gap-1">
+                      <button onClick={() => setViewReceipt(r)}
+                        className="h-7 w-7 rounded-lg border border-gray-200 flex items-center justify-center text-gray-400 hover:text-[#111] hover:border-gray-300 transition-all">
+                        <Eye className="h-3.5 w-3.5" />
+                      </button>
+                      <button onClick={() => openEmail(r)}
+                        className="h-7 w-7 rounded-lg border border-gray-200 flex items-center justify-center text-gray-400 hover:text-[#D4AF37] hover:border-[#D4AF37]/30 transition-all">
+                        <Mail className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {filtered.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-16 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <Receipt className="h-8 w-8 text-gray-200" />
+                      <p className="text-[13px] font-semibold text-gray-400">No receipts found</p>
+                      {hasActiveFilter && <button onClick={clearFilters} className="text-[12px] text-[#b8962e] hover:underline">Clear filters</button>}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          totalRecords={filtered.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      </div>
+
+      {/* ── View Receipt Modal ── */}
+      <Dialog open={!!viewReceipt} onOpenChange={open => !open && setViewReceipt(null)}>
+        <DialogContent className="sm:max-w-[380px] p-0 gap-0 rounded-2xl shadow-2xl border border-black/[0.07] overflow-hidden bg-white [&>button]:hidden">
+          {viewReceipt && (
+            <>
+              <div className="relative flex items-center justify-between bg-[#111118] px-5 py-4">
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_100%_0%,rgba(212,175,55,0.12),transparent)] pointer-events-none" />
+                <div className="relative min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#D4AF37]">Receipt Preview</p>
+                  <p className="mt-0.5 font-mono text-[14px] font-bold text-white">{viewReceipt.receiptNo}</p>
+                  <p className="mt-0.5 text-[11px] text-white/50">{viewReceipt.customer} · {paymentMethodLabel(viewReceipt.paymentMethod)}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setViewReceipt(null)}
+                  className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 transition-colors hover:bg-white/20"
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4 text-white/70" />
+                </button>
+              </div>
+
+              <div className="max-h-[62vh] overflow-y-auto bg-[#faf9f7] p-4">
+                <SalonReceiptPaper>
+                  <SalonReceiptBrandHeader />
+                  <div className="border-b border-dashed border-[#D4AF37]/25 pb-3 mb-3 space-y-0.5">
+                    {([["Receipt No.", viewReceipt.receiptNo], ["Date", `${viewReceipt.date}  ${viewReceipt.time}`], ["Customer", viewReceipt.customer], ["Payment", paymentMethodLabel(viewReceipt.paymentMethod).toUpperCase()]] as [string, string][]).map(([k, v]) => (
+                      <div key={k} className="flex justify-between gap-3 text-[11px]">
+                        <span className="text-[#9a9a9a]">{k}</span>
+                        <span className="font-bold text-right">{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-b border-dashed border-[#D4AF37]/25 pb-3 mb-3">
+                    <div className="mb-2 flex border-b border-black/[0.08] pb-1 text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a]">
+                      <span className="flex-1">Description</span>
+                      <span className="w-16 text-right">Amount</span>
+                    </div>
+                    {viewReceipt.services.map((svc, i) => {
+                      const per = Math.round(viewReceipt.subtotal / viewReceipt.services.length);
+                      const amt = i === viewReceipt.services.length - 1 ? viewReceipt.subtotal - per * (viewReceipt.services.length - 1) : per;
+                      return (
+                        <div key={i} className="flex py-0.5 text-[11px]">
+                          <span className="flex-1 pr-2 font-semibold uppercase">{svc}</span>
+                          <span className="w-16 text-right">&#x20b9;{amt.toLocaleString()}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="border-b border-dashed border-[#D4AF37]/25 pb-3 mb-3 space-y-0.5">
+                    <div className="flex justify-between text-[11px]"><span className="text-[#9a9a9a]">Subtotal</span><span>&#x20b9;{viewReceipt.subtotal.toLocaleString()}</span></div>
+                    {viewReceipt.discount > 0 && (
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-[#9a9a9a]">Discount</span>
+                        <span className="font-bold text-[#9a7d20]">-&#x20b9;{viewReceipt.discount.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {viewReceipt.gst > 0 && (
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-[#9a9a9a]">GST</span>
+                        <span>+&#x20b9;{viewReceipt.gst.toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="mt-1 flex justify-between border-t border-[#D4AF37]/30 pt-1.5 text-[13px] font-black">
+                      <span>GRAND TOTAL</span>
+                      <span className="text-[#9a7d20]">&#x20b9;{viewReceipt.total.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-[11px] font-semibold">
+                      <span className="text-[#9a9a9a]">Paid ({paymentMethodLabel(viewReceipt.paymentMethod)})</span>
+                      <span>&#x20b9;{viewReceipt.total.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-[#9a9a9a]">Balance Due</span>
+                      <span className="font-bold">&#x20b9;0.00</span>
+                    </div>
+                  </div>
+                  <div className="border-b border-dashed border-[#D4AF37]/25 pb-3 mb-3">
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-[#9a9a9a]">Loyalty Points Earned</span>
+                      <span className="font-bold text-[#9a7d20]">+{Math.floor(viewReceipt.total / 10)} pts</span>
+                    </div>
+                    <div className="flex justify-between text-[9px] text-[#9a9a9a]">
+                      <span>Redeem on next visit</span>
+                      <span>1 pt = &#x20b9;0.50</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1 text-center">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#D4AF37]">{RECEIPT_FOOTER.thankYou}</p>
+                    <p className="text-[9px] text-[#9a9a9a]">{RECEIPT_FOOTER.revisit}</p>
+                    <div className="mx-auto mt-2 h-px w-16 bg-gradient-to-r from-transparent via-[#D4AF37]/40 to-transparent" />
+                  </div>
+                </SalonReceiptPaper>
+              </div>
+
+              <div className="grid grid-cols-3 border-t border-black/[0.06] bg-white">
+                {[
+                  { Icon: Printer, label: "Print", action: () => window.print() },
+                  { Icon: Mail, label: "Email", action: () => openEmail(viewReceipt) },
+                  { Icon: Download, label: "Download", action: () => alert(`Download ${viewReceipt.receiptNo}.pdf`) },
+                ].map(({ Icon, label, action }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={action}
+                    className="flex flex-col items-center gap-1 border-r border-black/[0.06] py-3 text-[11px] font-semibold text-[#6b6b6b] transition-colors last:border-r-0 hover:bg-[#faf9f7] hover:text-[#9a7d20]"
+                  >
+                    <Icon className="h-4 w-4 text-[#D4AF37]" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="border-t border-black/[0.06] bg-white px-4 py-3 space-y-2">
+                {canRequestRefund(viewReceipt) && (
+                  <button
+                    type="button"
+                    onClick={() => openRefundRequest(viewReceipt)}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 py-2.5 text-[12px] font-bold text-red-700 transition-colors hover:bg-red-100"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Request Refund
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setViewReceipt(null)}
+                  className={`${financeGoldBtn} w-full`}
+                >
+                  Close
+                </button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Refund Request Modal ── */}
+      <Dialog open={!!refundReceipt} onOpenChange={open => !open && setRefundReceipt(null)}>
+        <DialogContent className="sm:max-w-[400px] p-0 gap-0 rounded-2xl shadow-2xl border border-black/[0.07] overflow-hidden bg-white">
+          {refundReceipt && (
+            <>
+              <DialogHeader className="bg-[#111118] px-5 py-4 text-left">
+                <DialogTitle className="text-[14px] font-bold text-white">Request Refund</DialogTitle>
+                <DialogDescription className="text-[11px] text-white/50 mt-1">
+                  {refundReceipt.receiptNo} · {refundReceipt.customer} · ₹{refundReceipt.paidAmount.toLocaleString()}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="bg-[#faf9f7] px-5 py-4 space-y-3">
+                <p className="text-[11px] text-[#6b6b6b]">
+                  This sends the refund to Finance → Receipts → Refunds for manager approval. The receipt will be removed from sales once submitted.
+                </p>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-[#b8962e]">Reason for refund</label>
+                  <textarea
+                    value={refundReason}
+                    onChange={e => setRefundReason(e.target.value)}
+                    rows={4}
+                    placeholder="e.g. Customer dissatisfied with service, duplicate charge..."
+                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[13px] focus:border-[#d4af37] focus:outline-none focus:ring-2 focus:ring-[#d4af37]/12 resize-none"
+                  />
+                </div>
+              </div>
+              <DialogFooter className="border-t border-black/[0.06] bg-white px-4 py-3 gap-2 sm:justify-end">
+                <Button variant="outline" onClick={() => setRefundReceipt(null)} disabled={refundSubmitting}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => void submitRefundRequest()}
+                  disabled={refundSubmitting || refundReason.trim().length < 3}
+                  className="bg-gradient-to-r from-[#d4af37] to-[#b8962e] text-black font-bold hover:opacity-90"
+                >
+                  {refundSubmitting ? "Submitting..." : "Submit Request"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Email Receipt Modal ── */}
+      <Dialog open={!!emailReceipt} onOpenChange={open => !open && setEmailReceipt(null)}>
+        <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden rounded-2xl border-0 shadow-2xl [&>button]:hidden">
+          {emailSent ? (
+            <div className="relative overflow-hidden">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#D4AF37]/60 to-transparent" />
+              <div className="bg-gradient-to-br from-[#FAF8F2] via-white to-[#FAF8F2] px-8 py-14 text-center">
+                <div className="relative mx-auto w-fit mb-5">
+                  <div className="absolute inset-0 rounded-full bg-[#D4AF37]/25 blur-2xl scale-150" />
+                  <div className="relative h-20 w-20 rounded-2xl bg-gradient-to-br from-[#D4AF37] to-[#B8962E] flex items-center justify-center shadow-[0_8px_28px_rgba(212,175,55,0.4)]">
+                    <Check className="h-10 w-10 text-[#0d0d14]" strokeWidth={2.5} />
+                  </div>
+                </div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D4AF37]">Delivered</p>
+                <p className="text-xl font-bold text-[#111118] mt-1">Email Sent Successfully</p>
+                <p className="text-sm text-[#6b6b6b] mt-2 max-w-xs mx-auto leading-relaxed">
+                  Receipt{" "}
+                  <span className="font-mono font-bold text-[#b8962e]">{emailReceipt?.receiptNo}</span>{" "}
+                  was sent to{" "}
+                  <span className="font-semibold text-[#111118]">{emailTo}</span>
+                </p>
+                {emailReceipt && (
+                  <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-3 py-1.5">
+                    <User className="h-3.5 w-3.5 text-[#D4AF37]" />
+                    <span className="text-[12px] font-semibold text-[#9a7d20]">{emailReceipt.customer}</span>
+                  </div>
+                )}
+              </div>
+              <div className="px-6 py-4 border-t border-black/[0.06] bg-white flex justify-center">
+                <button type="button" onClick={() => setEmailReceipt(null)} className={financeGoldBtn + " px-10"}>
+                  Done
+                </button>
+              </div>
+            </div>
+          ) : emailReceipt && (
+            <>
+              {/* Dark header */}
+              <div className="relative bg-[#111118] px-6 py-5 overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_100%_0%,rgba(212,175,55,0.12),transparent)]" />
+                <div className="relative flex items-start gap-4">
+                  <div className="h-11 w-11 rounded-xl bg-[#D4AF37]/15 border border-[#D4AF37]/25 flex items-center justify-center shrink-0">
+                    <Mail className="h-5 w-5 text-[#D4AF37]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#D4AF37]">Send Receipt</p>
+                    <DialogTitle className="text-[16px] font-bold text-white leading-tight mt-0.5">
+                      Email {emailReceipt.receiptNo}
+                    </DialogTitle>
+                    <DialogDescription className="text-[12px] text-white/50 mt-1">
+                      to <span className="text-white/90 font-semibold">{emailReceipt.customer}</span>
+                    </DialogDescription>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEmailReceipt(null)}
+                    className="h-8 w-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors shrink-0"
+                    aria-label="Close"
+                  >
+                    <X className="h-4 w-4 text-white/70" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Cream body */}
+              <div className="bg-[#FAF8F2] px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+                {/* Receipt summary */}
+                <div className="flex items-center gap-3.5 p-3.5 rounded-xl bg-white border border-black/[0.07] shadow-sm">
+                  <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#B8962E] flex items-center justify-center shrink-0 shadow-md shadow-[#D4AF37]/20">
+                    <span className="text-[13px] font-black text-[#0d0d14]">{emailReceipt.customer[0]}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-bold text-[#111118] truncate">{emailReceipt.customer}</p>
+                    <p className="text-[11px] text-[#9a9a9a] mt-0.5">{emailReceipt.phone}</p>
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {emailReceipt.services.map((s, i) => (
+                        <span key={i} className={financeBadgeGold + " rounded-full px-2 py-0.5 text-[10px] font-medium"}>
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a]">Total</p>
+                    <p className="text-[15px] font-black text-[#111118] tabular-nums">₹{emailReceipt.total.toLocaleString()}</p>
+                    <span className={financeBadgeGold + " inline-flex items-center gap-1 rounded-full px-2 py-0.5 mt-1 [&_svg]:text-[#D4AF37]"}>
+                      {methodIcon(emailReceipt.paymentMethod)}
+                      {paymentMethodLabel(emailReceipt.paymentMethod)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Attachment */}
+                <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-white border border-dashed border-[#D4AF37]/35">
+                  <div className="h-9 w-9 rounded-lg bg-[#D4AF37]/10 border border-[#D4AF37]/20 flex items-center justify-center shrink-0">
+                    <Paperclip className="h-4 w-4 text-[#D4AF37]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] font-semibold text-[#111118] truncate">{emailReceipt.receiptNo}.pdf</p>
+                    <p className="text-[10px] text-[#9a9a9a]">Receipt attachment · will be included</p>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#b8962e] shrink-0">PDF</span>
+                </div>
+
+                <div className="border-t border-[#D4AF37]/10" />
+
+                {/* Compose */}
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#b8962e] mb-3">Compose Email</p>
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-[#6b6b6b]">Recipient</label>
+                      <div className="relative">
+                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#D4AF37]/60 pointer-events-none" />
+                        <input
+                          type="email"
+                          placeholder="customer@example.com"
+                          value={emailTo}
+                          onChange={e => setEmailTo(e.target.value)}
+                          className="w-full h-10 pl-10 pr-4 rounded-xl border border-black/[0.08] text-[13px] bg-white focus:outline-none focus:border-[#d4af37] focus:ring-2 focus:ring-[#d4af37]/12 transition-all"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-[#6b6b6b]">Subject</label>
+                      <input
+                        type="text"
+                        value={emailSubject}
+                        onChange={e => setEmailSubject(e.target.value)}
+                        className="w-full h-10 px-3.5 rounded-xl border border-black/[0.08] text-[13px] bg-white focus:outline-none focus:border-[#d4af37] focus:ring-2 focus:ring-[#d4af37]/12 transition-all"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-[#6b6b6b]">Message</label>
+                      <textarea
+                        rows={5}
+                        value={emailMessage}
+                        onChange={e => setEmailMessage(e.target.value)}
+                        className="w-full px-3.5 py-3 rounded-xl border border-black/[0.08] text-[13px] bg-white focus:outline-none focus:border-[#d4af37] focus:ring-2 focus:ring-[#d4af37]/12 transition-all resize-none leading-relaxed text-[#111118]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 border-t border-black/[0.06] bg-white flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setEmailReceipt(null)}
+                  className="flex-1 h-10 rounded-xl border border-black/[0.08] bg-white text-[13px] font-semibold text-[#6b6b6b] hover:bg-[#FAF8F2] hover:border-[#D4AF37]/20 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEmailSent(true)}
+                  disabled={!emailTo.trim()}
+                  className={financeGoldBtn + " flex-1 inline-flex items-center justify-center gap-2"}
+                >
+                  <Send className="h-4 w-4" />
+                  Send Email
+                </button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+    </div>
+  );
+}
+
+export default Receipts;

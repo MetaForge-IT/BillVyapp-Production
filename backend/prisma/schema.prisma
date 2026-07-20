@@ -1,0 +1,1131 @@
+// Salon Management System — V1 schema (MySQL 8.x)
+// Design: DATABASE_DESIGN_V1.md
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  // No MySQL FOREIGN KEY constraints — avoids deploy/insert FK conflicts (#1452).
+  // Relations still work in Prisma Client; referential integrity is app-level.
+  relationMode = "prisma"
+}
+
+// Status / type columns use VarChar. Valid values enforced in the application layer.
+
+// ─── Core ────────────────────────────────────────────────────────────────────
+
+model Salon {
+  id        String   @id @default(uuid()) @db.Char(36)
+  name      String   @db.VarChar(200)
+  tagline   String?  @db.VarChar(500)
+  address   String?  @db.Text
+  city      String?  @db.VarChar(100)
+  state     String?  @db.VarChar(100)
+  pincode   String?  @db.VarChar(20)
+  phone     String   @db.VarChar(20)
+  email     String   @unique @db.VarChar(255)
+  website   String?  @db.VarChar(255)
+  gstin     String?  @db.VarChar(15)
+  logoUrl   String?  @map("logo_url") @db.VarChar(500)
+  timezone  String   @default("Asia/Kolkata") @db.VarChar(50)
+  currency  String   @default("INR") @db.Char(3)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  businessHours            BusinessHour[]
+  users                    User[]
+  financialSettings        SalonFinancialSettings?
+  notificationSettings     SalonNotificationSettings?
+  customers                Customer[]
+  membershipTiers          MembershipTier[]
+  customerMemberships      CustomerMembership[]
+  loyaltyTransactions      LoyaltyTransaction[]
+  serviceCategories        ServiceCategory[]
+  productCategories        ProductCategory[]
+  services                 Service[]
+  packages                 Package[]
+  products                 Product[]
+  vendors                  Vendor[]
+  purchaseOrders           PurchaseOrder[]
+  stockMovements           StockMovement[]
+  appointments             Appointment[]
+  invoices                 Invoice[]
+  coupons                  Coupon[]
+  notifications            Notification[]
+  feedback                 Feedback[]
+  salonPlans               SalonPlan[]
+  customerPlanEnrollments  CustomerPlanEnrollment[]
+  walletTransactions       WalletTransaction[]
+  customerAdvances         CustomerAdvance[]
+  serviceProductLinks      ServiceProductLink[]
+  expenses                 Expense[]
+  budgetPeriods            BudgetPeriod[]
+  dayCloses                DayClose[]
+
+  @@map("salons")
+}
+
+model BusinessHour {
+  id         String    @id @default(uuid()) @db.Char(36)
+  salonId    String    @map("salon_id") @db.Char(36)
+  dayOfWeek  Int       @map("day_of_week") @db.SmallInt
+  openTime   DateTime? @map("open_time") @db.Time(0)
+  closeTime  DateTime? @map("close_time") @db.Time(0)
+  isClosed   Boolean   @default(false) @map("is_closed")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon Salon @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([salonId, dayOfWeek])
+  @@map("business_hours")
+}
+
+// ─── Authentication ──────────────────────────────────────────────────────────
+
+model User {
+  id              String    @id @default(uuid()) @db.Char(36)
+  salonId         String    @map("salon_id") @db.Char(36)
+  email           String    @db.VarChar(255)
+  passwordHash    String    @map("password_hash") @db.VarChar(255)
+  fullName        String    @map("full_name") @db.VarChar(200)
+  role            String    @default("manager") @db.VarChar(20)
+  phone           String?   @db.VarChar(20)
+  avatarUrl       String?   @map("avatar_url") @db.VarChar(500)
+  isActive        Boolean   @default(true) @map("is_active")
+  emailVerifiedAt DateTime? @map("email_verified_at") @db.DateTime(3)
+  lastLoginAt     DateTime? @map("last_login_at") @db.DateTime(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon Salon @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  refreshTokens            RefreshToken[]
+  passwordResetTokens      PasswordResetToken[]
+  emailVerificationTokens  EmailVerificationToken[]
+  loginOtpChallenges       LoginOtpChallenge[]
+
+  customersCreated  Customer[] @relation("CustomerCreatedBy")
+  customersUpdated  Customer[] @relation("CustomerUpdatedBy")
+  customersDeleted  Customer[] @relation("CustomerDeletedBy")
+  servicesCreated   Service[]  @relation("ServiceCreatedBy")
+  servicesUpdated   Service[]  @relation("ServiceUpdatedBy")
+  servicesDeleted   Service[]  @relation("ServiceDeletedBy")
+  productsCreated   Product[]  @relation("ProductCreatedBy")
+  productsUpdated   Product[]  @relation("ProductUpdatedBy")
+  productsDeleted   Product[]  @relation("ProductDeletedBy")
+  appointmentsCreated Appointment[] @relation("AppointmentCreatedBy")
+  appointmentsUpdated Appointment[] @relation("AppointmentUpdatedBy")
+  invoicesCreated   Invoice[]  @relation("InvoiceCreatedBy")
+  invoicesUpdated   Invoice[]  @relation("InvoiceUpdatedBy")
+  couponsCreated    Coupon[]   @relation("CouponCreatedBy")
+  couponsUpdated    Coupon[]   @relation("CouponUpdatedBy")
+  couponsDeleted    Coupon[]   @relation("CouponDeletedBy")
+  vendorsCreated    Vendor[]   @relation("VendorCreatedBy")
+  vendorsUpdated    Vendor[]   @relation("VendorUpdatedBy")
+  vendorsDeleted    Vendor[]   @relation("VendorDeletedBy")
+  purchaseOrdersCreated PurchaseOrder[] @relation("PurchaseOrderCreatedBy")
+  purchaseOrdersUpdated PurchaseOrder[] @relation("PurchaseOrderUpdatedBy")
+  expensesCreated       Expense[]  @relation("ExpenseCreatedBy")
+  dayClosesClosed       DayClose[] @relation("DayCloseClosedBy")
+
+  @@unique([salonId, email])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        BigInt    @id @default(autoincrement())
+  publicId  String    @unique @default(uuid()) @map("public_id") @db.Char(36)
+  userId    String    @map("user_id") @db.Char(36)
+  tokenHash String    @map("token_hash") @db.VarChar(255)
+  expiresAt DateTime  @map("expires_at") @db.DateTime(3)
+  revokedAt DateTime? @map("revoked_at") @db.DateTime(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  userAgent String?   @map("user_agent") @db.VarChar(500)
+  ipAddress String?   @map("ip_address") @db.VarChar(45)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        BigInt    @id @default(autoincrement())
+  publicId  String    @unique @default(uuid()) @map("public_id") @db.Char(36)
+  userId    String    @map("user_id") @db.Char(36)
+  tokenHash String    @map("token_hash") @db.VarChar(255)
+  expiresAt DateTime  @map("expires_at") @db.DateTime(3)
+  usedAt    DateTime? @map("used_at") @db.DateTime(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+model EmailVerificationToken {
+  id            BigInt    @id @default(autoincrement())
+  publicId      String    @unique @default(uuid()) @map("public_id") @db.Char(36)
+  userId        String    @map("user_id") @db.Char(36)
+  linkTokenHash String    @map("link_token_hash") @db.VarChar(255)
+  otpHash       String    @map("otp_hash") @db.VarChar(255)
+  linkExpiresAt DateTime  @map("link_expires_at") @db.DateTime(3)
+  otpExpiresAt  DateTime  @map("otp_expires_at") @db.DateTime(3)
+  otpAttempts   Int       @default(0) @map("otp_attempts") @db.SmallInt
+  usedAt        DateTime? @map("used_at") @db.DateTime(3)
+  invalidatedAt DateTime? @map("invalidated_at") @db.DateTime(3)
+  lastSentAt    DateTime  @default(now()) @map("last_sent_at") @db.DateTime(3)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([userId])
+  @@index([linkTokenHash])
+  @@index([otpExpiresAt])
+  @@map("email_verification_tokens")
+}
+
+model LoginOtpChallenge {
+  id         String    @id @default(uuid()) @db.Char(36)
+  userId     String    @map("user_id") @db.Char(36)
+  otpHash    String    @map("otp_hash") @db.VarChar(255)
+  expiresAt  DateTime  @map("expires_at") @db.DateTime(3)
+  attempts   Int       @default(0) @db.SmallInt
+  consumedAt DateTime? @map("consumed_at") @db.DateTime(3)
+  rememberMe Boolean   @default(false) @map("remember_me")
+  lastSentAt DateTime  @default(now()) @map("last_sent_at") @db.DateTime(3)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+  @@map("login_otp_challenges")
+}
+
+// ─── Settings ────────────────────────────────────────────────────────────────
+
+model SalonFinancialSettings {
+  id                    String   @id @default(uuid()) @db.Char(36)
+  salonId               String   @unique @map("salon_id") @db.Char(36)
+  gstEnabled            Boolean  @default(true) @map("gst_enabled")
+  defaultGstRate        Decimal  @default(18.00) @map("default_gst_rate") @db.Decimal(5, 2)
+  loyaltyPointsPerRupee Decimal  @default(0.10) @map("loyalty_points_per_rupee") @db.Decimal(10, 4)
+  loyaltyRupeePerPoint    Decimal  @default(0.50) @map("loyalty_rupee_per_point") @db.Decimal(10, 2)
+  maxDiscountPercent    Decimal  @default(50.00) @map("max_discount_percent") @db.Decimal(5, 2)
+  roundOffMode          String   @default("none") @map("round_off_mode") @db.VarChar(10)
+  receiptPrefix         String   @default("RCP") @map("receipt_prefix") @db.VarChar(10)
+  nextReceiptSequence   Int      @default(1) @map("next_receipt_sequence")
+  createdAt             DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon Salon @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("salon_financial_settings")
+}
+
+model SalonNotificationSettings {
+  id                        String   @id @default(uuid()) @db.Char(36)
+  salonId                   String   @unique @map("salon_id") @db.Char(36)
+  lowStockAlerts            Boolean  @default(true) @map("low_stock_alerts")
+  lowStockThresholdQty      Int      @default(10) @map("low_stock_threshold_qty")
+  appointmentReminderEnabled Boolean @default(true) @map("appointment_reminder_enabled")
+  reminderMinutesBefore     Int      @default(60) @map("reminder_minutes_before")
+  dailySummaryEnabled       Boolean  @default(false) @map("daily_summary_enabled")
+  dailySummaryTime          DateTime @default(dbgenerated("'20:00:00'")) @map("daily_summary_time") @db.Time(0)
+  paymentAlerts             Boolean  @default(true) @map("payment_alerts")
+  smsEnabled                Boolean  @default(true) @map("sms_enabled")
+  whatsappEnabled           Boolean  @default(true) @map("whatsapp_enabled")
+  emailEnabled              Boolean  @default(true) @map("email_enabled")
+  createdAt                 DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt                 DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon Salon @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("salon_notification_settings")
+}
+
+// ─── Customers ─────────────────────────────────────────────────────────────
+
+model Customer {
+  id               String         @id @default(uuid()) @db.Char(36)
+  salonId          String         @map("salon_id") @db.Char(36)
+  branchId         String?        @map("branch_id") @db.Char(36)
+  fullName         String         @map("full_name") @db.VarChar(200)
+  phone            String         @db.VarChar(20)
+  phoneNormalized  String         @map("phone_normalized") @db.VarChar(20)
+  email            String?        @db.VarChar(255)
+  gender           String?   @db.VarChar(10)
+  dateOfBirth      DateTime?      @map("date_of_birth") @db.Date
+  address          String?        @db.Text
+  gstin            String?        @db.VarChar(15)
+  status           String    @default("active") @db.VarChar(20)
+  loyaltyPoints    Int            @default(0) @map("loyalty_points")
+  totalVisits      Int            @default(0) @map("total_visits")
+  totalSpend       Decimal        @default(0) @map("total_spend") @db.Decimal(12, 2)
+  avgSatisfaction  Decimal?       @map("avg_satisfaction") @db.Decimal(3, 2)
+  lastVisitAt      DateTime?      @map("last_visit_at") @db.DateTime(3)
+  joinedAt         DateTime       @map("joined_at") @db.Date
+  currentTierId    String?        @map("current_tier_id") @db.Char(36)
+  deletedAt        DateTime?      @map("deleted_at") @db.DateTime(3)
+  deletedById      String?        @map("deleted_by") @db.Char(36)
+  createdById      String?        @map("created_by") @db.Char(36)
+  updatedById      String?        @map("updated_by") @db.Char(36)
+  createdAt        DateTime       @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime       @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon       Salon           @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  currentTier MembershipTier? @relation("CustomerCurrentTier", fields: [currentTierId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  createdBy   User?           @relation("CustomerCreatedBy", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  updatedBy   User?           @relation("CustomerUpdatedBy", fields: [updatedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  deletedBy   User?           @relation("CustomerDeletedBy", fields: [deletedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  preferences         CustomerPreference?
+  memberships         CustomerMembership[]
+  loyaltyTransactions LoyaltyTransaction[]
+  appointments        Appointment[]
+  invoices            Invoice[]
+  feedback            Feedback[]
+  couponRedemptions   CouponRedemption[]
+  planEnrollments     CustomerPlanEnrollment[]
+  walletTransactions  WalletTransaction[]
+  advances            CustomerAdvance[]
+
+  @@unique([salonId, phoneNormalized])
+  @@index([salonId, status])
+  @@index([salonId, lastVisitAt])
+  @@index([salonId, dateOfBirth])
+  @@map("customers")
+}
+
+model CustomerPreference {
+  id                  String  @id @default(uuid()) @db.Char(36)
+  customerId          String  @unique @map("customer_id") @db.Char(36)
+  favoriteServiceId   String? @map("favorite_service_id") @db.Char(36)
+  preferredStaffName  String? @map("preferred_staff_name") @db.VarChar(200)
+  notes               String? @db.Text
+  createdAt           DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  favoriteService Service? @relation(fields: [favoriteServiceId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@map("customer_preferences")
+}
+
+// ─── Memberships ─────────────────────────────────────────────────────────────
+
+model MembershipTier {
+  id               String   @id @default(uuid()) @db.Char(36)
+  salonId          String   @map("salon_id") @db.Char(36)
+  name             String   @db.VarChar(50)
+  slug             String   @db.VarChar(50)
+  rank             Int      @db.SmallInt
+  price            Decimal  @default(0) @db.Decimal(10, 2)
+  durationMonths   Int      @default(12) @map("duration_months") @db.SmallInt
+  discountPercent  Decimal  @default(0) @map("discount_percent") @db.Decimal(5, 2)
+  pointsMultiplier Decimal  @default(1.0) @map("points_multiplier") @db.Decimal(4, 2)
+  benefits         String?  @db.Text
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon Salon @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  currentCustomers Customer[]           @relation("CustomerCurrentTier")
+  memberships      CustomerMembership[]
+
+  @@unique([salonId, slug])
+  @@index([salonId, rank])
+  @@map("membership_tiers")
+}
+
+model CustomerMembership {
+  id         BigInt           @id @default(autoincrement())
+  publicId   String           @unique @default(uuid()) @map("public_id") @db.Char(36)
+  salonId    String           @map("salon_id") @db.Char(36)
+  customerId String           @map("customer_id") @db.Char(36)
+  tierId     String           @map("tier_id") @db.Char(36)
+  startDate  DateTime         @map("start_date") @db.Date
+  endDate    DateTime?        @map("end_date") @db.Date
+  status     String   @default("active") @db.VarChar(20)
+  amountPaid Decimal          @default(0) @map("amount_paid") @db.Decimal(10, 2)
+  createdAt  DateTime         @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt  DateTime         @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon    Salon          @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  customer Customer       @relation(fields: [customerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tier     MembershipTier @relation(fields: [tierId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([customerId, status])
+  @@index([salonId, endDate])
+  @@map("customer_memberships")
+}
+
+model LoyaltyTransaction {
+  id            BigInt                 @id @default(autoincrement())
+  publicId      String                 @unique @default(uuid()) @map("public_id") @db.Char(36)
+  salonId       String                 @map("salon_id") @db.Char(36)
+  customerId    String                 @map("customer_id") @db.Char(36)
+  invoiceId     BigInt?                @map("invoice_id")
+  type          String   @map("type") @db.VarChar(20)
+  points        Int
+  balanceAfter  Int                    @map("balance_after")
+  note          String?                @db.VarChar(500)
+  createdAt     DateTime               @default(now()) @map("created_at") @db.DateTime(3)
+
+  salon    Salon    @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  invoice  Invoice? @relation(fields: [invoiceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([customerId, createdAt(sort: Desc)])
+  @@map("loyalty_transactions")
+}
+
+model WalletTransaction {
+  id           BigInt   @id @default(autoincrement())
+  publicId     String   @unique @default(uuid()) @map("public_id") @db.Char(36)
+  salonId      String   @map("salon_id") @db.Char(36)
+  customerId   String   @map("customer_id") @db.Char(36)
+  enrollmentId String   @map("enrollment_id") @db.Char(36)
+  invoiceId    BigInt?  @map("invoice_id")
+  type         String   @db.VarChar(20)
+  amount       Decimal  @db.Decimal(10, 2)
+  balanceAfter Decimal  @map("balance_after") @db.Decimal(10, 2)
+  note         String?  @db.VarChar(500)
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  salon      Salon                  @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  customer   Customer               @relation(fields: [customerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  enrollment CustomerPlanEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  invoice    Invoice?               @relation(fields: [invoiceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([customerId, createdAt(sort: Desc)])
+  @@index([enrollmentId])
+  @@map("wallet_transactions")
+}
+
+// ─── Services ────────────────────────────────────────────────────────────────
+
+model ServiceCategory {
+  id          String   @id @default(uuid()) @db.Char(36)
+  salonId     String   @map("salon_id") @db.Char(36)
+  name        String   @db.VarChar(100)
+  description String?  @db.Text
+  sortOrder   Int      @default(0) @map("sort_order") @db.SmallInt
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon    Salon     @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  services Service[]
+
+  @@unique([salonId, name])
+  @@map("service_categories")
+}
+
+model Service {
+  id              String    @id @default(uuid()) @db.Char(36)
+  salonId         String    @map("salon_id") @db.Char(36)
+  categoryId      String    @map("category_id") @db.Char(36)
+  name            String    @db.VarChar(200)
+  description     String?   @db.Text
+  price           Decimal   @db.Decimal(10, 2)
+  memberPrice     Decimal?  @map("member_price") @db.Decimal(10, 2)
+  tax             Decimal?  @db.Decimal(5, 2)
+  durationMinutes Int       @default(30) @map("duration_minutes") @db.SmallInt
+  popularity      Int       @default(0) @db.SmallInt
+  genderTag       String?   @map("gender_tag") @db.VarChar(20)
+  isActive        Boolean   @default(true) @map("is_active")
+  deletedAt       DateTime? @map("deleted_at") @db.DateTime(3)
+  deletedById     String?   @map("deleted_by") @db.Char(36)
+  createdById     String?   @map("created_by") @db.Char(36)
+  updatedById     String?   @map("updated_by") @db.Char(36)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon    Salon           @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  category ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  createdBy User?          @relation("ServiceCreatedBy", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  updatedBy User?          @relation("ServiceUpdatedBy", fields: [updatedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  deletedBy User?          @relation("ServiceDeletedBy", fields: [deletedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  packageServices    PackageService[]
+  appointmentServices AppointmentService[]
+  invoiceLineItems   InvoiceLineItem[]
+  favoriteFor        CustomerPreference[]
+  salonPlanServices  SalonPlanService[]
+  productLinks       ServiceProductLink[]
+
+  @@index([salonId, categoryId, isActive])
+  @@index([salonId, name])
+  @@map("services")
+}
+
+model Package {
+  id              String   @id @default(uuid()) @db.Char(36)
+  salonId         String   @map("salon_id") @db.Char(36)
+  name            String   @db.VarChar(200)
+  description     String?  @db.Text
+  price           Decimal  @db.Decimal(10, 2)
+  memberPrice     Decimal? @map("member_price") @db.Decimal(10, 2)
+  durationMinutes Int      @map("duration_minutes") @db.SmallInt
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon Salon @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  packageServices     PackageService[]
+  appointmentServices AppointmentService[]
+  invoiceLineItems    InvoiceLineItem[]
+
+  @@index([salonId, isActive])
+  @@map("packages")
+}
+
+model PackageService {
+  packageId String @map("package_id") @db.Char(36)
+  serviceId String @map("service_id") @db.Char(36)
+  quantity  Int    @default(1) @db.SmallInt
+
+  package Package @relation(fields: [packageId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  service Service @relation(fields: [serviceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([packageId, serviceId])
+  @@map("package_services")
+}
+
+// ─── Membership & Package Plans (dynamic catalog) ───────────────────────────
+
+model SalonPlan {
+  id              String   @id @default(uuid()) @db.Char(36)
+  salonId         String   @map("salon_id") @db.Char(36)
+  name            String   @db.VarChar(200)
+  namePreset      String?  @map("name_preset") @db.VarChar(30)
+  planType        String   @map("plan_type") @db.VarChar(20)
+  price           Decimal  @db.Decimal(10, 2)
+  walletAmount    Decimal? @map("wallet_amount") @db.Decimal(10, 2)
+  validityDays    Int      @map("validity_days") @db.SmallInt
+  serviceLimit    Int?     @map("service_limit") @db.SmallInt
+  discountPercent Decimal? @map("discount_percent") @db.Decimal(5, 2)
+  description     String?  @db.Text
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon        Salon                  @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  planServices SalonPlanService[]
+  enrollments  CustomerPlanEnrollment[]
+
+  @@index([salonId, isActive])
+  @@index([salonId, planType])
+  @@map("salon_plans")
+}
+
+model SalonPlanService {
+  planId    String @map("plan_id") @db.Char(36)
+  serviceId String @map("service_id") @db.Char(36)
+  quantity  Int    @default(1) @db.SmallInt
+
+  plan    SalonPlan @relation(fields: [planId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  service Service   @relation(fields: [serviceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([planId, serviceId])
+  @@map("salon_plan_services")
+}
+
+model CustomerPlanEnrollment {
+  id            String   @id @default(uuid()) @db.Char(36)
+  publicId      String   @unique @default(uuid()) @map("public_id") @db.Char(36)
+  salonId       String   @map("salon_id") @db.Char(36)
+  customerId    String   @map("customer_id") @db.Char(36)
+  planId        String   @map("plan_id") @db.Char(36)
+  status        String   @default("active") @db.VarChar(20)
+  walletTotal   Decimal  @default(0) @map("wallet_total") @db.Decimal(10, 2)
+  walletUsed    Decimal  @default(0) @map("wallet_used") @db.Decimal(10, 2)
+  servicesTotal Int      @default(0) @map("services_total") @db.SmallInt
+  servicesUsed  Int      @default(0) @map("services_used") @db.SmallInt
+  startDate     DateTime @map("start_date") @db.Date
+  expiryDate    DateTime @map("expiry_date") @db.Date
+  amountPaid    Decimal  @default(0) @map("amount_paid") @db.Decimal(10, 2)
+  createdAt     DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon    Salon     @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  customer Customer  @relation(fields: [customerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  plan     SalonPlan @relation(fields: [planId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  walletTransactions WalletTransaction[]
+
+  @@index([salonId, status])
+  @@index([customerId, status])
+  @@index([salonId, expiryDate])
+  @@map("customer_plan_enrollments")
+}
+
+// ─── Products & Inventory ────────────────────────────────────────────────────
+
+model ProductCategory {
+  id          String   @id @default(uuid()) @db.Char(36)
+  salonId     String   @map("salon_id") @db.Char(36)
+  name        String   @db.VarChar(100)
+  description String?  @db.Text
+  sortOrder   Int      @default(0) @map("sort_order") @db.SmallInt
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon    Salon     @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  products Product[]
+
+  @@unique([salonId, name])
+  @@map("product_categories")
+}
+
+model Vendor {
+  id            String    @id @default(uuid()) @db.Char(36)
+  salonId       String    @map("salon_id") @db.Char(36)
+  name          String    @db.VarChar(200)
+  contactPerson String?   @map("contact_person") @db.VarChar(200)
+  phone         String?   @db.VarChar(20)
+  email         String?   @db.VarChar(255)
+  address       String?   @db.Text
+  gstin         String?   @db.VarChar(15)
+  paymentTerms  String?   @map("payment_terms") @db.VarChar(100)
+  isActive      Boolean   @default(true) @map("is_active")
+  deletedAt     DateTime? @map("deleted_at") @db.DateTime(3)
+  createdById   String?   @map("created_by") @db.Char(36)
+  updatedById   String?   @map("updated_by") @db.Char(36)
+  deletedById   String?   @map("deleted_by") @db.Char(36)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon Salon @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  createdBy User? @relation("VendorCreatedBy", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  updatedBy User? @relation("VendorUpdatedBy", fields: [updatedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  deletedBy User? @relation("VendorDeletedBy", fields: [deletedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  products       Product[]
+  purchaseOrders PurchaseOrder[]
+
+  @@unique([salonId, name])
+  @@map("vendors")
+}
+
+model Product {
+  id               String    @id @default(uuid()) @db.Char(36)
+  salonId          String    @map("salon_id") @db.Char(36)
+  categoryId       String    @map("category_id") @db.Char(36)
+  vendorId         String?   @map("vendor_id") @db.Char(36)
+  sku              String    @db.VarChar(50)
+  name             String    @db.VarChar(200)
+  brand            String?   @db.VarChar(100)
+  barcode          String?   @db.VarChar(50)
+  unit             String    @default("pcs") @db.VarChar(20)
+  stockQty         Int       @default(0) @map("stock_qty")
+  minStockQty      Int       @default(0) @map("min_stock_qty")
+  retailPrice      Decimal   @map("retail_price") @db.Decimal(10, 2)
+  costPrice        Decimal   @map("cost_price") @db.Decimal(10, 2)
+  gstRate          Decimal?  @map("gst_rate") @db.Decimal(5, 2)
+  stockStatus      String    @default("ok") @map("stock_status") @db.VarChar(20)
+  lastRestockedAt  DateTime? @map("last_restocked_at") @db.DateTime(3)
+  isActive         Boolean   @default(true) @map("is_active")
+  deletedAt        DateTime? @map("deleted_at") @db.DateTime(3)
+  createdById      String?   @map("created_by") @db.Char(36)
+  updatedById      String?   @map("updated_by") @db.Char(36)
+  deletedById      String?   @map("deleted_by") @db.Char(36)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon     Salon           @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  category  ProductCategory @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vendor    Vendor?         @relation(fields: [vendorId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  createdBy User?           @relation("ProductCreatedBy", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  updatedBy User?           @relation("ProductUpdatedBy", fields: [updatedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  deletedBy User?           @relation("ProductDeletedBy", fields: [deletedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  stockMovements      StockMovement[]
+  purchaseOrderItems  PurchaseOrderItem[]
+  invoiceLineItems    InvoiceLineItem[]
+  serviceProductLinks ServiceProductLink[]
+
+  @@unique([salonId, sku])
+  @@unique([salonId, name])
+  @@unique([salonId, barcode])
+  @@index([salonId, categoryId])
+  @@index([salonId, stockQty])
+  @@map("products")
+}
+
+model StockMovement {
+  id               BigInt            @id @default(autoincrement())
+  publicId         String            @unique @default(uuid()) @map("public_id") @db.Char(36)
+  salonId          String            @map("salon_id") @db.Char(36)
+  productId        String            @map("product_id") @db.Char(36)
+  movementType     String   @map("movement_type") @db.VarChar(30)
+  qtyChange        Int               @map("qty_change")
+  stockBefore      Int               @map("stock_before")
+  stockAfter       Int               @map("stock_after")
+  invoiceId        BigInt?           @map("invoice_id")
+  appointmentId    String?           @map("appointment_id") @db.Char(36)
+  purchaseOrderId  String?           @map("purchase_order_id") @db.Char(36)
+  note             String?           @db.VarChar(500)
+  createdAt        DateTime          @default(now()) @map("created_at") @db.DateTime(3)
+
+  salon         Salon          @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  product       Product        @relation(fields: [productId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  invoice       Invoice?       @relation(fields: [invoiceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  appointment   Appointment?   @relation(fields: [appointmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([productId, createdAt(sort: Desc)])
+  @@index([salonId, movementType])
+  @@map("stock_movements")
+}
+
+model PurchaseOrder {
+  id            String              @id @default(uuid()) @db.Char(36)
+  salonId       String              @map("salon_id") @db.Char(36)
+  vendorId      String              @map("vendor_id") @db.Char(36)
+  poNumber      String              @map("po_number") @db.VarChar(30)
+  status        String   @default("pending") @db.VarChar(20)
+  orderDate     DateTime            @map("order_date") @db.Date
+  expectedDate  DateTime?           @map("expected_date") @db.Date
+  deliveredDate DateTime?           @map("delivered_date") @db.Date
+  totalAmount   Decimal             @default(0) @map("total_amount") @db.Decimal(12, 2)
+  notes         String?             @db.Text
+  createdById   String?             @map("created_by") @db.Char(36)
+  updatedById   String?             @map("updated_by") @db.Char(36)
+  createdAt     DateTime            @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt     DateTime            @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon     Salon  @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vendor    Vendor @relation(fields: [vendorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  createdBy User?  @relation("PurchaseOrderCreatedBy", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  updatedBy User?  @relation("PurchaseOrderUpdatedBy", fields: [updatedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  items          PurchaseOrderItem[]
+  stockMovements StockMovement[]
+
+  @@unique([salonId, poNumber])
+  @@index([salonId, status])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id                BigInt  @id @default(autoincrement())
+  publicId          String  @unique @default(uuid()) @map("public_id") @db.Char(36)
+  purchaseOrderId   String  @map("purchase_order_id") @db.Char(36)
+  productId         String  @map("product_id") @db.Char(36)
+  quantityOrdered   Int     @map("quantity_ordered")
+  quantityReceived  Int     @default(0) @map("quantity_received")
+  unitCost          Decimal @map("unit_cost") @db.Decimal(10, 2)
+  lineTotal         Decimal @map("line_total") @db.Decimal(12, 2)
+  createdAt         DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product       Product       @relation(fields: [productId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([purchaseOrderId])
+  @@map("purchase_order_items")
+}
+
+// ─── Appointments ────────────────────────────────────────────────────────────
+
+model Appointment {
+  id               String            @id @default(uuid()) @db.Char(36)
+  salonId          String            @map("salon_id") @db.Char(36)
+  branchId         String?           @map("branch_id") @db.Char(36)
+  customerId       String            @map("customer_id") @db.Char(36)
+  appointmentType  String   @map("appointment_type") @db.VarChar(20)
+  status           String   @default("pending") @db.VarChar(20)
+  scheduledDate    DateTime          @map("scheduled_date") @db.Date
+  scheduledTime    DateTime          @map("scheduled_time") @db.Time(0)
+  durationMinutes  Int               @map("duration_minutes") @db.SmallInt
+  staffName        String?           @map("staff_name") @db.VarChar(200)
+  notes            String?           @db.Text
+  cancelledAt      DateTime?         @map("cancelled_at") @db.DateTime(3)
+  completedAt      DateTime?         @map("completed_at") @db.DateTime(3)
+  createdById      String?           @map("created_by") @db.Char(36)
+  updatedById      String?           @map("updated_by") @db.Char(36)
+  createdAt        DateTime          @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime          @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon     Salon    @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  customer  Customer @relation(fields: [customerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  createdBy User?    @relation("AppointmentCreatedBy", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  updatedBy User?    @relation("AppointmentUpdatedBy", fields: [updatedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  services       AppointmentService[]
+  invoices       Invoice[]
+  stockMovements StockMovement[]
+  feedback       Feedback[]
+
+  @@index([salonId, scheduledDate, status])
+  @@index([customerId])
+  @@map("appointments")
+}
+
+model AppointmentService {
+  id              BigInt   @id @default(autoincrement())
+  publicId        String   @unique @default(uuid()) @map("public_id") @db.Char(36)
+  appointmentId   String   @map("appointment_id") @db.Char(36)
+  serviceId       String?  @map("service_id") @db.Char(36)
+  packageId       String?  @map("package_id") @db.Char(36)
+  itemName        String   @map("item_name") @db.VarChar(200)
+  price           Decimal  @db.Decimal(10, 2)
+  durationMinutes Int      @map("duration_minutes") @db.SmallInt
+  sortOrder       Int      @default(0) @map("sort_order") @db.SmallInt
+  createdAt       DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  service     Service?    @relation(fields: [serviceId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  package     Package?    @relation(fields: [packageId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([appointmentId])
+  @@map("appointment_services")
+}
+
+// ─── Billing ─────────────────────────────────────────────────────────────────
+
+model Invoice {
+  id                   BigInt        @id @default(autoincrement())
+  publicId             String        @unique @default(uuid()) @map("public_id") @db.Char(36)
+  salonId              String        @map("salon_id") @db.Char(36)
+  customerId           String        @map("customer_id") @db.Char(36)
+  appointmentId        String?       @map("appointment_id") @db.Char(36)
+  receiptNumber        String        @map("receipt_number") @db.VarChar(30)
+  invoiceDate          DateTime      @map("invoice_date") @db.Date
+  invoiceTime          DateTime      @map("invoice_time") @db.Time(0)
+  source               String   @db.VarChar(20)
+  status               String   @default("paid") @db.VarChar(20)
+  subtotal             Decimal       @db.Decimal(12, 2)
+  discountAmount       Decimal       @default(0) @map("discount_amount") @db.Decimal(12, 2)
+  membershipDiscount   Decimal       @default(0) @map("membership_discount") @db.Decimal(12, 2)
+  couponDiscount       Decimal       @default(0) @map("coupon_discount") @db.Decimal(12, 2)
+  gstRate              Decimal       @map("gst_rate") @db.Decimal(5, 2)
+  gstAmount            Decimal       @default(0) @map("gst_amount") @db.Decimal(12, 2)
+  totalAmount          Decimal       @map("total_amount") @db.Decimal(12, 2)
+  amountPaid           Decimal       @default(0) @map("amount_paid") @db.Decimal(12, 2)
+  balanceAmount        Decimal       @default(0) @map("balance_amount") @db.Decimal(12, 2)
+  dueDate              DateTime?     @map("due_date") @db.Date
+  loyaltyPointsEarned  Int           @default(0) @map("loyalty_points_earned")
+  notes                String?       @db.Text
+  voidedAt             DateTime?     @map("voided_at") @db.DateTime(3)
+  createdById          String?       @map("created_by") @db.Char(36)
+  updatedById          String?       @map("updated_by") @db.Char(36)
+  createdAt            DateTime      @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt            DateTime      @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon       Salon        @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  customer    Customer     @relation(fields: [customerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  createdBy   User?        @relation("InvoiceCreatedBy", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  updatedBy   User?        @relation("InvoiceUpdatedBy", fields: [updatedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  lineItems           InvoiceLineItem[]
+  payments            Payment[]
+  couponRedemptions   CouponRedemption[]
+  loyaltyTransactions LoyaltyTransaction[]
+  stockMovements      StockMovement[]
+  walletTransactions  WalletTransaction[]
+
+  @@unique([salonId, receiptNumber])
+  @@index([salonId, invoiceDate(sort: Desc)])
+  @@index([customerId])
+  @@map("invoices")
+}
+
+model InvoiceLineItem {
+  id           BigInt       @id @default(autoincrement())
+  publicId     String       @unique @default(uuid()) @map("public_id") @db.Char(36)
+  invoiceId    BigInt       @map("invoice_id")
+  lineType     String   @map("line_type") @db.VarChar(20)
+  serviceId    String?      @map("service_id") @db.Char(36)
+  productId    String?      @map("product_id") @db.Char(36)
+  packageId    String?      @map("package_id") @db.Char(36)
+  itemName     String       @map("item_name") @db.VarChar(200)
+  quantity     Int          @default(1)
+  unitPrice    Decimal      @map("unit_price") @db.Decimal(10, 2)
+  lineDiscount Decimal      @default(0) @map("line_discount") @db.Decimal(10, 2)
+  lineTotal    Decimal      @map("line_total") @db.Decimal(12, 2)
+  createdAt    DateTime     @default(now()) @map("created_at") @db.DateTime(3)
+
+  invoice Invoice  @relation(fields: [invoiceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  service Service? @relation(fields: [serviceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  product Product? @relation(fields: [productId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  package Package? @relation(fields: [packageId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([invoiceId])
+  @@map("invoice_line_items")
+}
+
+model Payment {
+  id            BigInt        @id @default(autoincrement())
+  publicId      String        @unique @default(uuid()) @map("public_id") @db.Char(36)
+  invoiceId     BigInt        @map("invoice_id")
+  paymentMethod String @map("payment_method") @db.VarChar(20)
+  amount        Decimal       @db.Decimal(12, 2)
+  reference     String?       @db.VarChar(100)
+  paidAt        DateTime      @map("paid_at") @db.DateTime(3)
+  createdAt     DateTime      @default(now()) @map("created_at") @db.DateTime(3)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([invoiceId])
+  @@index([paidAt])
+  @@map("payments")
+}
+
+model Coupon {
+  id            String       @id @default(uuid()) @db.Char(36)
+  salonId       String       @map("salon_id") @db.Char(36)
+  code          String       @db.VarChar(30)
+  codeUpper     String       @map("code_upper") @db.VarChar(30)
+  title         String       @db.VarChar(200)
+  description   String?      @db.Text
+  couponType    String   @map("coupon_type") @db.VarChar(20)
+  value         Decimal      @db.Decimal(10, 2)
+  minSpend      Decimal      @default(0) @map("min_spend") @db.Decimal(10, 2)
+  maxDiscount   Decimal?     @map("max_discount") @db.Decimal(10, 2)
+  validFrom     DateTime     @map("valid_from") @db.Date
+  validTill     DateTime     @map("valid_till") @db.Date
+  usageLimit    Int          @default(0) @map("usage_limit")
+  usedCount     Int          @default(0) @map("used_count")
+  applicableTo  String       @default("all") @map("applicable_to") @db.VarChar(100)
+  status        String   @default("active") @db.VarChar(20)
+  deletedAt     DateTime?    @map("deleted_at") @db.DateTime(3)
+  createdById   String?      @map("created_by") @db.Char(36)
+  updatedById   String?      @map("updated_by") @db.Char(36)
+  deletedById   String?      @map("deleted_by") @db.Char(36)
+  createdAt     DateTime     @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt     DateTime     @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon     Salon @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  createdBy User? @relation("CouponCreatedBy", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  updatedBy User? @relation("CouponUpdatedBy", fields: [updatedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  deletedBy User? @relation("CouponDeletedBy", fields: [deletedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  redemptions CouponRedemption[]
+
+  @@unique([salonId, codeUpper])
+  @@index([salonId, status])
+  @@map("coupons")
+}
+
+model CouponRedemption {
+  id               BigInt   @id @default(autoincrement())
+  publicId         String   @unique @default(uuid()) @map("public_id") @db.Char(36)
+  couponId         String   @map("coupon_id") @db.Char(36)
+  invoiceId        BigInt   @map("invoice_id")
+  customerId       String   @map("customer_id") @db.Char(36)
+  discountApplied  Decimal  @map("discount_applied") @db.Decimal(10, 2)
+  redeemedAt       DateTime @map("redeemed_at") @db.DateTime(3)
+
+  coupon   Coupon   @relation(fields: [couponId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  invoice  Invoice  @relation(fields: [invoiceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([invoiceId, couponId])
+  @@index([couponId])
+  @@map("coupon_redemptions")
+}
+
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+model Notification {
+  id            BigInt               @id @default(autoincrement())
+  publicId      String               @unique @default(uuid()) @map("public_id") @db.Char(36)
+  salonId       String               @map("salon_id") @db.Char(36)
+  title         String               @db.VarChar(200)
+  message       String               @db.Text
+  category      String   @db.VarChar(30)
+  isRead        Boolean              @default(false) @map("is_read")
+  actionHref    String?              @map("action_href") @db.VarChar(255)
+  referenceType String?              @map("reference_type") @db.VarChar(50)
+  referenceId   String?              @map("reference_id") @db.VarChar(50)
+  createdAt     DateTime             @default(now()) @map("created_at") @db.DateTime(3)
+  readAt        DateTime?            @map("read_at") @db.DateTime(3)
+
+  salon Salon @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([salonId, isRead, createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+// ─── Feedback ────────────────────────────────────────────────────────────────
+
+model Feedback {
+  id            BigInt             @id @default(autoincrement())
+  publicId      String             @unique @default(uuid()) @map("public_id") @db.Char(36)
+  salonId       String             @map("salon_id") @db.Char(36)
+  customerId    String             @map("customer_id") @db.Char(36)
+  appointmentId String?            @map("appointment_id") @db.Char(36)
+  serviceName   String?            @map("service_name") @db.VarChar(200)
+  staffName     String?            @map("staff_name") @db.VarChar(200)
+  rating        Int                @db.SmallInt
+  comment       String?            @db.Text
+  sentiment     String?  @db.VarChar(20)
+  status        String   @default("new") @db.VarChar(20)
+  source        String   @default("app") @db.VarChar(20)
+  isReplied     Boolean            @default(false) @map("is_replied")
+  replyText     String?            @map("reply_text") @db.Text
+  repliedAt     DateTime?          @map("replied_at") @db.DateTime(3)
+  createdAt     DateTime           @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt     DateTime           @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon       Salon        @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  customer    Customer     @relation(fields: [customerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([salonId, createdAt(sort: Desc)])
+  @@index([customerId])
+  @@index([salonId, rating])
+  @@index([salonId, status])
+  @@unique([appointmentId])
+  @@map("feedback")
+}
+
+// ─── Customer advances ───────────────────────────────────────────────────────
+
+model CustomerAdvance {
+  id           String    @id @default(uuid()) @db.Char(36)
+  salonId      String    @map("salon_id") @db.Char(36)
+  customerId   String?   @map("customer_id") @db.Char(36)
+  customerName String    @map("customer_name") @db.VarChar(200)
+  phone        String    @db.VarChar(20)
+  service      String?   @db.VarChar(200)
+  amount       Decimal   @db.Decimal(12, 2)
+  used         Decimal   @default(0) @db.Decimal(12, 2)
+  bookedFor    DateTime? @map("booked_for") @db.Date
+  source       String    @default("manual") @db.VarChar(50)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon    Salon     @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([salonId, phone])
+  @@index([customerId])
+  @@map("customer_advances")
+}
+
+// ─── Service product links ───────────────────────────────────────────────────
+
+model ServiceProductLink {
+  id          String   @id @default(uuid()) @db.Char(36)
+  salonId     String   @map("salon_id") @db.Char(36)
+  serviceId   String   @map("service_id") @db.Char(36)
+  productId   String?  @map("product_id") @db.Char(36)
+  sku         String   @db.VarChar(50)
+  name        String   @db.VarChar(200)
+  defaultQty  Int      @default(1) @map("default_qty")
+  unit        String   @default("piece") @db.VarChar(20)
+  wasteBuffer Int      @default(0) @map("waste_buffer")
+  minQty      Int      @default(1) @map("min_qty")
+  maxQty      Int      @default(99) @map("max_qty")
+  createdAt   DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon   Salon    @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  service Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@unique([serviceId, sku])
+  @@index([salonId, serviceId])
+  @@map("service_product_links")
+}
+
+// ─── Accounting ──────────────────────────────────────────────────────────────
+
+model Expense {
+  id          String   @id @default(uuid()) @db.Char(36)
+  salonId     String   @map("salon_id") @db.Char(36)
+  date        DateTime @db.Date
+  category    String   @db.VarChar(40)
+  subCategory String   @map("sub_category") @db.VarChar(200)
+  amount      Decimal  @db.Decimal(12, 2)
+  source      String   @db.VarChar(20)
+  remarks     String?  @db.VarChar(500)
+  createdById String?  @map("created_by") @db.Char(36)
+  createdAt   DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon     Salon @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  createdBy User? @relation("ExpenseCreatedBy", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([salonId, date])
+  @@index([salonId, category])
+  @@map("expenses")
+}
+
+model BudgetPeriod {
+  id        String   @id @default(uuid()) @db.Char(36)
+  salonId   String   @map("salon_id") @db.Char(36)
+  year      Int
+  month     Int      @db.SmallInt
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon Salon        @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  lines BudgetLine[]
+
+  @@unique([salonId, year, month])
+  @@map("budget_periods")
+}
+
+model BudgetLine {
+  id          String   @id @default(uuid()) @db.Char(36)
+  budgetId    String   @map("budget_id") @db.Char(36)
+  name        String   @db.VarChar(200)
+  type        String   @db.VarChar(20)
+  allocated   Decimal  @db.Decimal(12, 2)
+  createdAt   DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  budget BudgetPeriod @relation(fields: [budgetId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([budgetId])
+  @@map("budget_lines")
+}
+
+model DayClose {
+  id             String    @id @default(uuid()) @db.Char(36)
+  salonId        String    @map("salon_id") @db.Char(36)
+  closingDate    DateTime  @map("closing_date") @db.Date
+  status         String    @default("completed") @db.VarChar(20)
+  openingCash    Decimal   @map("opening_cash") @db.Decimal(12, 2)
+  cashSales      Decimal   @map("cash_sales") @db.Decimal(12, 2)
+  upiSales       Decimal   @map("upi_sales") @db.Decimal(12, 2)
+  cardSales      Decimal   @map("card_sales") @db.Decimal(12, 2)
+  totalExpenses  Decimal   @map("total_expenses") @db.Decimal(12, 2)
+  cashExpenses   Decimal   @map("cash_expenses") @db.Decimal(12, 2)
+  expectedCash   Decimal   @map("expected_cash") @db.Decimal(12, 2)
+  physicalCash   Decimal   @map("physical_cash") @db.Decimal(12, 2)
+  variance       Decimal   @db.Decimal(12, 2)
+  varianceNote   String?   @map("variance_note") @db.Text
+  upiSettled     Decimal   @default(0) @map("upi_settled") @db.Decimal(12, 2)
+  cardSettled    Decimal   @default(0) @map("card_settled") @db.Decimal(12, 2)
+  bankDrop       Decimal   @default(0) @map("bank_drop") @db.Decimal(12, 2)
+  denomCounts    Json?     @map("denom_counts")
+  closedById     String?   @map("closed_by") @db.Char(36)
+  closedAt       DateTime? @map("closed_at") @db.DateTime(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon    Salon @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  closedBy User? @relation("DayCloseClosedBy", fields: [closedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([salonId, closingDate])
+  @@index([salonId, closingDate(sort: Desc)])
+  @@map("day_closes")
+}

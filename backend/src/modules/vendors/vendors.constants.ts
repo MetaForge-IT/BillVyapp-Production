@@ -1,0 +1,11 @@
+export const VENDOR_STATUS = {
+  ACTIVE: "active",
+  INACTIVE: "inactive",
+} as const;
+
+export const VENDOR_ERROR_CODES = {
+  NOT_FOUND: "VENDOR_NOT_FOUND",
+  DUPLICATE_NAME: "VENDOR_DUPLICATE_NAME",
+  HAS_PRODUCTS: "VENDOR_HAS_PRODUCTS",
+  HAS_PURCHASES: "VENDOR_HAS_PURCHASES",
+} as const;

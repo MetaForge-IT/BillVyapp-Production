@@ -1,0 +1,27 @@
+# Epic Backlog
+
+Status values follow the vocabulary specified for this audit: Not Started · UI Completed · Backend Completed · API Connected · Functional · Partially Working · Needs Improvement · Bug Found · Blocked · Ready for Testing · Passed · Failed · Production Ready.
+
+| Epic ID | Epic | OpenProject WP | Status | Evidence |
+|---|---|---|---|---|
+| EPIC-01 | Authentication & Account Security | New Feature under #199 (see WORKPACKAGE_UPDATE §NEW 1.3) | **Partially Working** | Register/login/refresh/logout/me all functional against live DB. Email verification, resend, forgot-password code-complete but **Blocked** — SMTP unconfigured (`backend/.env`). Demo account workaround exists. |
+| EPIC-02 | Dashboard | #200-series (Phase 1 UI) | **UI Completed** | `Dashboard.tsx` + `pages/dashboard/*` render KPI tiles, revenue/appointment trend charts, today's schedule, critical alerts — all from hardcoded `pages/dashboard/data.ts`. No backend, no API. |
+| EPIC-03 | Customer Management (CRM) | #228 | **UI Completed** | Full directory (search/filter/bulk actions), detail view (overview/history/loyalty/preferences), add/edit forms. Zero API — `Customer` Prisma model exists, no controller/service built. `NewCustomer.tsx` "Add Customer" doesn't even persist to local seed (cosmetic-only). |
+| EPIC-04 | Appointment Management | #210 | **Partially Working** | Booking wizard, walk-ins, queue, status flow, checkout dialog all functional locally. Checkout calls a real API (`billing`) that currently fails silently (migration not applied) — so the "backend-connected" claim is **Blocked**, not Functional. No Appointment CRUD API exists at all. |
+| EPIC-05 | Billing / Point of Sale | #221 | **Blocked** | Most backend-complete module in the app (`billing` controller/service/repository/validators, real transactional Invoice+LineItem+Payment writes) — but **fails at runtime today** because migration `20260707140000_invoice_payment_balance` is unapplied. UI-side (GST, discounts, coupons, split payment, UPI QR) is fully functional locally regardless of API outcome. |
+| EPIC-06 | Service Catalog & Pricing | #237 | **UI Completed** | Categories/packages/pricing/coupons tabs, bulk upload (parse/validate/preview), gender-based pricing. No `Service`/`Package` API exists. |
+| EPIC-07 | Inventory Management | #242 | **UI Completed** | Stock, vendors, purchase orders, usage log, bulk upload, low-stock alerts, manual adjustment with audit log — all local (`ProductsContext`). No `Product`/`Vendor`/`PurchaseOrder` API exists. |
+| EPIC-08 | Membership & Loyalty (Plans) | #246 | **Blocked** | Real backend module (`plans` — `SalonPlan`, `SalonPlanService`, `CustomerPlanEnrollment`) with 5 working endpoints, called only from `FinanceReceiptsModule`'s Memberships tab — but blocked by the unapplied `salon_plans` migration. The user-facing `Memberships.tsx` page is a **separate, fully local, hardcoded** tier display disconnected from the real Plans API — a duplication gap (see Gap Analysis). |
+| EPIC-09 | Feedback & Reviews | NEW | **UI Completed** | Review list, filters, rating chart, reply, "Request Feedback" modal. No `Feedback` API; SMS/WhatsApp send is simulated. |
+| EPIC-10 | Notifications | NEW | **UI Completed** | In-app bell, panel, full page, role-filtered feed — all from a static seed array. No `Notification` API. SMS/WhatsApp/Email channels coded server-side but disabled by config. |
+| EPIC-11 | Staff/Profile & Help | NEW | **UI Completed** | `MyProfile.tsx` (static, no edit-save), `HelpSupport.tsx` (static FAQ) — both link to dead routes (`/settings`, `/employees`) as remnants of the pre-descope app. |
+| EPIC-12 | Reports & Analytics | #(none — never tracked) | **Not Started** | Source files do not exist. Nav/route entries are stale redirect stubs only. |
+| EPIC-13 | Staff/Employee Management | #232 | **Not Started (Descoped)** | Explicitly removed from the codebase per client scope decision. Recommend OpenProject status "Rejected"/"Won't do (v1)," not "New," to avoid it reading as pending MVP work (see `OPENPROJECT_WORKPACKAGE_UPDATE.md` discrepancy #2). |
+| EPIC-14 | Marketing | #(none) | **Not Started (Descoped)** | Source files removed. |
+| EPIC-15 | CEO Dashboard / AI Insights | #(none) | **Not Started (Descoped)** | Source files removed. |
+| EPIC-16 | Administration / Settings | #(none) | **Not Started (Descoped)** | Source files removed. Notably, a fully-built `SettingsContext` (salon profile, working hours, permissions matrix, staff controls, financial config, notification prefs, security/audit) still exists in code with **no UI that consumes it** — dead configuration, not dead code trivially deletable, since RBAC design lives here. |
+| EPIC-17 | Multi-Branch / Enterprise | #225/#250-253 | **Not Started** | Schema has a stray `branchId` field on `Customer` but no `Branch` model. `Branches.tsx` exists as an orphaned, unrouted page (never imported anywhere) — not a working feature. |
+
+## Notes on scope classification
+
+Epics 12–16 are included per the audit brief's instruction to cover every module without exception, even though the client has explicitly descoped them for v1. They should be tracked in OpenProject as **Rejected / Won't do (v1)** or moved to a clearly separate "Post-v1 Backlog" phase rather than left as ambiguous "New" — leaving them as "New" under active phases is the #1 documentation-accuracy issue identified in the prior `OPENPROJECT_WORKPACKAGE_UPDATE.md` review.
