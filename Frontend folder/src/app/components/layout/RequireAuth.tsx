@@ -3,7 +3,12 @@ import { useAuth } from "../../context/AuthContext";
 
 function buildLoginRedirect(pathname: string, search: string): string {
   const returnTo = `${pathname}${search}`;
-  if (!returnTo || returnTo === "/" || returnTo.startsWith("/login")) {
+  if (
+    !returnTo ||
+    returnTo === "/" ||
+    returnTo === "/landing" ||
+    returnTo.startsWith("/login")
+  ) {
     return "/login";
   }
   return `/login?redirect=${encodeURIComponent(returnTo)}`;

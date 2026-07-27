@@ -24,15 +24,24 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isAuthenticated: false });
   },
 
+  /**
+   * Restore session on hard refresh.
+   * - Prefer silently rotating via httpOnly refresh cookie.
+   * - If refresh fails but an access token still exists, keep the user logged in
+   *   (do not auto-logout). Token validity is checked on the next API call.
+   */
   bootstrap: async () => {
     try {
-      if (!getAccessToken()) {
-        try {
-          const response = await authApi.refresh();
-          if (response.data?.accessToken) {
-            saveAccessToken(response.data.accessToken);
-          }
-        } catch {
+      const existing = getAccessToken();
+
+      try {
+        const response = await authApi.refresh();
+        if (response.data?.accessToken) {
+          saveAccessToken(response.data.accessToken);
+        }
+      } catch {
+        // No usable refresh cookie — keep existing access token if present.
+        if (!existing) {
           clearAccessToken();
         }
       }

@@ -107,6 +107,9 @@ interface Appointment {
   phone: string;
   customerId?: string;
   service: string;
+  /** All booked service names (multi-select). `service` stays a display/join string. */
+  services?: string[];
+  serviceLines?: ApiAppointment["serviceLines"];
   status: AppointmentStatus;
   type: "appointment" | "walk-in";
 
@@ -146,6 +149,7 @@ interface Walkin {
   phone: string;
   customerId?: string;
   service: string;
+  services?: string[];
   status: WalkinStatus;
   waitMins: number;
   arrival: string;
@@ -256,6 +260,27 @@ function buildAppointmentServicePayload(
   };
 }
 
+/** Normalize an appointment's service list (supports legacy single `service` string). */
+function appointmentServiceNames(appt: {
+  service: string;
+  services?: string[];
+}): string[] {
+  if (appt.services && appt.services.length > 0) {
+    return appt.services;
+  }
+  return appt.service
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function totalDurationForServices(catalog: CatalogService[], names: string[]): number {
+  return names.reduce((sum, name) => {
+    const match = findCatalogService(catalog, name);
+    return sum + (match?.duration ?? 30);
+  }, 0);
+}
+
 function customerInitials(name: string) {
   return name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
 }
@@ -315,40 +340,59 @@ export function Appointments() {
   };
 
   useEffect(() => {
-    const rows = ctxAppointments.map((a) => ({
-      id: a.id,
-      sortKey: a.sortKey || (a.updatedAt ? Date.parse(a.updatedAt) : Date.parse(a.createdAt)),
-      time: a.time,
-      duration: a.duration,
-      customer: a.customer,
-      phone: a.phone,
-      customerId: a.customerId,
-      service: a.service,
-      status: a.status as AppointmentStatus,
-      type: (a.type === "walk-in" ? "walk-in" : "appointment") as const,
-      date: a.date,
-      scheduledDate: a.scheduledDate,
-      notes: a.notes,
-    }));
+    const rows = ctxAppointments.map((a) => {
+      const services =
+        a.services && a.services.length > 0
+          ? a.services
+          : a.service
+            ? a.service.split(",").map((s) => s.trim()).filter(Boolean)
+            : [];
+      return {
+        id: a.id,
+        sortKey: a.sortKey || (a.updatedAt ? Date.parse(a.updatedAt) : Date.parse(a.createdAt)),
+        time: a.time,
+        duration: a.duration,
+        customer: a.customer,
+        phone: a.phone,
+        customerId: a.customerId,
+        service: services.length > 0 ? services.join(", ") : a.service,
+        services,
+        serviceLines: a.serviceLines,
+        status: a.status as AppointmentStatus,
+        type: (a.type === "walk-in" ? "walk-in" : "appointment") as const,
+        date: a.date,
+        scheduledDate: a.scheduledDate,
+        notes: a.notes,
+      };
+    });
     setAppointments(rows);
   }, [ctxAppointments]);
 
   useEffect(() => {
     const walkInRows = ctxAppointments
       .filter((a) => a.type === "walk-in")
-      .map((a) => ({
-        id: a.id,
-        sortKey: a.sortKey,
-        token: `W-${a.id.slice(-3).toUpperCase()}`,
-        customer: a.customer,
-        phone: a.phone,
-        customerId: a.customerId,
-        service: a.service,
-        status: (a.status === "in-progress" ? "in-service" : a.status === "completed" ? "done" : "waiting") as WalkinStatus,
-        waitMins: 0,
-        arrival: a.time,
-        notes: a.notes,
-      }));
+      .map((a) => {
+        const services =
+          a.services && a.services.length > 0
+            ? a.services
+            : a.service
+              ? a.service.split(",").map((s) => s.trim()).filter(Boolean)
+              : [];
+        return {
+          id: a.id,
+          sortKey: a.sortKey,
+          token: `W-${a.id.slice(-3).toUpperCase()}`,
+          customer: a.customer,
+          phone: a.phone,
+          customerId: a.customerId,
+          service: services.length > 0 ? services.join(", ") : a.service,
+          services,
+          status: (a.status === "in-progress" ? "in-service" : a.status === "completed" ? "done" : "waiting") as WalkinStatus,
+          waitMins: 0,
+          arrival: a.time,
+          notes: a.notes,
+        };
+      });
     setWalkins(walkInRows);
   }, [ctxAppointments]);
   const [walkins, setWalkins] = useState<Walkin[]>(WALKINS);
@@ -608,21 +652,20 @@ export function Appointments() {
     id: string;
     customer: string;
     phone: string;
-    service: string;
+    services: string[];
     status?: AppointmentStatus;
-    duration?: number;
   }) => {
+    const names = params.services.map((s) => s.trim()).filter(Boolean);
+    if (names.length === 0) {
+      throw new Error("Select at least one service");
+    }
     await apiUpdateAppointment(params.id, {
       customerName: params.customer.trim(),
       customerPhone: params.phone.trim(),
       ...(params.status ? { status: toApiStatus(params.status) } : {}),
-      services: [
-        buildAppointmentServicePayload(
-          serviceCatalog,
-          params.service,
-          params.duration ?? 30,
-        ),
-      ],
+      services: names.map((name) =>
+        buildAppointmentServicePayload(serviceCatalog, name, 30),
+      ),
     });
     await refreshAppointments();
   };
@@ -1868,17 +1911,60 @@ export function Appointments() {
                 </div>
               </div>
 
-              {/* Service assignment */}
+              {/* Service assignment — multi-select */}
               <div className="rounded-xl border border-black/[0.06] bg-white p-3.5 space-y-3">
-                <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">
-                  <Scissors className="h-3 w-3 text-[#D4AF37]" /> Service
-                </p>
-                <div>
-                  <Label className="text-[10px] font-semibold text-[#9a9a9a]">Service</Label>
-                  <Select value={editWalkin.service} onValueChange={v => setEditWalkin(w => w ? { ...w, service: v } : w)}>
-                    <SelectTrigger className="mt-1.5 h-10 rounded-xl border-black/[0.08] bg-[#faf9f7] focus:border-[#D4AF37]/40"><SelectValue /></SelectTrigger>
-                    <SelectContent>{serviceCatalog.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}</SelectContent>
-                  </Select>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">
+                    <Scissors className="h-3 w-3 text-[#D4AF37]" /> Services
+                  </p>
+                  <span className="text-[10px] font-semibold text-[#D4AF37]">
+                    {appointmentServiceNames(editWalkin).length} selected
+                  </span>
+                </div>
+                <div className="max-h-48 space-y-1.5 overflow-y-auto pr-0.5">
+                  {serviceCatalog.map((s) => {
+                    const selected = appointmentServiceNames(editWalkin).includes(s.name);
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() =>
+                          setEditWalkin((w) => {
+                            if (!w) return w;
+                            const current = appointmentServiceNames(w);
+                            const next = selected
+                              ? current.filter((n) => n !== s.name)
+                              : [...current, s.name];
+                            if (next.length === 0) return w;
+                            return {
+                              ...w,
+                              services: next,
+                              service: next.join(", "),
+                            };
+                          })
+                        }
+                        className={cn(
+                          "flex w-full items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition-all",
+                          selected
+                            ? "border-[#D4AF37]/40 bg-[#FFFBEB] shadow-sm"
+                            : "border-black/[0.07] bg-[#faf9f7] hover:border-[#D4AF37]/25",
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "flex h-5 w-5 shrink-0 items-center justify-center rounded-md",
+                            selected ? "bg-[#D4AF37] text-[#111118]" : "bg-white text-[#c0c0c0] border border-black/[0.08]",
+                          )}
+                        >
+                          {selected ? <Check className="h-3 w-3" strokeWidth={3} /> : <Plus className="h-3 w-3" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[12.5px] font-semibold text-[#111118]">{s.name}</p>
+                          <p className="text-[10px] text-[#9a9a9a]">{s.duration} min · {formatInr(s.price)}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -1895,7 +1981,7 @@ export function Appointments() {
                       id: editWalkin.id,
                       customer: editWalkin.customer,
                       phone: editWalkin.phone,
-                      service: editWalkin.service,
+                      services: appointmentServiceNames(editWalkin),
                     });
                     setEditWalkin(null);
                     toast.success("Walk-in updated");
@@ -2178,7 +2264,11 @@ export function Appointments() {
                 {[
                   { icon: CalendarIcon, label: "Date", value: editAppt.date ?? "Today" },
                   { icon: Clock, label: "Time", value: editAppt.time },
-                  { icon: Timer, label: "Duration", value: `${editAppt.duration} min` },
+                  {
+                    icon: Timer,
+                    label: "Duration",
+                    value: `${totalDurationForServices(serviceCatalog, appointmentServiceNames(editAppt)) || editAppt.duration} min`,
+                  },
                 ].map(({ icon: Icon, label, value }) => (
                   <div
                     key={label}
@@ -2217,24 +2307,70 @@ export function Appointments() {
                 </div>
               </div>
 
-              {/* Service */}
+              {/* Services — multi-select */}
               <div className="space-y-3 rounded-xl border border-black/[0.06] bg-white p-3.5">
-                <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">
-                  <Scissors className="h-3 w-3 text-[#D4AF37]" />
-                  Service
-                </p>
-                <div>
-                  <Label className="text-[10px] font-semibold text-[#9a9a9a]">Service</Label>
-                  <Select value={editAppt.service} onValueChange={v => setEditAppt(a => a ? { ...a, service: v } : a)}>
-                    <SelectTrigger className="mt-1.5 h-10 rounded-xl border-black/[0.08] bg-[#faf9f7] focus:border-[#D4AF37]/40">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {serviceCatalog.map(s => (
-                        <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">
+                    <Scissors className="h-3 w-3 text-[#D4AF37]" />
+                    Services
+                  </p>
+                  <span className="text-[10px] font-semibold text-[#D4AF37]">
+                    {appointmentServiceNames(editAppt).length} selected ·{" "}
+                    {totalDurationForServices(serviceCatalog, appointmentServiceNames(editAppt))} min
+                  </span>
+                </div>
+                <div className="max-h-52 space-y-1.5 overflow-y-auto pr-0.5">
+                  {serviceCatalog.length === 0 && (
+                    <p className="py-4 text-center text-[12px] italic text-[#c0c0c0]">No services loaded</p>
+                  )}
+                  {serviceCatalog.map((s) => {
+                    const selected = appointmentServiceNames(editAppt).includes(s.name);
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() =>
+                          setEditAppt((a) => {
+                            if (!a) return a;
+                            const current = appointmentServiceNames(a);
+                            const next = selected
+                              ? current.filter((n) => n !== s.name)
+                              : [...current, s.name];
+                            if (next.length === 0) return a;
+                            return {
+                              ...a,
+                              services: next,
+                              service: next.join(", "),
+                              duration: totalDurationForServices(serviceCatalog, next),
+                            };
+                          })
+                        }
+                        className={cn(
+                          "flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-all",
+                          selected
+                            ? "border-[#D4AF37]/40 bg-[#FFFBEB] shadow-sm"
+                            : "border-black/[0.07] bg-[#faf9f7] hover:border-[#D4AF37]/25 hover:bg-white",
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "flex h-5 w-5 shrink-0 items-center justify-center rounded-md",
+                            selected
+                              ? "bg-[#D4AF37] text-[#111118]"
+                              : "border border-black/[0.08] bg-white text-[#c0c0c0]",
+                          )}
+                        >
+                          {selected ? <Check className="h-3 w-3" strokeWidth={3} /> : <Plus className="h-3 w-3" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[12.5px] font-semibold text-[#111118]">{s.name}</p>
+                          <p className="mt-0.5 text-[10px] text-[#9a9a9a]">
+                            {s.duration} min · {formatInr(s.price)}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -2291,13 +2427,12 @@ export function Appointments() {
                       id: editAppt.id,
                       customer: editAppt.customer,
                       phone: editAppt.phone,
-                      service: editAppt.service,
+                      services: appointmentServiceNames(editAppt),
                       status: editAppt.status,
-                      duration: editAppt.duration,
                     });
                     setEditAppt(null);
                     toast.success("Appointment updated", {
-                      description: `${editAppt.customer} · ${editAppt.time}`,
+                      description: `${editAppt.customer} · ${appointmentServiceNames(editAppt).length} service(s) · ${editAppt.time}`,
                     });
                   } catch (error) {
                     toast.error(getApiErrorMessage(error, "Failed to save appointment"));

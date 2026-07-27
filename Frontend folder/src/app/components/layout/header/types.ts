@@ -88,5 +88,5 @@ export const profileMenuItems: ProfileMenuItem[] = [
   { id: "profile", label: "My Profile", href: "/profile" },
   { id: "notifications", label: "Notifications", href: "/notifications" },
   { id: "help", label: "Help & Support", href: "/help" },
-  { id: "signout", label: "Sign Out", href: "/login", destructive: true },
+  { id: "signout", label: "Sign Out", href: "/", destructive: true },
 ];

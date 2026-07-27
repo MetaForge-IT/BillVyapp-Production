@@ -14,7 +14,7 @@ import type {
   VerifyLoginOtpInput,
 } from "./auth.validators";
 
-const REFRESH_COOKIE_PATH = "/api/auth";
+const REFRESH_COOKIE_PATH = "/api";
 
 export interface AuthenticatedRequest extends Request {
   auth: AuthContext;
@@ -174,13 +174,22 @@ function getRefreshTokenFromCookie(req: Request, required = true): string {
 }
 
 function getRefreshCookieOptions(maxAge: number): CookieOptions {
-  return {
+  const options: CookieOptions = {
     httpOnly: true,
     secure: authConfig.refreshCookieSecure,
     sameSite: authConfig.refreshCookieSameSite,
     maxAge,
+    // Broad enough that /api/auth/refresh and all /api/* calls can send it
+    // through Vite/nginx proxies. Narrower /api/auth path often dropped cookies.
     path: REFRESH_COOKIE_PATH,
   };
+
+  const domain = process.env.REFRESH_COOKIE_DOMAIN?.trim();
+  if (domain) {
+    options.domain = domain;
+  }
+
+  return options;
 }
 
 function setRefreshCookie(res: Response, refreshToken: string, rememberMe: boolean): void {
@@ -196,12 +205,19 @@ function setRefreshCookie(res: Response, refreshToken: string, rememberMe: boole
 }
 
 function clearRefreshCookie(res: Response): void {
-  res.clearCookie(AUTH_COOKIE_NAMES.REFRESH_TOKEN, {
+  const options: CookieOptions = {
     httpOnly: true,
     secure: authConfig.refreshCookieSecure,
     sameSite: authConfig.refreshCookieSameSite,
     path: REFRESH_COOKIE_PATH,
-  });
+  };
+  const domain = process.env.REFRESH_COOKIE_DOMAIN?.trim();
+  if (domain) {
+    options.domain = domain;
+  }
+  // Also clear legacy path so old cookies cannot stick around after logout.
+  res.clearCookie(AUTH_COOKIE_NAMES.REFRESH_TOKEN, options);
+  res.clearCookie(AUTH_COOKIE_NAMES.REFRESH_TOKEN, { ...options, path: "/api/auth" });
 }
 
 function parseDurationToMilliseconds(duration: string): number {

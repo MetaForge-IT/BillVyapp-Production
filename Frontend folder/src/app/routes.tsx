@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate } from "react-router";
 import { RequireAuth } from "./components/layout/RequireAuth";
 import { ProtectedAppShell } from "./components/layout/ProtectedAppShell";
 import { AuthLayout } from "./components/layout/AuthLayout";
+import { PublicHome } from "./components/layout/PublicHome";
 import { LandingPage } from "./pages/auth/LandingPage";
 import { LoginPage } from "./pages/auth/LoginPage";
 import { SignUpPage } from "./pages/auth/SignUpPage";
@@ -30,6 +31,7 @@ export const router = createBrowserRouter([
     path: "/",
     Component: AuthLayout,
     children: [
+      { index: true, Component: PublicHome },
       { path: "landing", Component: LandingPage },
       { path: "login", Component: LoginPage },
       { path: "signup", Component: SignUpPage },
@@ -49,7 +51,8 @@ export const router = createBrowserRouter([
       // and Billing (Finance receipts) are reachable. Everything else below
       // redirects to Dashboard — routes/components are NOT deleted, just
       // gated, so the full app can be restored by reverting this file.
-      { index: true, Component: Dashboard },
+      // Public `/` is the landing page; app home lives at `/dashboard`.
+      { path: "dashboard", Component: Dashboard },
       { path: "appointments", Component: Appointments },
       { path: "appointments/new", Component: NewAppointment },
       { path: "walkins", Component: () => <Navigate to="/appointments?type=walk-in" replace /> },
@@ -75,21 +78,21 @@ export const router = createBrowserRouter([
       { path: "feedback", Component: Feedback },
 
       // ── Gated: Coupons is hidden but not deleted ──
-      { path: "coupons", Component: () => <Navigate to="/" replace /> },
+      { path: "coupons", Component: () => <Navigate to="/dashboard" replace /> },
 
       // ── Permanently removed pages: Employees, Reports/Analytics, Marketing,
       // CEO Dashboard, AI Insights, Settings. Their code no longer exists in
       // this project — these redirects just catch any stale links/bookmarks.
-      { path: "employees", Component: () => <Navigate to="/" replace /> },
-      { path: "attendance", Component: () => <Navigate to="/" replace /> },
-      { path: "incentives", Component: () => <Navigate to="/" replace /> },
-      { path: "reports", Component: () => <Navigate to="/" replace /> },
-      { path: "reports/summary", Component: () => <Navigate to="/" replace /> },
-      { path: "revenue", Component: () => <Navigate to="/" replace /> },
-      { path: "marketing", Component: () => <Navigate to="/" replace /> },
-      { path: "settings", Component: () => <Navigate to="/" replace /> },
-      { path: "ceo-dashboard", Component: () => <Navigate to="/" replace /> },
-      { path: "ai-insights", Component: () => <Navigate to="/" replace /> },
+      { path: "employees", Component: () => <Navigate to="/dashboard" replace /> },
+      { path: "attendance", Component: () => <Navigate to="/dashboard" replace /> },
+      { path: "incentives", Component: () => <Navigate to="/dashboard" replace /> },
+      { path: "reports", Component: () => <Navigate to="/dashboard" replace /> },
+      { path: "reports/summary", Component: () => <Navigate to="/dashboard" replace /> },
+      { path: "revenue", Component: () => <Navigate to="/dashboard" replace /> },
+      { path: "marketing", Component: () => <Navigate to="/dashboard" replace /> },
+      { path: "settings", Component: () => <Navigate to="/dashboard" replace /> },
+      { path: "ceo-dashboard", Component: () => <Navigate to="/dashboard" replace /> },
+      { path: "ai-insights", Component: () => <Navigate to="/dashboard" replace /> },
       // Users, Permissions, Integrations routes removed
         ],
       },

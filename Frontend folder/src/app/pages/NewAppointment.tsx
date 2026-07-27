@@ -7,6 +7,7 @@ import {
   User, Calendar, ClipboardCheck, Clock,
   Sparkles, CalendarCheck2, Phone, Mail,
   UserPlus, Zap, StickyNote, Package, AlertTriangle, ChevronDown,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { AppointmentStepper } from "./appointments/AppointmentStepper";
 import { bookingAppointmentSteps } from "./appointments/appointmentData";
@@ -38,6 +39,8 @@ type SelectedService = AppointmentService & { qty: number };
 type SelectedPackage = AppointmentPackage & { qty: number };
 type SelectedProduct = AppointmentProduct & { qty: number };
 type ServiceTab = ServiceCategory | "Packages" | "Products";
+
+const SERVICES_PAGE_SIZE = 6;
 
 type ProductOverride = { sku: string; name: string; qty: number; unit: string; defaultQty: number };
 
@@ -271,6 +274,7 @@ export function NewAppointment() {
   const [notes, setNotes]                       = useState(draft.notes);
 
   // Services state
+  const [serviceListPage, setServiceListPage]   = useState(1);
   const [serviceTab, setServiceTab]             = useState<ServiceTab>(draft.serviceTab);
   const [serviceSearch, setServiceSearch]       = useState(draft.serviceSearch);
   const [selectedServices, setSelectedServices] = useState<SelectedService[]>(draft.selectedServices);
@@ -400,6 +404,42 @@ export function NewAppointment() {
         gender: "All",
       }));
   }, [serviceTab, serviceSearch, inventoryProducts]);
+
+  const catalogListTotal =
+    serviceTab === "Packages"
+      ? filteredPackages.length
+      : serviceTab === "Products"
+        ? filteredProducts.length
+        : filteredServices.length;
+
+  useEffect(() => {
+    setServiceListPage(1);
+  }, [serviceTab, serviceSearch]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(catalogListTotal / SERVICES_PAGE_SIZE) || 1);
+    if (serviceListPage > maxPage) setServiceListPage(maxPage);
+  }, [catalogListTotal, serviceListPage]);
+
+  const paginatedServices = useMemo(() => {
+    const offset = (serviceListPage - 1) * SERVICES_PAGE_SIZE;
+    return filteredServices.slice(offset, offset + SERVICES_PAGE_SIZE);
+  }, [filteredServices, serviceListPage]);
+
+  const paginatedPackages = useMemo(() => {
+    const offset = (serviceListPage - 1) * SERVICES_PAGE_SIZE;
+    return filteredPackages.slice(offset, offset + SERVICES_PAGE_SIZE);
+  }, [filteredPackages, serviceListPage]);
+
+  const paginatedProducts = useMemo(() => {
+    const offset = (serviceListPage - 1) * SERVICES_PAGE_SIZE;
+    return filteredProducts.slice(offset, offset + SERVICES_PAGE_SIZE);
+  }, [filteredProducts, serviceListPage]);
+
+  const catalogPageStart = catalogListTotal === 0 ? 0 : (serviceListPage - 1) * SERVICES_PAGE_SIZE + 1;
+  const catalogPageEnd = Math.min(serviceListPage * SERVICES_PAGE_SIZE, catalogListTotal);
+  const catalogPrevDisabled = serviceListPage === 1;
+  const catalogNextDisabled = serviceListPage * SERVICES_PAGE_SIZE >= catalogListTotal;
 
   // Global search across ALL tabs
   const globalSearchResults = useMemo(() => {
@@ -922,7 +962,7 @@ export function NewAppointment() {
                 {filteredServices.length === 0 && (
                   <p className="text-center text-[12px] text-[#c0c0c0] italic py-6">No services found</p>
                 )}
-                {filteredServices.map(service => {
+                {paginatedServices.map(service => {
                   const sel = selectedServices.some(s => s.id === service.id);
                   return (
                     <div key={service.id} className="space-y-1">
@@ -1015,6 +1055,43 @@ export function NewAppointment() {
                     </div>
                   );
                 })}
+                {filteredServices.length > SERVICES_PAGE_SIZE && (
+                  <div className="flex items-center justify-between gap-2 pt-1">
+                    <p className="text-[11px] font-medium text-[#9a9a9a]">
+                      {catalogPageStart}–{catalogPageEnd} of {filteredServices.length}
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setServiceListPage((p) => Math.max(1, p - 1))}
+                        disabled={catalogPrevDisabled}
+                        aria-label="Previous services page"
+                        className={cn(
+                          "flex h-7 w-7 items-center justify-center rounded-lg border text-[11px] transition-all",
+                          catalogPrevDisabled
+                            ? "cursor-not-allowed border-black/[0.06] bg-[#f4f2ed] text-[#c0c0c0]"
+                            : "border-black/[0.1] bg-white text-[#111118] hover:border-[#D4AF37]/40",
+                        )}
+                      >
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setServiceListPage((p) => p + 1)}
+                        disabled={catalogNextDisabled}
+                        aria-label="Next services page"
+                        className={cn(
+                          "flex h-7 w-7 items-center justify-center rounded-lg border text-[11px] transition-all",
+                          catalogNextDisabled
+                            ? "cursor-not-allowed border-black/[0.06] bg-[#f4f2ed] text-[#c0c0c0]"
+                            : "border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#111118] hover:border-[#D4AF37]/50",
+                        )}
+                      >
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1024,7 +1101,7 @@ export function NewAppointment() {
                 {filteredPackages.length === 0 && (
                   <p className="text-center text-[12px] text-[#c0c0c0] italic py-6">No packages found</p>
                 )}
-                {filteredPackages.map(pkg => {
+                {paginatedPackages.map(pkg => {
                   const sel = selectedPackages.some(p => p.id === pkg.id);
                   return (
                     <button key={pkg.id} type="button"
@@ -1069,6 +1146,43 @@ export function NewAppointment() {
                     </button>
                   );
                 })}
+                {filteredPackages.length > SERVICES_PAGE_SIZE && (
+                  <div className="flex items-center justify-between gap-2 pt-1">
+                    <p className="text-[11px] font-medium text-[#9a9a9a]">
+                      {catalogPageStart}–{catalogPageEnd} of {filteredPackages.length}
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setServiceListPage((p) => Math.max(1, p - 1))}
+                        disabled={catalogPrevDisabled}
+                        aria-label="Previous packages page"
+                        className={cn(
+                          "flex h-7 w-7 items-center justify-center rounded-lg border text-[11px] transition-all",
+                          catalogPrevDisabled
+                            ? "cursor-not-allowed border-black/[0.06] bg-[#f4f2ed] text-[#c0c0c0]"
+                            : "border-black/[0.1] bg-white text-[#111118] hover:border-[#D4AF37]/40",
+                        )}
+                      >
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setServiceListPage((p) => p + 1)}
+                        disabled={catalogNextDisabled}
+                        aria-label="Next packages page"
+                        className={cn(
+                          "flex h-7 w-7 items-center justify-center rounded-lg border text-[11px] transition-all",
+                          catalogNextDisabled
+                            ? "cursor-not-allowed border-black/[0.06] bg-[#f4f2ed] text-[#c0c0c0]"
+                            : "border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#111118] hover:border-[#D4AF37]/50",
+                        )}
+                      >
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1078,7 +1192,7 @@ export function NewAppointment() {
                 {filteredProducts.length === 0 && (
                   <p className="text-center text-[12px] text-[#c0c0c0] italic py-6">No products found</p>
                 )}
-                {filteredProducts.map(prod => {
+                {paginatedProducts.map(prod => {
                   const sel = selectedProducts.some(p => p.id === prod.id);
                   return (
                     <button key={prod.id} type="button"
@@ -1119,6 +1233,43 @@ export function NewAppointment() {
                     </button>
                   );
                 })}
+                {filteredProducts.length > SERVICES_PAGE_SIZE && (
+                  <div className="flex items-center justify-between gap-2 pt-1">
+                    <p className="text-[11px] font-medium text-[#9a9a9a]">
+                      {catalogPageStart}–{catalogPageEnd} of {filteredProducts.length}
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setServiceListPage((p) => Math.max(1, p - 1))}
+                        disabled={catalogPrevDisabled}
+                        aria-label="Previous products page"
+                        className={cn(
+                          "flex h-7 w-7 items-center justify-center rounded-lg border text-[11px] transition-all",
+                          catalogPrevDisabled
+                            ? "cursor-not-allowed border-black/[0.06] bg-[#f4f2ed] text-[#c0c0c0]"
+                            : "border-black/[0.1] bg-white text-[#111118] hover:border-[#D4AF37]/40",
+                        )}
+                      >
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setServiceListPage((p) => p + 1)}
+                        disabled={catalogNextDisabled}
+                        aria-label="Next products page"
+                        className={cn(
+                          "flex h-7 w-7 items-center justify-center rounded-lg border text-[11px] transition-all",
+                          catalogNextDisabled
+                            ? "cursor-not-allowed border-black/[0.06] bg-[#f4f2ed] text-[#c0c0c0]"
+                            : "border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#111118] hover:border-[#D4AF37]/50",
+                        )}
+                      >
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

@@ -4,8 +4,18 @@
  *
  * Run with: npm run prisma:seed
  */
+import { readFileSync } from "fs";
+import { join } from "path";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
+
+type CatalogService = {
+  name: string;
+  price: number;
+  memberPrice: number | null;
+  durationMinutes: number;
+};
+type CatalogCategory = { category: string; services: CatalogService[] };
 
 const prisma = new PrismaClient();
 
@@ -134,46 +144,39 @@ async function main() {
     }
   }
 
-  // ── Service catalog ──────────────────────────────────────────────────────
-  const hairCategory = await prisma.serviceCategory.upsert({
-    where: { salonId_name: { salonId: salon.id, name: "Hair" } },
-    update: {},
-    create: { salonId: salon.id, name: "Hair", sortOrder: 1 },
-  });
-  const spaCategory = await prisma.serviceCategory.upsert({
-    where: { salonId_name: { salonId: salon.id, name: "Spa & Wellness" } },
-    update: {},
-    create: { salonId: salon.id, name: "Spa & Wellness", sortOrder: 2 },
-  });
-
-  const serviceDefs = [
-    { name: "Haircut & Styling", price: 800, duration: 45, categoryId: hairCategory.id },
-    { name: "Hair Coloring", price: 2500, duration: 90, categoryId: hairCategory.id },
-    { name: "Beard Trim", price: 350, duration: 30, categoryId: hairCategory.id },
-    { name: "Spa Treatment", price: 1800, duration: 60, categoryId: spaCategory.id },
-    { name: "Facial", price: 1500, duration: 60, categoryId: spaCategory.id },
-    { name: "Bridal Package", price: 8000, duration: 180, categoryId: spaCategory.id },
-    { name: "Manicure & Pedicure", price: 1200, duration: 75, categoryId: spaCategory.id },
-    { name: "Keratin Treatment", price: 4999, duration: 120, categoryId: hairCategory.id },
-  ];
+  // ── Service catalog (from prisma/service-catalog.json) ───────────────────
+  const catalog = JSON.parse(
+    readFileSync(join(__dirname, "service-catalog.json"), "utf-8"),
+  ) as CatalogCategory[];
   const serviceMap: Record<string, { id: string; price: number; duration: number }> = {};
-  for (const s of serviceDefs) {
-    const existing = await prisma.service.findFirst({
-      where: { salonId: salon.id, name: s.name },
+  for (let i = 0; i < catalog.length; i += 1) {
+    const block = catalog[i];
+    const category = await prisma.serviceCategory.upsert({
+      where: { salonId_name: { salonId: salon.id, name: block.category } },
+      update: { sortOrder: i + 1 },
+      create: { salonId: salon.id, name: block.category, sortOrder: i + 1 },
     });
-    const service =
-      existing ??
-      (await prisma.service.create({
-        data: {
-          salonId: salon.id,
-          categoryId: s.categoryId,
-          name: s.name,
-          price: s.price,
-          durationMinutes: s.duration,
-          createdById: owner.id,
-        },
-      }));
-    serviceMap[s.name] = { id: service.id, price: s.price, duration: s.duration };
+    for (const s of block.services) {
+      const existing = await prisma.service.findFirst({
+        where: { salonId: salon.id, categoryId: category.id, name: s.name },
+      });
+      const service =
+        existing ??
+        (await prisma.service.create({
+          data: {
+            salonId: salon.id,
+            categoryId: category.id,
+            name: s.name,
+            price: s.price,
+            memberPrice: s.memberPrice,
+            durationMinutes: s.durationMinutes,
+            createdById: owner.id,
+          },
+        }));
+      if (!serviceMap[s.name]) {
+        serviceMap[s.name] = { id: service.id, price: s.price, duration: s.durationMinutes };
+      }
+    }
   }
 
   // ── Vendor + products ────────────────────────────────────────────────────
@@ -299,12 +302,12 @@ async function main() {
   }
 
   const appointmentDefs = [
-    { customer: "Sarah Johnson", service: "Hair Coloring", time: [9, 0], duration: 60, status: "confirmed", type: "appointment", staff: "Emma Wilson", dayOffset: -4 },
-    { customer: "Michael Chen", service: "Haircut & Styling", time: [9, 30], duration: 45, status: "confirmed", type: "appointment", staff: "David Brown", dayOffset: -2 },
-    { customer: "Lisa Anderson", service: "Spa Treatment", time: [10, 30], duration: 90, status: "in_progress", type: "walk_in", staff: "Maria Garcia", dayOffset: -1 },
-    { customer: "Robert Wilson", service: "Beard Trim", time: [11, 0], duration: 30, status: "confirmed", type: "appointment", staff: "James Lee", dayOffset: 0 },
-    { customer: "Emily Davis", service: "Manicure & Pedicure", time: [14, 0], duration: 60, status: "pending", type: "appointment", staff: "Sophie Turner", dayOffset: 0 },
-    { customer: "Raj Kumar", service: "Bridal Package", time: [15, 0], duration: 120, status: "confirmed", type: "appointment", staff: "Emma Wilson", dayOffset: 1 },
+    { customer: "Sarah Johnson", service: "Cellular Radiance Facial", time: [9, 0], duration: 45, status: "confirmed", type: "appointment", staff: "Emma Wilson", dayOffset: -4 },
+    { customer: "Michael Chen", service: "Hair Cut Basic Men", time: [9, 30], duration: 30, status: "confirmed", type: "appointment", staff: "David Brown", dayOffset: -2 },
+    { customer: "Lisa Anderson", service: "Aroma Oil for Female (Short)", time: [10, 30], duration: 45, status: "in_progress", type: "walk_in", staff: "Maria Garcia", dayOffset: -1 },
+    { customer: "Robert Wilson", service: "Beard Trimming", time: [11, 0], duration: 20, status: "confirmed", type: "appointment", staff: "James Lee", dayOffset: 0 },
+    { customer: "Emily Davis", service: "Express Manicure", time: [14, 0], duration: 30, status: "pending", type: "appointment", staff: "Sophie Turner", dayOffset: 0 },
+    { customer: "Raj Kumar", service: "Bridal Make Up with Mac", time: [15, 0], duration: 120, status: "confirmed", type: "appointment", staff: "Emma Wilson", dayOffset: 1 },
   ];
 
   const appointmentMap: Record<string, string> = {};
@@ -353,11 +356,11 @@ async function main() {
 
   // ── Invoices / receipts ───────────────────────────────────────────────────
   const invoiceDefs = [
-    { receipt: "RCP-2847", customer: "Sarah Johnson", services: ["Hair Coloring", "Hair Spa"], subtotal: 5497, discount: 549, gst: 890, total: 5838, paid: 5838, status: "paid", method: "upi", source: "pos", date: "2026-06-18" },
-    { receipt: "RCP-2846", customer: "Michael Chen", services: ["Keratin Treatment"], subtotal: 4999, discount: 0, gst: 899, total: 5898, paid: 5898, status: "paid", method: "upi", source: "appointment", date: "2026-06-17" },
-    { receipt: "RCP-2845", customer: "Emily Davis", services: ["Facial", "Manicure & Pedicure"], subtotal: 3200, discount: 320, gst: 518, total: 3398, paid: 3398, status: "paid", method: "card", source: "appointment", date: "2026-06-16" },
-    { receipt: "RCP-2848", customer: "Deepa Nair", services: ["Keratin Treatment"], subtotal: 2800, discount: 0, gst: 504, total: 2800, paid: 1000, status: "partially_paid", method: "upi", source: "appointment", date: "2026-06-28", dueDate: "2026-07-01" },
-    { receipt: "RCP-2849", customer: "Karthik Menon", services: ["Bridal Package"], subtotal: 3200, discount: 0, gst: 576, total: 3200, paid: 0, status: "pending", method: "none", source: "appointment", date: "2026-06-29", dueDate: "2026-06-30" },
+    { receipt: "RCP-2847", customer: "Sarah Johnson", services: ["Cellular Radiance Facial", "Brightening Mask"], subtotal: 3900, discount: 390, gst: 632, total: 4142, paid: 4142, status: "paid", method: "upi", source: "pos", date: "2026-06-18" },
+    { receipt: "RCP-2846", customer: "Michael Chen", services: ["Hair Cut Basic Men"], subtotal: 200, discount: 0, gst: 36, total: 236, paid: 236, status: "paid", method: "upi", source: "appointment", date: "2026-06-17" },
+    { receipt: "RCP-2845", customer: "Emily Davis", services: ["Express Manicure", "Express Pedicure"], subtotal: 700, discount: 70, gst: 113, total: 743, paid: 743, status: "paid", method: "card", source: "appointment", date: "2026-06-16" },
+    { receipt: "RCP-2848", customer: "Deepa Nair", services: ["Hair Spa Experience Premium - Women (Medium)"], subtotal: 1500, discount: 0, gst: 270, total: 1500, paid: 500, status: "partially_paid", method: "upi", source: "appointment", date: "2026-06-28", dueDate: "2026-07-01" },
+    { receipt: "RCP-2849", customer: "Karthik Menon", services: ["Beard Designing"], subtotal: 175, discount: 0, gst: 32, total: 175, paid: 0, status: "pending", method: "none", source: "appointment", date: "2026-06-29", dueDate: "2026-06-30" },
   ];
 
   for (const inv of invoiceDefs) {
@@ -416,11 +419,11 @@ async function main() {
 
   // ── Completed appointments + feedback ─────────────────────────────────────
   const completedAppointmentDefs = [
-    { customer: "Sarah Johnson", service: "Hair Coloring", staff: "Emma Wilson", rating: 5, comment: "Absolutely loved the result! Emma understood exactly what I wanted and delivered perfectly.", source: "google", status: "resolved", replied: true, replyText: "Thank you Sarah! We are thrilled you loved your visit." },
-    { customer: "Michael Chen", service: "Haircut & Styling", staff: "David Brown", rating: 4, comment: "Great haircut, very professional. The wait time was a bit long but the quality made up for it.", source: "app", status: "reviewed", replied: true, replyText: "Thank you Michael! We're glad you enjoyed your visit." },
-    { customer: "Lisa Anderson", service: "Spa Treatment", staff: "Maria Garcia", rating: 5, comment: "Best spa experience I've had. Will definitely be coming back!", source: "app", status: "new", replied: false },
-    { customer: "Emily Davis", service: "Manicure & Pedicure", staff: "Sophie Turner", rating: 2, comment: "Disappointed with the service this time. Products felt cheap and nail paint chipped quickly.", source: "google", status: "new", replied: false },
-    { customer: "Raj Kumar", service: "Bridal Package", staff: "Emma Wilson", rating: 1, comment: "Very unhappy with the bridal package. Too expensive for what was delivered.", source: "google", status: "new", replied: false },
+    { customer: "Sarah Johnson", service: "Cellular Radiance Facial", staff: "Emma Wilson", rating: 5, comment: "Absolutely loved the result! Emma understood exactly what I wanted and delivered perfectly.", source: "google", status: "resolved", replied: true, replyText: "Thank you Sarah! We are thrilled you loved your visit." },
+    { customer: "Michael Chen", service: "Hair Cut Basic Men", staff: "David Brown", rating: 4, comment: "Great haircut, very professional. The wait time was a bit long but the quality made up for it.", source: "app", status: "reviewed", replied: true, replyText: "Thank you Michael! We're glad you enjoyed your visit." },
+    { customer: "Lisa Anderson", service: "Aroma Oil for Female (Short)", staff: "Maria Garcia", rating: 5, comment: "Best head massage I've had. Will definitely be coming back!", source: "app", status: "new", replied: false },
+    { customer: "Emily Davis", service: "Express Manicure", staff: "Sophie Turner", rating: 2, comment: "Disappointed with the service this time. Products felt cheap.", source: "google", status: "new", replied: false },
+    { customer: "Raj Kumar", service: "Bridal Make Up with Mac", staff: "Emma Wilson", rating: 1, comment: "Very unhappy with the bridal makeup. Too expensive for what was delivered.", source: "google", status: "new", replied: false },
   ];
 
   for (const fb of completedAppointmentDefs) {

@@ -56,7 +56,7 @@ export function LoginPage() {
   const from =
     searchParams.get("redirect") ||
     (location.state as { from?: string } | null)?.from ||
-    "/";
+    "/dashboard";
 
   useEffect(() => {
     writeFormDraft(LOGIN_DRAFT_KEY, form);

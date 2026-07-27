@@ -247,7 +247,7 @@ export function LandingPage() {
         <nav className="relative mx-auto grid h-full max-w-[1440px] grid-cols-[1fr_auto] items-center gap-4 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-12 lg:px-10 xl:px-12">
           {/* Logo */}
           <div className="flex min-w-0 items-center justify-self-start">
-            <a href="/landing" className="group flex items-center leading-none">
+            <a href="/" className="group flex items-center leading-none">
               <img
                 src={BRAND.platformLogo}
                 alt={BRAND.appName}

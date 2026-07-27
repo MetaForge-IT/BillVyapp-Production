@@ -11,7 +11,9 @@ import { cn } from "../ui/utils";
 import { BRAND } from "../../config/brand";
 import { formatInr } from "../../../lib/inventoryMappers";
 
-export const UPI_VPA = "billvyapp@ybl";
+/** Merchant UPI ID used in dynamic payment QR codes. */
+export const UPI_VPA = "starrkuts1ms@fbl";  // this is the UPI ID of the merchant
+export const UPI_PAYEE_NAME = "Marchent Name";
 
 export type PayMethod = "cash" | "card" | "upi" | "wallet" | "split";
 export type SplitPayMethod = Exclude<PayMethod, "split">;
@@ -58,14 +60,23 @@ export function createPaymentMethodValue(
 }
 
 export function buildUpiUri(amount: number, note: string) {
-  const params = new URLSearchParams({
-    pa: UPI_VPA,
-    pn: BRAND.appName,
-    am: amount.toFixed(2),
-    cu: "INR",
-    tn: note.slice(0, 80),
-  });
-  return `upi://pay?${params.toString()}`;
+  const safeAmount = Number.isFinite(amount) && amount > 0 ? amount : 0;
+  const payeeName = UPI_PAYEE_NAME || BRAND.appName;
+  const txnNote = (note || `${BRAND.appName} payment`).slice(0, 80);
+  // Personal UPI collect intent — do NOT send `mc` (merchant code) or gateway
+  // `tr` values; those cause "no payment account registered" on PhonePe/GPay.
+  // Keep `pa` unencoded (`@` must stay literal). Encode only pn/tn.
+  return [
+    "upi://pay?pa=",
+    UPI_VPA.trim(),
+    "&pn=",
+    encodeURIComponent(payeeName),
+    "&am=",
+    safeAmount.toFixed(2),
+    "&cu=INR",
+    "&tn=",
+    encodeURIComponent(txnNote),
+  ].join("");
 }
 
 export function paymentMethodLabel(value: PaymentMethodValue, amountDue: number): string {
@@ -239,22 +250,29 @@ export function PaymentMethodPicker({
           )}
 
           {value.method === "upi" && (
-            <div className="space-y-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
-              <div className="flex items-center gap-4">
-                <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl border border-blue-200 bg-white p-2 shadow-sm">
+            <div className="space-y-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-4">
+              <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
+                <div className="flex h-44 w-44 shrink-0 items-center justify-center rounded-2xl border border-blue-200 bg-white p-3 shadow-sm sm:h-48 sm:w-48">
                   <QRCodeSVG
                     value={buildUpiUri(
                       amountDue,
                       upiNote ?? `${BRAND.appName} payment`,
                     )}
-                    size={80}
+                    size={176}
                     level="M"
+                    includeMargin={false}
+                    className="h-40 w-40 sm:h-44 sm:w-44"
                   />
                 </div>
-                <div>
-                  <p className="text-[10px] text-gray-500">Scan & Pay via GPay / PhonePe / Paytm</p>
-                  <p className="text-[12px] font-bold text-[#111118]">{UPI_VPA}</p>
-                  <p className="text-[16px] font-black tabular-nums text-[#111]">{formatInr(amountDue)}</p>
+                <div className="min-w-0 flex-1 text-center sm:text-left">
+                  <p className="text-[11px] font-medium text-gray-500">
+                    Scan &amp; Pay via GPay / PhonePe / Paytm
+                  </p>
+                  <p className="mt-1 text-[14px] font-bold text-[#111118]">{UPI_VPA}</p>
+                  <p className="text-[12px] text-[#6b6b6b]">{UPI_PAYEE_NAME}</p>
+                  <p className="mt-2 text-[20px] font-black tabular-nums text-[#111]">
+                    {formatInr(amountDue)}
+                  </p>
                 </div>
               </div>
               <input

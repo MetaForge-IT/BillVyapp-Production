@@ -143,7 +143,7 @@ export function GlobalSearch() {
           )}
           <CommandSeparator />
           <CommandGroup heading="Navigation">
-            <CommandItem onSelect={() => { navigate("/"); setOpen(false); }} className="text-inter-medium">Dashboard</CommandItem>
+            <CommandItem onSelect={() => { navigate("/dashboard"); setOpen(false); }} className="text-inter-medium">Dashboard</CommandItem>
             <CommandItem onSelect={() => { navigate("/appointments"); setOpen(false); }} className="text-inter-medium">Appointments</CommandItem>
             <CommandItem onSelect={() => { navigate("/finance?tab=receipts"); setOpen(false); }} className="text-inter-medium">Receipts & Billing</CommandItem>
             <CommandItem onSelect={() => { navigate("/reports"); setOpen(false); }} className="text-inter-medium">Reports</CommandItem>

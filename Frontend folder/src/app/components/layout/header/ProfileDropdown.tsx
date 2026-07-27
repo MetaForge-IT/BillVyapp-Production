@@ -89,7 +89,7 @@ export function ProfileDropdown({
     void authService
       .logout()
       .finally(() => {
-        navigate("/login", { replace: true });
+        navigate("/", { replace: true });
         onNavigate?.();
         onClose();
       });

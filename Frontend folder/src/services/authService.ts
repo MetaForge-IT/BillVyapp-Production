@@ -74,8 +74,21 @@ export const authService = {
     try {
       const response = await authApi.getCurrentUser();
       return response.data?.user ?? null;
-    } catch {
-      useAuthStore.getState().clearSession();
+    } catch (error) {
+      // Only clear the session on hard auth failures. Network/5xx must NOT
+      // force logout on page refresh / profile load.
+      const status =
+        error && typeof error === "object" && "statusCode" in error
+          ? Number((error as { statusCode?: number }).statusCode)
+          : undefined;
+
+      if (status === 401) {
+        // Axios interceptor already attempted refresh; if we still have a
+        // token it may be mid-refresh — leave clearing to the interceptor.
+        if (!getAccessToken()) {
+          useAuthStore.getState().clearSession();
+        }
+      }
       return null;
     }
   },

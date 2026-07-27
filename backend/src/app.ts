@@ -31,9 +31,22 @@ export function createApp(): Application {
     callback(null, allowed);
   };
 
+  const configuredOrigins = env.corsOrigin
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+  const prodCorsOrigin: CorsOptions["origin"] = (origin, callback) => {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+    callback(null, configuredOrigins.includes(origin));
+  };
+
   app.use(
     cors({
-      origin: env.isDevelopment ? devCorsOrigin : env.corsOrigin,
+      origin: env.isDevelopment ? devCorsOrigin : prodCorsOrigin,
       credentials: true,
     }),
   );

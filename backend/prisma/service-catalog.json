@@ -1,0 +1,367 @@
+[
+  {
+    "category": "Indian Head Massage - Champi",
+    "services": [
+      { "name": "Aroma Oil for Female (Short)", "price": 500, "memberPrice": 300, "durationMinutes": 45 },
+      { "name": "Aroma Oil for Female (Long)", "price": 600, "memberPrice": 400, "durationMinutes": 45 },
+      { "name": "Olive Oil for Female (Short)", "price": 600, "memberPrice": 400, "durationMinutes": 45 },
+      { "name": "Olive Oil for Female (Long)", "price": 700, "memberPrice": 500, "durationMinutes": 45 },
+      { "name": "Aroma Oil for Male", "price": 400, "memberPrice": 250, "durationMinutes": 45 },
+      { "name": "Olive Oil for Male", "price": 500, "memberPrice": 250, "durationMinutes": 45 }
+    ]
+  },
+  {
+    "category": "Threading",
+    "services": [
+      { "name": "Upper Lip", "price": 30, "memberPrice": 20, "durationMinutes": 10 },
+      { "name": "Lower Lip", "price": 30, "memberPrice": 20, "durationMinutes": 20 },
+      { "name": "Eyebrow", "price": 50, "memberPrice": 30, "durationMinutes": 10 },
+      { "name": "Lower Chin", "price": 30, "memberPrice": 20, "durationMinutes": 10 },
+      { "name": "Upper Chin", "price": 30, "memberPrice": 20, "durationMinutes": 10 },
+      { "name": "Forehead", "price": 30, "memberPrice": 20, "durationMinutes": 10 },
+      { "name": "Neck", "price": 40, "memberPrice": 30, "durationMinutes": 10 },
+      { "name": "Sides", "price": 50, "memberPrice": 30, "durationMinutes": 20 },
+      { "name": "Full Face with Eye Brow", "price": 150, "memberPrice": 120, "durationMinutes": 30 }
+    ]
+  },
+  {
+    "category": "Nails",
+    "services": [
+      { "name": "Cut & File", "price": 200, "memberPrice": 150, "durationMinutes": 10 },
+      { "name": "Cut/File/Polish", "price": 250, "memberPrice": 200, "durationMinutes": 15 },
+      { "name": "Nail Polish", "price": 200, "memberPrice": 150, "durationMinutes": 10 },
+      { "name": "French Nail Polish", "price": 250, "memberPrice": 200, "durationMinutes": 15 }
+    ]
+  },
+  {
+    "category": "Flavoured Waxing",
+    "services": [
+      { "name": "Full Arms", "price": 600, "memberPrice": 500, "durationMinutes": 20 },
+      { "name": "Half Arms", "price": 350, "memberPrice": 300, "durationMinutes": 10 },
+      { "name": "Under Arms", "price": 200, "memberPrice": 150, "durationMinutes": 10 },
+      { "name": "Full Legs", "price": 800, "memberPrice": 600, "durationMinutes": 30 },
+      { "name": "Half Legs", "price": 600, "memberPrice": 500, "durationMinutes": 20 },
+      { "name": "Full Waxing (FA+FL+UA)", "price": 1500, "memberPrice": 1250, "durationMinutes": 60 },
+      { "name": "Chin Waxing", "price": 100, "memberPrice": 80, "durationMinutes": 5 },
+      { "name": "Lower Lip Waxing", "price": 100, "memberPrice": 80, "durationMinutes": 5 },
+      { "name": "Upper Lip Waxing", "price": 100, "memberPrice": 80, "durationMinutes": 5 },
+      { "name": "Full Face", "price": 400, "memberPrice": 300, "durationMinutes": 30 },
+      { "name": "Full Body Waxing", "price": 2500, "memberPrice": 2250, "durationMinutes": 60 },
+      { "name": "Chest", "price": 300, "memberPrice": 250, "durationMinutes": 15 },
+      { "name": "Stomach", "price": 300, "memberPrice": 250, "durationMinutes": 20 },
+      { "name": "Full Back Women", "price": 600, "memberPrice": 500, "durationMinutes": 20 }
+    ]
+  },
+  {
+    "category": "Liposoluble Waxing",
+    "services": [
+      { "name": "Full Arms", "price": 500, "memberPrice": 400, "durationMinutes": 20 },
+      { "name": "Half Arms", "price": 350, "memberPrice": 300, "durationMinutes": 15 },
+      { "name": "Under Arms", "price": 150, "memberPrice": 100, "durationMinutes": 10 },
+      { "name": "Full Legs", "price": 700, "memberPrice": 600, "durationMinutes": 45 },
+      { "name": "Half Legs", "price": 400, "memberPrice": 350, "durationMinutes": 25 },
+      { "name": "Full Waxing (FA+FL+UA)", "price": 1200, "memberPrice": 1000, "durationMinutes": 75 },
+      { "name": "Chin Waxing", "price": 100, "memberPrice": 80, "durationMinutes": 5 },
+      { "name": "Lower Lip Waxing", "price": 100, "memberPrice": 80, "durationMinutes": 5 },
+      { "name": "Upper Lip Waxing", "price": 100, "memberPrice": 80, "durationMinutes": 5 },
+      { "name": "Full Face", "price": 300, "memberPrice": 250, "durationMinutes": 35 },
+      { "name": "Full Body Waxing", "price": 2000, "memberPrice": 1800, "durationMinutes": 90 },
+      { "name": "Stomach", "price": 500, "memberPrice": 400, "durationMinutes": 30 },
+      { "name": "Full Back Women", "price": 500, "memberPrice": 400, "durationMinutes": 30 }
+    ]
+  },
+  {
+    "category": "Cartridge Waxing",
+    "services": [
+      { "name": "Full Arms", "price": 700, "memberPrice": 600, "durationMinutes": 10 },
+      { "name": "Half Arms", "price": 500, "memberPrice": 400, "durationMinutes": 10 },
+      { "name": "Full Legs", "price": 900, "memberPrice": 800, "durationMinutes": 20 },
+      { "name": "Half Legs", "price": 600, "memberPrice": 500, "durationMinutes": 15 },
+      { "name": "Full Waxing (FA+FL)", "price": 1600, "memberPrice": 1400, "durationMinutes": 35 },
+      { "name": "Chin Waxing", "price": 200, "memberPrice": 120, "durationMinutes": 5 },
+      { "name": "Lower Lip Waxing", "price": 200, "memberPrice": 120, "durationMinutes": 5 },
+      { "name": "Upper Lip Waxing", "price": 200, "memberPrice": 120, "durationMinutes": 5 },
+      { "name": "Full Face", "price": 400, "memberPrice": 350, "durationMinutes": 20 },
+      { "name": "Full Body Waxing", "price": 2500, "memberPrice": 2200, "durationMinutes": 45 },
+      { "name": "Stomach", "price": 500, "memberPrice": 400, "durationMinutes": 30 },
+      { "name": "Full Back Women", "price": 800, "memberPrice": 700, "durationMinutes": 20 }
+    ]
+  },
+  {
+    "category": "Face Women with Stripless Waxing",
+    "services": [
+      { "name": "Upper Lip", "price": 300, "memberPrice": null, "durationMinutes": 15 },
+      { "name": "Lower Lip", "price": 300, "memberPrice": null, "durationMinutes": 15 },
+      { "name": "Side Locks", "price": 500, "memberPrice": null, "durationMinutes": 30 },
+      { "name": "Forehead", "price": 500, "memberPrice": null, "durationMinutes": 30 },
+      { "name": "Chin", "price": 300, "memberPrice": null, "durationMinutes": 25 },
+      { "name": "Neck", "price": 500, "memberPrice": null, "durationMinutes": 25 },
+      { "name": "Full Face", "price": 2750, "memberPrice": null, "durationMinutes": 45 },
+      { "name": "Nose", "price": 400, "memberPrice": null, "durationMinutes": 15 },
+      { "name": "Cheek", "price": 400, "memberPrice": null, "durationMinutes": 15 }
+    ]
+  },
+  {
+    "category": "Intimate Woman",
+    "services": [
+      { "name": "Back Strip", "price": 500, "memberPrice": null, "durationMinutes": 25 },
+      { "name": "Under Arms", "price": 500, "memberPrice": null, "durationMinutes": 25 },
+      { "name": "Buttocks", "price": 600, "memberPrice": null, "durationMinutes": 25 },
+      { "name": "Bikini Line", "price": 750, "memberPrice": null, "durationMinutes": 30 },
+      { "name": "G String Bikini Line", "price": 900, "memberPrice": null, "durationMinutes": 30 },
+      { "name": "Brazilian Bikini", "price": 1800, "memberPrice": null, "durationMinutes": 45 }
+    ]
+  },
+  {
+    "category": "Stripless Waxing for Men",
+    "services": [
+      { "name": "Underarms", "price": 900, "memberPrice": null, "durationMinutes": 25 },
+      { "name": "Chest", "price": 1100, "memberPrice": null, "durationMinutes": 30 },
+      { "name": "Stomach", "price": 1100, "memberPrice": null, "durationMinutes": 30 },
+      { "name": "Back", "price": 1300, "memberPrice": null, "durationMinutes": 45 },
+      { "name": "Full Arms", "price": 1350, "memberPrice": null, "durationMinutes": 45 }
+    ]
+  },
+  {
+    "category": "Face Men with Stripless Waxing",
+    "services": [
+      { "name": "Ears", "price": 300, "memberPrice": null, "durationMinutes": 20 },
+      { "name": "Neck", "price": 600, "memberPrice": null, "durationMinutes": 25 },
+      { "name": "Eyebrow", "price": 600, "memberPrice": null, "durationMinutes": 25 },
+      { "name": "Forehead", "price": 600, "memberPrice": null, "durationMinutes": 25 },
+      { "name": "Full Body Waxing", "price": 1600, "memberPrice": 1400, "durationMinutes": 60 }
+    ]
+  },
+  {
+    "category": "Make Up",
+    "services": [
+      { "name": "Bridal Make Up with Mac", "price": 7000, "memberPrice": null, "durationMinutes": 120 },
+      { "name": "Friends of Bride", "price": 4000, "memberPrice": null, "durationMinutes": 60 },
+      { "name": "Party Make up", "price": 3000, "memberPrice": null, "durationMinutes": 45 },
+      { "name": "Eye Makeup", "price": 1500, "memberPrice": null, "durationMinutes": 20 },
+      { "name": "Soft Make Over", "price": 4000, "memberPrice": null, "durationMinutes": 60 },
+      { "name": "Trial Make Up", "price": 2000, "memberPrice": null, "durationMinutes": 60 },
+      { "name": "Saree Draping", "price": 500, "memberPrice": null, "durationMinutes": 20 },
+      { "name": "Pre Bridal Pack (Full waxing, Intimate waxing, Signature Facial, Manicure & Pedicure)", "price": 10000, "memberPrice": null, "durationMinutes": 180 },
+      { "name": "Pre Bride Groom Package (Facial, Manicure, Pedicure, Hair spa, Body polish)", "price": 6780, "memberPrice": null, "durationMinutes": 180 },
+      { "name": "Mac Make up for Men", "price": 3000, "memberPrice": null, "durationMinutes": 60 }
+    ]
+  },
+  {
+    "category": "Hair Dos",
+    "services": [
+      { "name": "Simple Hair Do", "price": 800, "memberPrice": null, "durationMinutes": 25 },
+      { "name": "Party Hair Do", "price": 1000, "memberPrice": null, "durationMinutes": 30 },
+      { "name": "Bridal Hair Do", "price": 1500, "memberPrice": null, "durationMinutes": 45 }
+    ]
+  },
+  {
+    "category": "Beauty Salon",
+    "services": [
+      { "name": "Hair Cut Basic Men", "price": 200, "memberPrice": 150, "durationMinutes": 30 },
+      { "name": "Haircut Restyle Men", "price": 300, "memberPrice": 250, "durationMinutes": 40 },
+      { "name": "Kids Hair Cut upto 10 years", "price": 100, "memberPrice": 80, "durationMinutes": 30 },
+      { "name": "Fringe", "price": 100, "memberPrice": 80, "durationMinutes": 10 },
+      { "name": "Kids Cut Female Above 10 yrs", "price": 400, "memberPrice": 350, "durationMinutes": 30 },
+      { "name": "Kids Cut Female upto 10 yrs", "price": 200, "memberPrice": 150, "durationMinutes": 30 },
+      { "name": "Haircut Ladies Basic", "price": 300, "memberPrice": 250, "durationMinutes": 20 },
+      { "name": "Haircut Specialist", "price": 700, "memberPrice": 600, "durationMinutes": 60 },
+      { "name": "Blowdry Straight (Short)", "price": 500, "memberPrice": 450, "durationMinutes": 35 },
+      { "name": "Blowdry Straight (Medium)", "price": 600, "memberPrice": 550, "durationMinutes": 35 },
+      { "name": "Blowdry Straight (Long)", "price": 700, "memberPrice": 650, "durationMinutes": 35 },
+      { "name": "Shampoo & Conditioning - Men Basic", "price": 100, "memberPrice": 80, "durationMinutes": 15 },
+      { "name": "Shampoo & Conditioning - Men Premium", "price": 200, "memberPrice": 150, "durationMinutes": 15 },
+      { "name": "Curls Blow Dry Ladies Small", "price": 700, "memberPrice": 600, "durationMinutes": 35 },
+      { "name": "Curls Blow Dry Ladies Long", "price": 800, "memberPrice": 700, "durationMinutes": 35 },
+      { "name": "Shampoo & Conditioner - Women Basic (Short)", "price": 250, "memberPrice": 200, "durationMinutes": 20 },
+      { "name": "Shampoo & Conditioner - Women Basic (Medium)", "price": 300, "memberPrice": 250, "durationMinutes": 20 },
+      { "name": "Shampoo & Conditioner - Women Basic (Long)", "price": 350, "memberPrice": 300, "durationMinutes": 20 },
+      { "name": "Shampoo & Conditioner - Women Premium (Short)", "price": 400, "memberPrice": 350, "durationMinutes": 20 },
+      { "name": "Shampoo & Conditioner - Women Premium (Medium)", "price": 450, "memberPrice": 400, "durationMinutes": 20 },
+      { "name": "Shampoo & Conditioner - Women Premium (Long)", "price": 500, "memberPrice": 450, "durationMinutes": 20 },
+      { "name": "Hair Ironing (Short)", "price": 1000, "memberPrice": 800, "durationMinutes": 60 },
+      { "name": "Hair Ironing (Medium)", "price": 1100, "memberPrice": 900, "durationMinutes": 60 },
+      { "name": "Hair Ironing (Long)", "price": 1200, "memberPrice": 1000, "durationMinutes": 60 },
+      { "name": "Tonging/Iron Curls (Short)", "price": 1200, "memberPrice": 1000, "durationMinutes": 60 },
+      { "name": "Tonging/Iron Curls (Medium)", "price": 1300, "memberPrice": 1100, "durationMinutes": 60 },
+      { "name": "Tonging/Iron Curls (Long)", "price": 1400, "memberPrice": 1200, "durationMinutes": 60 },
+      { "name": "Roller Set (Short)", "price": 1200, "memberPrice": 1000, "durationMinutes": 60 },
+      { "name": "Roller Set (Medium)", "price": 1300, "memberPrice": 1100, "durationMinutes": 60 },
+      { "name": "Roller Set (Long)", "price": 1400, "memberPrice": 1200, "durationMinutes": 60 }
+    ]
+  },
+  {
+    "category": "Colour Bar",
+    "services": [
+      { "name": "Beard Color", "price": 500, "memberPrice": 450, "durationMinutes": 50 },
+      { "name": "Moustache Color", "price": 300, "memberPrice": 250, "durationMinutes": 50 },
+      { "name": "Global Haircolor Men", "price": 800, "memberPrice": 700, "durationMinutes": 50 },
+      { "name": "Global Haircolor Ammonia Free Men", "price": 1000, "memberPrice": 900, "durationMinutes": 50 },
+      { "name": "Fashion Global Haircolor Short - Men", "price": 1500, "memberPrice": 1200, "durationMinutes": 60 },
+      { "name": "Streaks (Minimum 6 Streaks) 150x6 Men", "price": 900, "memberPrice": 720, "durationMinutes": 50 },
+      { "name": "Root Touch Up Women", "price": 900, "memberPrice": 800, "durationMinutes": 60 },
+      { "name": "Root Touch Up Ammonia Free Women", "price": 1200, "memberPrice": 1100, "durationMinutes": 60 },
+      { "name": "Global Haircolor (Short)", "price": 1800, "memberPrice": 1600, "durationMinutes": 90 },
+      { "name": "Global Haircolor (Medium)", "price": 2200, "memberPrice": 2000, "durationMinutes": 90 },
+      { "name": "Global Haircolor (Long)", "price": 3000, "memberPrice": 2800, "durationMinutes": 90 },
+      { "name": "Global Natural Shades Hair Colour Ammonia Free Women (Short)", "price": 2200, "memberPrice": 2000, "durationMinutes": 90 },
+      { "name": "Global Natural Shades Hair Colour Ammonia Free Women (Medium)", "price": 2700, "memberPrice": 2500, "durationMinutes": 90 },
+      { "name": "Global Natural Shades Hair Colour Ammonia Free Women (Long)", "price": 3200, "memberPrice": 3200, "durationMinutes": 90 },
+      { "name": "Global Fashion Shades Hair Colour Ammonia Free Women (Short)", "price": 2400, "memberPrice": 2200, "durationMinutes": 90 },
+      { "name": "Global Fashion Shades Hair Colour Ammonia Free Women (Medium)", "price": 2900, "memberPrice": 2700, "durationMinutes": 90 },
+      { "name": "Global Fashion Shades Hair Colour Ammonia Free Women (Long)", "price": 3400, "memberPrice": 3200, "durationMinutes": 90 },
+      { "name": "Streaks (Minimum 6 Streaks) 500x6 Women", "price": 3000, "memberPrice": 2800, "durationMinutes": 60 },
+      { "name": "Global Colour + Hi-lights (Short)", "price": 4000, "memberPrice": 3800, "durationMinutes": 60 },
+      { "name": "Global Colour + Hi-lights (Medium)", "price": 4200, "memberPrice": 4000, "durationMinutes": 60 },
+      { "name": "Global Colour + Hi-lights (Long)", "price": 4400, "memberPrice": 4200, "durationMinutes": 60 },
+      { "name": "Block Colour + Hi-lights (Short)", "price": 1300, "memberPrice": 1100, "durationMinutes": 30 },
+      { "name": "Block Colour + Hi-lights (Medium)", "price": 1500, "memberPrice": 1300, "durationMinutes": 30 },
+      { "name": "Block Colour + Hi-lights (Long)", "price": 1700, "memberPrice": 1500, "durationMinutes": 30 },
+      { "name": "Hair Rebonding (Short)", "price": 6500, "memberPrice": null, "durationMinutes": 270 },
+      { "name": "Hair Rebonding (Medium)", "price": 7500, "memberPrice": null, "durationMinutes": 270 },
+      { "name": "Hair Rebonding (Long)", "price": 8500, "memberPrice": null, "durationMinutes": 270 },
+      { "name": "Hair Relaxing (Short)", "price": 5000, "memberPrice": null, "durationMinutes": 270 },
+      { "name": "Hair Relaxing (Medium)", "price": 6000, "memberPrice": null, "durationMinutes": 270 },
+      { "name": "Hair Relaxing (Long)", "price": 7000, "memberPrice": null, "durationMinutes": 270 },
+      { "name": "Hair Straightening Men", "price": 3500, "memberPrice": 3000, "durationMinutes": 240 },
+      { "name": "Hair Straightening Women (Short)", "price": 7500, "memberPrice": null, "durationMinutes": 270 },
+      { "name": "Hair Straightening Women (Medium)", "price": 8500, "memberPrice": null, "durationMinutes": 270 },
+      { "name": "Hair Straightening Women (Long)", "price": 10000, "memberPrice": null, "durationMinutes": 270 },
+      { "name": "Partial Retouch", "price": 4000, "memberPrice": null, "durationMinutes": 240 },
+      { "name": "Keratin Hair Smoothening (Short)", "price": 7000, "memberPrice": null, "durationMinutes": 240 },
+      { "name": "Keratin Hair Smoothening (Medium)", "price": 8500, "memberPrice": null, "durationMinutes": 240 },
+      { "name": "Keratin Hair Smoothening (Long)", "price": 10000, "memberPrice": null, "durationMinutes": 240 }
+    ]
+  },
+  {
+    "category": "Hair Spa",
+    "services": [
+      { "name": "Hair Spa Experience Basic - Men", "price": 700, "memberPrice": 600, "durationMinutes": 50 },
+      { "name": "Hair Spa Experience Premium - Men", "price": 1200, "memberPrice": 1000, "durationMinutes": 40 },
+      { "name": "Hair Spa Treatment Basic - Men", "price": 1200, "memberPrice": 1000, "durationMinutes": 50 },
+      { "name": "Hair Spa Treatment Premium - Men", "price": 1500, "memberPrice": 1300, "durationMinutes": 50 },
+      { "name": "Hair Spa Experience Basic - Women (Short)", "price": 700, "memberPrice": 600, "durationMinutes": 50 },
+      { "name": "Hair Spa Experience Basic - Women (Medium)", "price": 800, "memberPrice": 700, "durationMinutes": 50 },
+      { "name": "Hair Spa Experience Basic - Women (Long)", "price": 900, "memberPrice": 800, "durationMinutes": 50 },
+      { "name": "Hair Spa Experience Premium - Women (Short)", "price": 1300, "memberPrice": 1000, "durationMinutes": 50 },
+      { "name": "Hair Spa Experience Premium - Women (Medium)", "price": 1500, "memberPrice": 1300, "durationMinutes": 50 },
+      { "name": "Hair Spa Experience Premium - Women (Long)", "price": 1700, "memberPrice": 1500, "durationMinutes": 50 },
+      { "name": "Hair Spa Treatment Basic - Women (Short)", "price": 1200, "memberPrice": 1100, "durationMinutes": 50 },
+      { "name": "Hair Spa Treatment Basic - Women (Medium)", "price": 1300, "memberPrice": 1200, "durationMinutes": 50 },
+      { "name": "Hair Spa Treatment Basic - Women (Long)", "price": 1400, "memberPrice": 1300, "durationMinutes": 50 },
+      { "name": "Hair Spa Treatment Premium - Women (Short)", "price": 2000, "memberPrice": 1800, "durationMinutes": 40 },
+      { "name": "Hair Spa Treatment Premium - Women (Medium)", "price": 2500, "memberPrice": 2300, "durationMinutes": 40 },
+      { "name": "Hair Spa Treatment Premium - Women (Long)", "price": 3000, "memberPrice": 2800, "durationMinutes": 40 }
+    ]
+  },
+  {
+    "category": "Mens Service",
+    "services": [
+      { "name": "Beard Designing", "price": 175, "memberPrice": 125, "durationMinutes": 30 },
+      { "name": "Beard Trimming", "price": 100, "memberPrice": 80, "durationMinutes": 20 },
+      { "name": "Moustache Trim", "price": 80, "memberPrice": 60, "durationMinutes": 30 },
+      { "name": "Face Shave", "price": 100, "memberPrice": 80, "durationMinutes": 20 },
+      { "name": "Royal Shave", "price": 600, "memberPrice": 500, "durationMinutes": 30 },
+      { "name": "Head Shave - Men", "price": 200, "memberPrice": null, "durationMinutes": 30 }
+    ]
+  },
+  {
+    "category": "Beauty Treatments",
+    "services": [
+      { "name": "Express Pedicure", "price": 400, "memberPrice": 350, "durationMinutes": 30 },
+      { "name": "Express Manicure", "price": 300, "memberPrice": 250, "durationMinutes": 30 },
+      { "name": "Anti-Tan Dead Sea Spa Pedicure", "price": 800, "memberPrice": 700, "durationMinutes": 45 },
+      { "name": "Anti-Tan Dead Sea Spa Manicure", "price": 600, "memberPrice": 500, "durationMinutes": 45 },
+      { "name": "Ice-Cream Pedicure", "price": 1000, "memberPrice": 900, "durationMinutes": 60 },
+      { "name": "Ice-Cream Manicure", "price": 800, "memberPrice": 700, "durationMinutes": 60 },
+      { "name": "Diamond / Magnet Pedicure", "price": 1200, "memberPrice": 1000, "durationMinutes": 60 },
+      { "name": "Heal Repair Treatment", "price": 2000, "memberPrice": null, "durationMinutes": 60 }
+    ]
+  },
+  {
+    "category": "Clean Up",
+    "services": [
+      { "name": "Essential Cleanup Facial", "price": 600, "memberPrice": 500, "durationMinutes": 30 }
+    ]
+  },
+  {
+    "category": "Facials",
+    "services": [
+      { "name": "Cellular Radiance Facial", "price": 3500, "memberPrice": 3200, "durationMinutes": 45 },
+      { "name": "Charcoal / Black Diamond Facial", "price": 1800, "memberPrice": 1600, "durationMinutes": 60 },
+      { "name": "Deep Cleansing Facial", "price": 2000, "memberPrice": 1800, "durationMinutes": 60 },
+      { "name": "Essential Cleanup Facial", "price": 2400, "memberPrice": 2200, "durationMinutes": 60 },
+      { "name": "Exo-lift Facial", "price": 1600, "memberPrice": 1400, "durationMinutes": 45 },
+      { "name": "Glowlife Facial", "price": 1400, "memberPrice": 1200, "durationMinutes": 45 },
+      { "name": "Luxury Facial", "price": 6000, "memberPrice": null, "durationMinutes": 60 },
+      { "name": "Natural Ayur Facial", "price": 2400, "memberPrice": 2200, "durationMinutes": 60 },
+      { "name": "Neem Dead Sea Facial", "price": 2000, "memberPrice": 1800, "durationMinutes": 60 },
+      { "name": "Nourishing Facial", "price": 2000, "memberPrice": 1800, "durationMinutes": 60 },
+      { "name": "Oxy Complex Facial", "price": 1400, "memberPrice": 1200, "durationMinutes": 60 },
+      { "name": "Pure Gold Facial", "price": 1500, "memberPrice": 1400, "durationMinutes": 50 },
+      { "name": "Skin Whitening / Vitamin C Facial", "price": 2200, "memberPrice": 2000, "durationMinutes": 75 },
+      { "name": "Soothing Facial", "price": 2000, "memberPrice": 1800, "durationMinutes": 60 },
+      { "name": "Tan Luminous Facial", "price": 1400, "memberPrice": 1200, "durationMinutes": 60 }
+    ]
+  },
+  {
+    "category": "Enhancer Facial",
+    "services": [
+      { "name": "Brightening Mask", "price": 400, "memberPrice": 350, "durationMinutes": 20 },
+      { "name": "Golden Glow Mask", "price": 1000, "memberPrice": 900, "durationMinutes": 30 },
+      { "name": "Under Eye Treatment", "price": 1000, "memberPrice": 900, "durationMinutes": 30 }
+    ]
+  },
+  {
+    "category": "Detan - Bleach",
+    "services": [
+      { "name": "Face & Neck", "price": 400, "memberPrice": 350, "durationMinutes": 20 },
+      { "name": "Full Arms", "price": 600, "memberPrice": 500, "durationMinutes": 20 },
+      { "name": "Half Arms", "price": 300, "memberPrice": 250, "durationMinutes": 10 },
+      { "name": "Half Legs", "price": 650, "memberPrice": 500, "durationMinutes": 40 },
+      { "name": "Feet", "price": 200, "memberPrice": 150, "durationMinutes": 20 },
+      { "name": "Full Legs", "price": 900, "memberPrice": 800, "durationMinutes": 10 },
+      { "name": "Full Body", "price": 2700, "memberPrice": 2500, "durationMinutes": 60 },
+      { "name": "Blouse Line Detan", "price": 400, "memberPrice": 350, "durationMinutes": 20 }
+    ]
+  },
+  {
+    "category": "Body Rituals",
+    "services": [
+      { "name": "Body Scrub Men", "price": 2000, "memberPrice": 1800, "durationMinutes": 30 },
+      { "name": "Body Scrub Women", "price": 2500, "memberPrice": 2200, "durationMinutes": 30 },
+      { "name": "Body Polishing", "price": 5000, "memberPrice": 4500, "durationMinutes": 150 },
+      { "name": "Hand Reflexology", "price": 300, "memberPrice": 250, "durationMinutes": 15 },
+      { "name": "Foot Reflexology", "price": 400, "memberPrice": 350, "durationMinutes": 15 },
+      { "name": "Neck And Shoulder Massage", "price": 600, "memberPrice": 500, "durationMinutes": 15 }
+    ]
+  },
+  {
+    "category": "Pre Bridal Package",
+    "services": [
+      { "name": "Pre Bridal Package - Platinum", "price": 14500, "memberPrice": null, "durationMinutes": 300 },
+      { "name": "Pre Bridal Package - Gold", "price": 9100, "memberPrice": null, "durationMinutes": 300 },
+      { "name": "Pre Bridal Package - Silver", "price": 5300, "memberPrice": null, "durationMinutes": 270 },
+      { "name": "Pre Bridal Package - 1 Month", "price": 28900, "memberPrice": null, "durationMinutes": 90 },
+      { "name": "Pre Bridal Package - 2 Months", "price": 43400, "memberPrice": null, "durationMinutes": 90 }
+    ]
+  },
+  {
+    "category": "Make Up Package",
+    "services": [
+      { "name": "Make Up Package - Silver", "price": 10000, "memberPrice": null, "durationMinutes": 120 },
+      { "name": "Make Up Package - Gold", "price": 12500, "memberPrice": null, "durationMinutes": 120 },
+      { "name": "Make Up Package - Platinum", "price": 15000, "memberPrice": null, "durationMinutes": 120 },
+      { "name": "Make Up Package - Diamond", "price": 20000, "memberPrice": null, "durationMinutes": 180 }
+    ]
+  },
+  {
+    "category": "Package",
+    "services": [
+      { "name": "Mens Hair Cut", "price": 200, "memberPrice": 150, "durationMinutes": 30 },
+      { "name": "Mens Hair Cut Including Hair Wash", "price": 250, "memberPrice": 200, "durationMinutes": 40 },
+      { "name": "Ladies Hair Cut Including Hair Wash & Blowdry", "price": 500, "memberPrice": 400, "durationMinutes": 45 },
+      { "name": "Ladies Advanced Haircut", "price": 900, "memberPrice": 700, "durationMinutes": 60 }
+    ]
+  }
+]

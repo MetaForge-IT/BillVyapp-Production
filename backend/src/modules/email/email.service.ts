@@ -47,8 +47,11 @@ export class EmailService {
 
   async sendLoginOtp(to: EmailAddress, data: LoginOtpTemplateData): Promise<void> {
     const template = renderLoginOtpTemplate(data);
+    // Login OTP must not hard-fail when SMTP is missing — challenge is still created;
+    // OTP may be returned in the API response when LOGIN_OTP_RETURN_IN_RESPONSE=true.
     await this.dispatch(to, template.subject, template.html, template.text, {
       logOtpInDev: data.otp,
+      allowUnconfigured: true,
     });
   }
 
@@ -69,11 +72,14 @@ export class EmailService {
     subject: string,
     html: string,
     text?: string,
-    options?: { logOtpInDev?: string },
+    options?: { logOtpInDev?: string; allowUnconfigured?: boolean },
   ): Promise<void> {
     if (!emailConfig.isConfigured) {
-      if (process.env.NODE_ENV === "development") {
-        logger.warn("SMTP not configured — email not sent (development mode)", {
+      const canBypass =
+        options?.allowUnconfigured === true || process.env.NODE_ENV === "development";
+
+      if (canBypass) {
+        logger.warn("SMTP not configured — email not sent", {
           to: to.email,
           subject,
           ...(options?.logOtpInDev ? { otp: options.logOtpInDev } : {}),

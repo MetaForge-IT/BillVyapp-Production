@@ -51,7 +51,7 @@ export const enterpriseNavigation: NavSection[] = [
   {
     title: "Operations",
     items: [
-      { label: "Dashboard", href: "/", icon: LayoutDashboard },
+      { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { label: "Appointments", href: "/appointments", icon: CalendarDays },
     ],
   },
@@ -121,7 +121,7 @@ export function isNavHrefActive(pathname: string, search: string, href: string):
 /** Parent nav item active when current route is under its base path. */
 export function isNavParentActive(pathname: string, href: string): boolean {
   const base = href.split("?")[0].split("#")[0];
-  if (base === "/") return pathname === "/";
+  if (base === "/" || base === "/dashboard") return pathname === base;
   return pathname === base || pathname.startsWith(`${base}/`);
 }
 
@@ -151,6 +151,6 @@ export function shouldShowPageBack(pathname: string): boolean {
 export function getBackFallbackPath(pathname: string): string {
   const path = normalizePathname(pathname);
   const segments = path.split("/").filter(Boolean);
-  if (segments.length <= 1) return "/";
+  if (segments.length <= 1) return "/dashboard";
   return `/${segments.slice(0, -1).join("/")}`;
 }

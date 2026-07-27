@@ -13,7 +13,7 @@ void connectRedis().then((connected) => {
   }
 });
 
-const server = app.listen(env.port, () => {
+const server = app.listen(env.port,"0.0.0.0", () => {
   logger.info(`${env.appName} listening on port ${env.port}`, {
     nodeEnv: env.nodeEnv,
     apiPrefix: env.apiPrefix,

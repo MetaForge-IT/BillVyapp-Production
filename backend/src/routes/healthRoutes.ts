@@ -12,3 +12,4 @@ healthRouter.get("/metrics", (req, res, next) => {
 });
 
 export default healthRouter;
+
