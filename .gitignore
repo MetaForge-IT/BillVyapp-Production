@@ -25,9 +25,8 @@ nginx/certs/archive/
 nginx/certs/renewal/
 
 
-# Uploads (local dev storage)
+# Uploads (local file storage only — keep source module tracked)
 backend/uploads/
-uploads/
 
 # Logs
 *.log
