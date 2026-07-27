@@ -32,9 +32,10 @@ export default defineConfig({
   },
 
   server: {
-    host: true,   // bind to 0.0.0.0 so LAN IP works
+    host: "0.0.0.0", // listen on all interfaces (required for EC2 public IP)
     port: 5173,
-    allowedHosts: ['billvyapp.com', 'www.billvyapp.com', 'app.billvyapp.com', 'localhost'],
+    strictPort: true,
+    allowedHosts: true, // allow public IP + domain hostnames
     proxy: {
       '/api': {
         target: 'http://localhost:4000',
