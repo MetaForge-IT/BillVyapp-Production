@@ -23,6 +23,9 @@ export interface BillingCheckoutBase {
   discountAmount?: number;
   membershipDiscount?: number;
   couponDiscount?: number;
+  /** Staff manual discount — requires manualDiscountReason when > 0 */
+  manualDiscountAmount?: number;
+  manualDiscountReason?: string;
   gstRate?: number;
   gstAmount?: number;
   totalAmount: number;

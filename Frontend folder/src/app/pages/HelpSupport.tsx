@@ -26,7 +26,7 @@ import { cn } from "../components/ui/utils";
 
 const quickTopics = [
   { icon: Calendar, label: "Appointments", desc: "Booking & scheduling", href: "/appointments" },
-  { icon: CreditCard, label: "Billing", desc: "Invoices & payments", href: "/finance" },
+  { icon: CreditCard, label: "Revenue Report", desc: "Invoices & payments", href: "/finance" },
   { icon: Users, label: "Staff", desc: "Employees & shifts", href: "/employees" },
   { icon: Zap, label: "Quick start", desc: "Dashboard overview", href: "/" },
 ];

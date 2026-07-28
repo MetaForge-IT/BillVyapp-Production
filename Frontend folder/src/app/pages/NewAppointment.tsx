@@ -45,6 +45,9 @@ const SERVICES_PAGE_SIZE = 6;
 type ProductOverride = { sku: string; name: string; qty: number; unit: string; defaultQty: number };
 
 const NEW_APPOINTMENT_DRAFT_KEY = "new-appointment";
+const NEW_WALK_IN_DRAFT_KEY = "new-walk-in";
+
+type BookingMode = "appointment" | "walk-in";
 
 type NewAppointmentDraft = {
   customerSearch: string;
@@ -72,11 +75,11 @@ type NewAppointmentDraft = {
   expandedServiceId: string | null;
 };
 
-function createDefaultAppointmentDraft(): NewAppointmentDraft {
+function createDefaultAppointmentDraft(mode: BookingMode = "appointment"): NewAppointmentDraft {
   return {
     customerSearch: "",
     selectedCustomer: null,
-    visitType: "Appointment",
+    visitType: mode === "walk-in" ? "Walk-in" : "Appointment",
     walkInName: "",
     walkInPhone: "",
     walkInGender: "",
@@ -145,17 +148,22 @@ function mapCustomerTier(tier: string): AppointmentCustomer["tier"] {
   return "Regular";
 }
 
-export function NewAppointment() {
+export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode }) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { addAppointment } = useAppointments();
   const [saved, setSaved] = useState(false);
+  const isWalkInPage = mode === "walk-in";
+  const draftKey = isWalkInPage ? NEW_WALK_IN_DRAFT_KEY : NEW_APPOINTMENT_DRAFT_KEY;
   const prefillsFromCrm = searchParams.has("customerId") || searchParams.has("name");
-  const [draft] = useState(() =>
-    prefillsFromCrm
-      ? createDefaultAppointmentDraft()
-      : readFormDraft(NEW_APPOINTMENT_DRAFT_KEY, createDefaultAppointmentDraft()),
-  );
+  // Appointment page is appointment-only; walk-in lives at /walk-in.
+  const openAsWalkIn = isWalkInPage;
+  const [draft] = useState(() => {
+    const base = prefillsFromCrm
+      ? createDefaultAppointmentDraft(isWalkInPage ? "walk-in" : "appointment")
+      : readFormDraft(draftKey, createDefaultAppointmentDraft(isWalkInPage ? "walk-in" : "appointment"));
+    return openAsWalkIn ? { ...base, visitType: "Walk-in" as const } : { ...base, visitType: "Appointment" as const };
+  });
   const [appointmentCustomers, setAppointmentCustomers] = useState<AppointmentCustomer[]>([]);
   const [catalogServices, setCatalogServices] = useState<AppointmentService[]>([]);
   const [loadedPackages, setLoadedPackages] = useState<AppointmentPackage[]>([]);
@@ -210,13 +218,13 @@ export function NewAppointment() {
     const customerId = searchParams.get("customerId");
     const name = searchParams.get("name");
     const phone = searchParams.get("phone");
-    const typeParam = (searchParams.get("type") || "").toLowerCase();
     if (!customerId && !name) return;
 
     // Wait for CRM list when we have an id so we attach the real customer record
     if (customerId && appointmentCustomers.length === 0) return;
 
-    const isWalkIn = typeParam === "walk-in" || typeParam === "walkin";
+    // Locked pages: walk-in page always walk-in; create-appointment page never walk-in
+    const isWalkIn = isWalkInPage;
     const matched =
       (customerId
         ? appointmentCustomers.find((c) => c.id === customerId)
@@ -249,14 +257,16 @@ export function NewAppointment() {
       setWalkInName("");
       setWalkInPhone("");
     }
-    clearFormDraft(NEW_APPOINTMENT_DRAFT_KEY);
+    clearFormDraft(draftKey);
     setSearchParams({}, { replace: true });
-  }, [appointmentCustomers, searchParams, setSearchParams]);
+  }, [appointmentCustomers, draftKey, isWalkInPage, searchParams, setSearchParams]);
 
   // Customer state
   const [customerSearch, setCustomerSearch]     = useState(draft.customerSearch);
   const [selectedCustomer, setSelectedCustomer] = useState<AppointmentCustomer | null>(draft.selectedCustomer);
-  const [visitType, setVisitType]               = useState<AppointmentType>(draft.visitType);
+  const [visitType, setVisitType]               = useState<AppointmentType>(
+    isWalkInPage ? "Walk-in" : "Appointment",
+  );
   const [walkInName, setWalkInName]             = useState(draft.walkInName);
   const [walkInPhone, setWalkInPhone]           = useState(draft.walkInPhone);
   const [walkInGender, setWalkInGender]         = useState<"Male" | "Female" | "Other" | "">(draft.walkInGender);
@@ -288,7 +298,7 @@ export function NewAppointment() {
   const [expandedServiceId, setExpandedServiceId] = useState<string | null>(draft.expandedServiceId);
 
   useEffect(() => {
-    writeFormDraft(NEW_APPOINTMENT_DRAFT_KEY, {
+    writeFormDraft(draftKey, {
       customerSearch,
       selectedCustomer,
       visitType,
@@ -517,13 +527,15 @@ export function NewAppointment() {
         notes: extraNotes || undefined,
         services: servicePayload,
       });
-      clearFormDraft(NEW_APPOINTMENT_DRAFT_KEY);
+      clearFormDraft(draftKey);
       setSaved(true);
-      toast.success("Appointment booked!", {
-        description: `${displayName}'s slot saved · ${dateFormatted} at ${time}`,
+      toast.success(isWalkInPage ? "Walk-in saved!" : "Appointment booked!", {
+        description: isWalkInPage
+          ? `${displayName} checked in · ${dateFormatted} at ${time}`
+          : `${displayName}'s slot saved · ${dateFormatted} at ${time}`,
       });
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Failed to save appointment"));
+      toast.error(getApiErrorMessage(err, isWalkInPage ? "Failed to save walk-in" : "Failed to save appointment"));
     }
   }
 
@@ -552,9 +564,12 @@ export function NewAppointment() {
                 </div>
               </div>
             </motion.div>
-            <h2 className="text-xl font-bold text-[#111118] mb-1.5">Appointment Booked!</h2>
+            <h2 className="text-xl font-bold text-[#111118] mb-1.5">
+              {isWalkInPage ? "Walk-in Saved!" : "Appointment Booked!"}
+            </h2>
             <p className="text-[13px] text-[#9a9a9a] mb-7 leading-relaxed">
-              <span className="font-semibold text-[#111118]">{displayName || "Customer"}</span>'s slot is confirmed.
+              <span className="font-semibold text-[#111118]">{displayName || "Customer"}</span>
+              {isWalkInPage ? " is checked in." : "'s slot is confirmed."}
             </p>
             <div className="rounded-2xl bg-[#faf9f7] border border-black/[0.06] p-4 text-left space-y-2 mb-5">
               {([
@@ -582,7 +597,7 @@ export function NewAppointment() {
                 }}
                 className="rounded-xl h-11 bg-[#111118] text-[#D4AF37] font-semibold hover:bg-[#1e1e1e] text-[13px]"
               >
-                + New Booking
+                + {isWalkInPage ? "New Walk-In" : "New Booking"}
               </Button>
             </div>
           </motion.div>
@@ -598,12 +613,17 @@ export function NewAppointment() {
       <div className="shrink-0 border-b border-black/[0.06] bg-white px-4 py-4 sm:px-6 lg:px-8">
         <div className="mb-4 flex items-center gap-2.5">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/12">
-            <CalendarCheck2 className="h-4 w-4 text-[#D4AF37]" />
+            {isWalkInPage
+              ? <Zap className="h-4 w-4 text-[#D4AF37]" />
+              : <CalendarCheck2 className="h-4 w-4 text-[#D4AF37]" />}
           </div>
           <div>
-            <p className="text-[15px] font-bold leading-tight text-[#111118]">New Appointment</p>
+            <p className="text-[15px] font-bold leading-tight text-[#111118]">
+              {isWalkInPage ? "New Walk-In" : "Create Appointment"}
+            </p>
             <p className="mt-0.5 flex items-center gap-1 text-[10.5px] text-[#9a9a9a]">
-              <Sparkles className="h-2.5 w-2.5 text-[#D4AF37]" /> Booking only
+              <Sparkles className="h-2.5 w-2.5 text-[#D4AF37]" />
+              {isWalkInPage ? "Quick check-in" : "Scheduled booking"}
             </p>
           </div>
         </div>
@@ -624,23 +644,10 @@ export function NewAppointment() {
 
           <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
 
-            {/* Visit type */}
-            <div>
-              <Label>Visit Type</Label>
-              <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-white border border-black/[0.07] shadow-[0_1px_4px_rgba(17,17,24,0.04)]">
-                {(["Appointment", "Walk-in"] as AppointmentType[]).map(type => (
-                  <button key={type} type="button" onClick={() => setVisitType(type)}
-                    className={cn(
-                      "rounded-lg py-2 text-[12px] font-semibold transition-all",
-                      visitType === type ? "bg-[#111118] text-[#D4AF37] shadow-sm" : "text-[#9a9a9a] hover:text-[#111118]"
-                    )}
-                  >{type}</button>
-                ))}
-              </div>
-            </div>
+            {/* Visit type toggle removed — each page is locked to one mode */}
 
             {/* ── Customer section ── */}
-            {visitType === "Appointment" ? (
+            {!isWalkInPage ? (
 
               /* ── APPOINTMENT: search existing OR create new ── */
               <div>
@@ -1445,7 +1452,7 @@ export function NewAppointment() {
               className="w-full h-12 rounded-2xl bg-gradient-to-r from-[#D4AF37] to-[#C9A227] text-[#111118] font-bold text-[14px] gap-2 disabled:opacity-30 shadow-lg shadow-[#D4AF37]/20 hover:shadow-[#D4AF37]/30 transition-all"
             >
               <CalendarCheck2 className="h-4 w-4" />
-              Save Appointment
+              {isWalkInPage ? "Save Walk-In" : "Create Appointment"}
             </Button>
 
             {!canSave && (

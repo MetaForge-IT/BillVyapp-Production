@@ -228,9 +228,9 @@ function customerBookingPath(c: Customer): string {
     customerId: c.id,
     name: c.name,
     phone: c.phone,
-    type: isNewCustomer(c) ? "walk-in" : "appointment",
   });
-  return `/appointments/new?${params.toString()}`;
+  const base = isNewCustomer(c) ? "/walk-in" : "/appointments/new";
+  return `${base}?${params.toString()}`;
 }
 
 // ── CUSTOMER DETAIL VIEW (full-page like reference photo) ──

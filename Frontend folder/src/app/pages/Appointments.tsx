@@ -436,6 +436,7 @@ export function Appointments() {
     productId?: string;
   }[]>([]);
   const [discount, setDiscount] = useState(0);
+  const [discountReason, setDiscountReason] = useState("");
   const [advanceApplied, setAdvanceApplied] = useState(0);
   const [payMethod, setPayMethod] = useState<PaymentMethodValue>(createPaymentMethodValue());
   const [receiptOpen, setReceiptOpen] = useState(false);
@@ -900,6 +901,7 @@ export function Appointments() {
     setGiftCardApplied(null);
     setLoyaltyRedeem(0);
     setDiscount(0);
+    setDiscountReason("");
     setAdvanceApplied(0);
     setPayMethod(createPaymentMethodValue());
     setBillingNotes("");
@@ -933,8 +935,10 @@ export function Appointments() {
       unitPrice: item.price,
     })),
     subtotal: billSubtotal,
-    discountAmount: discount + billCouponDisc + billGiftCard + billLoyalty,
+    discountAmount: billGiftCard + billLoyalty,
     couponDiscount: billCouponDisc,
+    manualDiscountAmount: discount,
+    manualDiscountReason: discount > 0 ? discountReason.trim() : undefined,
     gstRate: gstEnabled ? gstRate : 0,
     gstAmount: billGst,
     totalAmount: grand,
@@ -971,6 +975,10 @@ export function Appointments() {
       toast.error("Add at least one service or product before confirming.");
       return;
     }
+    if (discount > 0 && discountReason.trim().length < 3) {
+      toast.error("Enter a reason for the manual discount (at least 3 characters).");
+      return;
+    }
 
     const grand = Math.max(0, Math.round(billFinal));
     const roundOff = Math.round(billFinal) - billFinal;
@@ -1004,6 +1012,10 @@ export function Appointments() {
   const handleCompletePayment = async () => {
     if (!billingTarget || billingItems.length === 0) {
       toast.error("Add at least one service or product before collecting payment.");
+      return;
+    }
+    if (discount > 0 && discountReason.trim().length < 3) {
+      toast.error("Enter a reason for the manual discount (at least 3 characters).");
       return;
     }
 
@@ -1149,26 +1161,11 @@ export function Appointments() {
           <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-[#1a1a1a] to-[#d4af37] bg-clip-text text-transparent">
             Appointments
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm sm:text-base">Timeline · Calendar · Billing</p>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">Timeline · Calendar</p>
         </div>
         <div className="flex gap-2 flex-wrap shrink-0">
           <Button size="lg" className="rounded-xl shadow-lg flex-1 sm:flex-none" onClick={() => navigate("/appointments/new")}>
-            <Plus className="h-5 w-5 mr-1" /> New Appointment
-          </Button>
-          <Button size="lg" variant="outline" className="rounded-xl shadow border-[#d4af37] text-[#9a7a1e] hover:bg-[#d4af37]/10 flex-1 sm:flex-none"
-            onClick={() => {
-              setBillingTarget({ id: "", name: "", phone: "", service: "", sourceKind: "appointment" });
-              setBillingItems([]);
-              setDiscount(0);
-              setAdvanceApplied(0);
-              setPayMethod(createPaymentMethodValue());
-              setIsDirectBill(true);
-              setDirectCustomerSearch("");
-              setDirectCustomerMode("search");
-              setDirectCustomerSelected(false);
-              setBillingOpen(true);
-            }}>
-            <Receipt className="h-5 w-5 mr-1" /> Direct Bill
+            <Plus className="h-5 w-5 mr-1" /> Create Appointment
           </Button>
         </div>
       </div>
@@ -1800,7 +1797,7 @@ export function Appointments() {
                       className="mt-1 h-9 rounded-xl bg-[#111118] text-[12px] font-semibold text-[#D4AF37] hover:bg-[#1e1e1e]"
                       onClick={() => navigate("/appointments/new")}
                     >
-                      <Plus className="mr-1.5 h-3.5 w-3.5" /> New Appointment
+                      <Plus className="mr-1.5 h-3.5 w-3.5" /> Create Appointment
                     </Button>
                   </div>
                 ) : (
@@ -3150,7 +3147,11 @@ export function Appointments() {
                             <span className="text-[10px] text-gray-400">(₹)</span>
                           </div>
                           <input type="number" min={0} max={billSubtotal} value={discount || ""}
-                            onChange={e => setDiscount(Math.min(Number(e.target.value), billSubtotal))}
+                            onChange={e => {
+                              const next = Math.min(Number(e.target.value) || 0, billSubtotal);
+                              setDiscount(next);
+                              if (next <= 0) setDiscountReason("");
+                            }}
                             placeholder="0"
                             className="w-full h-9 px-3 rounded-lg border border-gray-200 text-[12px] font-medium outline-none focus:border-[#d4af37] bg-white transition-colors text-right tabular-nums" />
                           {discount > 0 && (
@@ -3158,6 +3159,27 @@ export function Appointments() {
                           )}
                         </div>
                       </div>
+
+                      {discount > 0 && (
+                        <div className="rounded-xl border border-[#d4af37]/35 bg-[#FFFBEB] p-4">
+                          <div className="mb-2 flex items-center gap-2">
+                            <Tag className="h-3.5 w-3.5 shrink-0 text-[#d4af37]" />
+                            <span className="text-[12px] font-semibold text-[#111]">
+                              Manual discount reason <span className="text-red-500">*</span>
+                            </span>
+                          </div>
+                          <textarea
+                            value={discountReason}
+                            onChange={e => setDiscountReason(e.target.value)}
+                            placeholder="Why is this discount being given? (required)"
+                            rows={2}
+                            className="w-full resize-none rounded-lg border border-[#d4af37]/30 bg-white px-3 py-2 text-[12px] outline-none placeholder:text-gray-400 focus:border-[#d4af37]"
+                          />
+                          <p className="mt-1.5 text-[10px] text-[#9a7a1e]">
+                            Saved with this bill against the customer for audit.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -3192,7 +3214,12 @@ export function Appointments() {
                         )}
                         {discount > 0 && (
                           <div className="flex justify-between items-center text-[13px]">
-                            <span className="text-gray-500">Manual Discount</span>
+                            <span className="text-gray-500">
+                              Manual Discount
+                              {discountReason.trim() ? (
+                                <span className="mt-0.5 block text-[10px] font-medium text-[#9a7a1e]">{discountReason.trim()}</span>
+                              ) : null}
+                            </span>
                             <span className="font-semibold text-[#9a7a1e] tabular-nums">- {formatInr(discount)}</span>
                           </div>
                         )}
@@ -3263,9 +3290,15 @@ export function Appointments() {
                     type="button"
                     disabled={billingItems.length === 0 || (billDue > 0 && !isPaymentMethodValid(payMethod, billDue))}
                     onClick={handleCompletePayment}
-                    className="flex h-11 flex-[2] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#C9A227] text-[13px] font-black text-[#111118] shadow-lg shadow-[#D4AF37]/20 transition-all hover:from-[#C9A227] hover:to-[#B8922E] disabled:cursor-not-allowed disabled:opacity-40">
-                    <CheckCircle2 className="h-4 w-4" />
-                    {billDue === 0 ? "Complete Payment — Covered by Advance" : `Complete Payment — ₹${billDue.toLocaleString()}`}
+                    className="flex min-h-11 flex-[2] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#C9A227] px-3 py-2 text-[13px] font-black text-[#111118] shadow-lg shadow-[#D4AF37]/20 transition-all hover:from-[#C9A227] hover:to-[#B8922E] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    <span className="flex min-w-0 flex-col items-start leading-tight text-left">
+                      <span>Complete Payment</span>
+                      <span className="text-[10px] font-semibold tracking-wide text-[#111118]/70">
+                        {billDue === 0 ? "Covered by advance" : `₹${billDue.toLocaleString()} due`}
+                      </span>
+                    </span>
                   </button>
                 </div>
               </div>

@@ -16,9 +16,10 @@ import {
   Package, Plus, AlertTriangle, TrendingUp, ShoppingCart, Search,
   RefreshCw, Eye, CheckCircle2, X, Upload, SlidersHorizontal,
   History, ArrowDownCircle, ArrowUpCircle, Minus as MinusIcon, Scissors,
-  Truck, Pencil, Trash2, Tag, Loader2,
+  Truck, Pencil, Trash2, Tag, Loader2, Receipt,
 } from "lucide-react";
 import { BulkUploadProducts, type ParsedRow, type ExistingProduct } from "../components/shared/BulkUploadProducts";
+import { DirectBillDialog } from "../components/shared/DirectBillDialog";
 import { Pagination } from "../components/shared/Pagination";
 import { PageStatCard } from "../components/shared/PageStatCard";
 import { useTablePagination } from "../hooks/useTablePagination";
@@ -90,6 +91,7 @@ export function Inventory() {
   const initialTab = validTabs.includes(tabParam as typeof validTabs[number]) ? tabParam! : "stock";
 
   const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [directBillOpen, setDirectBillOpen] = useState(false);
 
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -569,7 +571,14 @@ export function Inventory() {
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">Track products, stock levels, purchase orders & vendors</p>
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex gap-2 shrink-0 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setDirectBillOpen(true)}
+            className="flex items-center gap-2 h-9 px-4 rounded-xl border border-[#d4af37] text-[13px] font-semibold text-[#9a7a1e] bg-white hover:bg-[#d4af37]/10 transition-all"
+          >
+            <Receipt className="h-4 w-4" /> Direct Bill
+          </button>
           <button
             onClick={() => { resetCategoryForm(); setShowCategoryManager(true); }}
             className="flex items-center gap-2 h-9 px-4 rounded-xl border border-black/[0.08] text-[13px] font-semibold text-[#6b6b6b] bg-[#FAF8F2] hover:border-[#D4AF37]/30 hover:text-[#111118] transition-all"
@@ -1789,6 +1798,7 @@ export function Inventory() {
         onImport={handleBulkImport}
         existingProducts={products as ExistingProduct[]}
       />
+      <DirectBillDialog open={directBillOpen} onOpenChange={setDirectBillOpen} />
     </div>
   );
 }

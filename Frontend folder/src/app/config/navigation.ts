@@ -52,6 +52,7 @@ export const enterpriseNavigation: NavSection[] = [
     title: "Operations",
     items: [
       { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      { label: "Walk-In", href: "/walk-in", icon: UserPlus },
       { label: "Appointments", href: "/appointments", icon: CalendarDays },
     ],
   },
@@ -70,7 +71,7 @@ export const enterpriseNavigation: NavSection[] = [
   {
     title: "Finance",
     items: [
-      { label: "Billing", href: "/finance?tab=receipts", icon: Wallet },
+      { label: "Revenue Report", href: "/finance?tab=receipts", icon: Wallet },
     ],
   },
   {
@@ -105,10 +106,11 @@ export function isNavHrefActive(pathname: string, search: string, href: string):
     return true;
   }
 
-  const onPath = pathname === base || pathname.startsWith(`${base}/`);
-  if (!onPath) return false;
+  // Flat sidebar items: exact path only when href has no query (so /appointments
+  // does not stay active on /appointments/new?type=walk-in).
+  if (qIdx < 0) return pathname === base;
 
-  if (qIdx < 0) return true;
+  if (pathname !== base) return false;
 
   const expected = new URLSearchParams(href.slice(qIdx + 1));
   const current = new URLSearchParams(search.replace(/^\?/, ""));

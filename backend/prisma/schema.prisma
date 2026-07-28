@@ -812,6 +812,8 @@ model Invoice {
   discountAmount       Decimal       @default(0) @map("discount_amount") @db.Decimal(12, 2)
   membershipDiscount   Decimal       @default(0) @map("membership_discount") @db.Decimal(12, 2)
   couponDiscount       Decimal       @default(0) @map("coupon_discount") @db.Decimal(12, 2)
+  manualDiscountAmount Decimal       @default(0) @map("manual_discount_amount") @db.Decimal(12, 2)
+  manualDiscountReason String?       @map("manual_discount_reason") @db.VarChar(500)
   gstRate              Decimal       @map("gst_rate") @db.Decimal(5, 2)
   gstAmount            Decimal       @default(0) @map("gst_amount") @db.Decimal(12, 2)
   totalAmount          Decimal       @map("total_amount") @db.Decimal(12, 2)
