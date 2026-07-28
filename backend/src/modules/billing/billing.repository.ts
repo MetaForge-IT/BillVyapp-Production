@@ -162,6 +162,10 @@ function mapInvoice(invoice: InvoiceWithRelations) {
     paymentStatus: invoice.status,
     subtotal: Number(invoice.subtotal),
     discountAmount: Number(invoice.discountAmount),
+    membershipDiscount: Number(invoice.membershipDiscount),
+    couponDiscount: Number(invoice.couponDiscount),
+    manualDiscountAmount: Number(invoice.manualDiscountAmount),
+    manualDiscountReason: invoice.manualDiscountReason,
     gstRate: Number(invoice.gstRate),
     gstAmount: Number(invoice.gstAmount),
     totalAmount: total,
@@ -614,7 +618,8 @@ async function computeTotalsFromLines(
   const discountAmount = input.discountAmount ?? 0;
   const membershipDiscount = input.membershipDiscount ?? 0;
   const couponDiscount = input.couponDiscount ?? 0;
-  const totalDiscount = discountAmount + membershipDiscount + couponDiscount;
+  const manualDiscountAmount = input.manualDiscountAmount ?? 0;
+  const totalDiscount = discountAmount + membershipDiscount + couponDiscount + manualDiscountAmount;
 
   if (subtotal > 0 && totalDiscount > (subtotal * maxDiscountPercent) / 100 + 0.01) {
     throw new AppError(
@@ -636,6 +641,9 @@ async function computeTotalsFromLines(
     discountAmount,
     membershipDiscount,
     couponDiscount,
+    manualDiscountAmount,
+    manualDiscountReason:
+      manualDiscountAmount > 0 ? (input.manualDiscountReason ?? "").trim() || null : null,
     gstRate,
     gstAmount,
     totalAmount,
@@ -672,6 +680,8 @@ export class BillingRepository {
           discountAmount: totals.discountAmount,
           membershipDiscount: totals.membershipDiscount,
           couponDiscount: totals.couponDiscount,
+          manualDiscountAmount: totals.manualDiscountAmount,
+          manualDiscountReason: totals.manualDiscountReason,
           gstRate: totals.gstRate,
           gstAmount: totals.gstAmount,
           totalAmount: totals.totalAmount,
@@ -772,6 +782,8 @@ export class BillingRepository {
           discountAmount: totals.discountAmount,
           membershipDiscount: totals.membershipDiscount,
           couponDiscount: totals.couponDiscount,
+          manualDiscountAmount: totals.manualDiscountAmount,
+          manualDiscountReason: totals.manualDiscountReason,
           gstRate: totals.gstRate,
           gstAmount: totals.gstAmount,
           totalAmount: totals.totalAmount,

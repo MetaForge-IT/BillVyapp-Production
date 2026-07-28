@@ -17,6 +17,7 @@ import { Finance } from "./pages/Finance";
 import { Inventory } from "./pages/Inventory";
 import { Memberships } from "./pages/Memberships";
 import { Feedback } from "./pages/Feedback";
+import { WalkIn } from "./pages/WalkIn";
 import { NewAppointment } from "./pages/NewAppointment";
 import { MyProfile } from "./pages/MyProfile";
 import { HelpSupport } from "./pages/HelpSupport";
@@ -55,6 +56,7 @@ export const router = createBrowserRouter([
       { path: "dashboard", Component: Dashboard },
       { path: "appointments", Component: Appointments },
       { path: "appointments/new", Component: NewAppointment },
+      { path: "walk-in", Component: WalkIn },
       { path: "walkins", Component: () => <Navigate to="/appointments?type=walk-in" replace /> },
       { path: "queue", Component: () => <Navigate to="/appointments" replace /> },
       { path: "customers", Component: Customers },

@@ -11,25 +11,40 @@ const lineItemSchema = z.object({
   lineDiscount: z.number().min(0).optional().default(0),
 });
 
-const billingBaseSchema = z.object({
-  customerId: z.string().uuid().optional(),
-  appointmentId: z.string().uuid().optional(),
-  customerName: z.string().min(1).max(200),
-  customerPhone: z.string().min(5).max(20),
-  source: z.enum(["appointment", "walk-in", "pos"]),
-  items: z.array(lineItemSchema).min(1, "At least one line item is required"),
-  subtotal: z.number().min(0),
-  discountAmount: z.number().min(0).optional().default(0),
-  membershipDiscount: z.number().min(0).optional().default(0),
-  couponDiscount: z.number().min(0).optional().default(0),
-  // No .default() here: omitted vs. explicit 0 must stay distinguishable so the backend
-  // can fall back to the salon's configured default GST rate only when truly omitted.
-  gstRate: z.number().min(0).max(100).optional(),
-  gstAmount: z.number().min(0).optional().default(0),
-  totalAmount: z.number().min(0),
-  notes: z.string().max(2000).optional(),
-  dueDate: z.string().date().optional(),
-});
+const billingBaseSchema = z
+  .object({
+    customerId: z.string().uuid().optional(),
+    appointmentId: z.string().uuid().optional(),
+    customerName: z.string().min(1).max(200),
+    customerPhone: z.string().min(5).max(20),
+    source: z.enum(["appointment", "walk-in", "pos"]),
+    items: z.array(lineItemSchema).min(1, "At least one line item is required"),
+    subtotal: z.number().min(0),
+    discountAmount: z.number().min(0).optional().default(0),
+    membershipDiscount: z.number().min(0).optional().default(0),
+    couponDiscount: z.number().min(0).optional().default(0),
+    /** Staff-entered manual discount — requires a reason when > 0 */
+    manualDiscountAmount: z.number().min(0).optional().default(0),
+    manualDiscountReason: z.string().max(500).optional(),
+    // No .default() here: omitted vs. explicit 0 must stay distinguishable so the backend
+    // can fall back to the salon's configured default GST rate only when truly omitted.
+    gstRate: z.number().min(0).max(100).optional(),
+    gstAmount: z.number().min(0).optional().default(0),
+    totalAmount: z.number().min(0),
+    notes: z.string().max(2000).optional(),
+    dueDate: z.string().date().optional(),
+  })
+  .superRefine((data, ctx) => {
+    const manual = data.manualDiscountAmount ?? 0;
+    const reason = (data.manualDiscountReason ?? "").trim();
+    if (manual > 0 && reason.length < 3) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["manualDiscountReason"],
+        message: "A reason is required when applying a manual discount (min 3 characters)",
+      });
+    }
+  });
 
 export const confirmOnlySchema = billingBaseSchema;
 

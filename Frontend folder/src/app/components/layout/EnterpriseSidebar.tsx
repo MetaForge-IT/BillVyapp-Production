@@ -11,7 +11,6 @@ import {
   ChevronRight,
   ChevronDown,
   TrendingUp,
-  Clock,
   MapPin,
   Scissors,
 } from "lucide-react";
@@ -28,7 +27,6 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
   const quickStats = useMemo(() => {
     const revenue = kpis?.todayRevenue ?? 0;
     const appointments = kpis?.todayAppointments ?? 0;
-    const walkIns = kpis?.walkInCount ?? 0;
     const placeholder = loading && !kpis ? "…" : null;
 
     return [
@@ -45,13 +43,6 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
         icon: Zap,
         to: "/appointments",
         accent: "#D4AF37",
-      },
-      {
-        label: "Walk-in Customers",
-        value: placeholder ?? String(walkIns),
-        icon: Clock,
-        to: "/appointments?type=walk-in",
-        accent: "#7C6FCD",
       },
     ];
   }, [kpis, loading]);
@@ -160,7 +151,7 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
             className="relative z-10 shrink-0 mx-3 mb-2.5"
           >
             <p className="mb-1.5 px-1 text-[9px] font-bold uppercase tracking-[0.16em] text-white/30">Today&apos;s Salon Overview</p>
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-2 gap-1.5">
               {quickStats.map((s, i) => (
                 <motion.div
                   key={s.label}
@@ -316,7 +307,7 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
                         onMouseEnter={() => setHoveredItem(item.href)}
                         onMouseLeave={() => setHoveredItem(null)}
                         className={cn(
-                          "group relative flex items-center rounded-xl transition-all duration-200 overflow-hidden",
+                          "pressable group relative flex items-center rounded-xl transition-all duration-200 overflow-hidden",
                           collapsed ? "justify-center h-11 w-11 mx-auto" : "gap-3 px-3 py-2.5",
                           active
                             ? "bg-gradient-to-r from-[#D4AF37]/20 to-[#D4AF37]/[0.04] border border-[#D4AF37]/30 shadow-[inset_0_1px_0_rgba(212,175,55,0.2),0_4px_16px_rgba(0,0,0,0.2)]"

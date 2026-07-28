@@ -80,5 +80,5 @@ export function mapAlerts(alerts: DashboardAlert[]): CriticalAlert[] {
 export const quickActions: QuickAction[] = [
   { label: "Add New Customer", description: "Register a new client", icon: UserPlus, href: "/customers/new" },
   { label: "New Appointment", description: "Book an appointment", icon: CalendarPlus, href: "/appointments/new" },
-  { label: "New Walk-in", description: "Add a walk-in customer", icon: Users, href: "/appointments/new" },
+  { label: "New Walk-in", description: "Add a walk-in customer", icon: Users, href: "/walk-in" },
 ];

@@ -445,4 +445,59 @@
   table { width: 100%; border-collapse: collapse; }
   th { font-weight: 600; padding: 0.85rem 1rem; font-size: var(--text-base); text-align: left; }
   td { padding: 0.85rem 1rem; font-size: var(--text-base); }
+
+  /* Clickable controls: pointer cursor */
+  button:not(:disabled):not([disabled]),
+  [type="button"]:not(:disabled):not([disabled]),
+  [type="submit"]:not(:disabled):not([disabled]),
+  [role="button"]:not([aria-disabled="true"]),
+  .pressable:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  button[disabled],
+  [type="button"]:disabled,
+  [type="submit"]:disabled,
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}
+
+/* Press feedback for native/custom buttons (shared Button has its own) */
+@media (prefers-reduced-motion: no-preference) {
+  button:not([data-slot="button"]):not(:disabled):not([disabled]):not([data-no-press]),
+  [type="button"]:not([data-slot="button"]):not(:disabled):not([disabled]):not([data-no-press]),
+  [type="submit"]:not([data-slot="button"]):not(:disabled):not([disabled]):not([data-no-press]),
+  [role="button"]:not([aria-disabled="true"]):not([data-no-press]),
+  a.pressable,
+  .pressable:not([aria-disabled="true"]) {
+    transition:
+      transform 0.15s ease,
+      box-shadow 0.15s ease,
+      filter 0.15s ease,
+      background-color 0.15s ease,
+      border-color 0.15s ease,
+      color 0.15s ease,
+      opacity 0.15s ease;
+  }
+
+  button:not([data-slot="button"]):not(:disabled):not([disabled]):not([data-no-press]):hover,
+  [type="button"]:not([data-slot="button"]):not(:disabled):not([disabled]):not([data-no-press]):hover,
+  [type="submit"]:not([data-slot="button"]):not(:disabled):not([disabled]):not([data-no-press]):hover,
+  [role="button"]:not([aria-disabled="true"]):not([data-no-press]):hover,
+  a.pressable:hover,
+  .pressable:not([aria-disabled="true"]):hover {
+    filter: brightness(1.04);
+  }
+
+  button:not([data-slot="button"]):not(:disabled):not([disabled]):not([data-no-press]):active,
+  [type="button"]:not([data-slot="button"]):not(:disabled):not([disabled]):not([data-no-press]):active,
+  [type="submit"]:not([data-slot="button"]):not(:disabled):not([disabled]):not([data-no-press]):active,
+  [role="button"]:not([aria-disabled="true"]):not([data-no-press]):active,
+  a.pressable:active,
+  .pressable:not([aria-disabled="true"]):active {
+    transform: scale(0.97);
+    filter: brightness(0.97);
+  }
 }
