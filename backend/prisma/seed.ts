@@ -20,8 +20,62 @@ type CatalogCategory = { category: string; services: CatalogService[] };
 const prisma = new PrismaClient();
 
 const DEMO_SALON_EMAIL = "hello@starrkuts-demo.com";
-export const DEMO_LOGIN_EMAIL = "demo@starrkuts.com";
-const DEMO_LOGIN_PASSWORD = "Demo@1234";
+export const DEMO_LOGIN_EMAIL = "manager@starrkuts.com";
+const DEMO_LOGIN_PASSWORD = "manager@1234";
+const DEMO_LOGIN_NAME = "Starrkuts Manager";
+const LEGACY_DEMO_LOGIN_EMAIL = "demo@starrkuts.com";
+
+export const DEV_TEAM_LOGIN_EMAIL = "devteam@metaforgeit.com";
+const DEV_TEAM_LOGIN_PASSWORD = "dev@1234";
+const DEV_TEAM_LOGIN_NAME = "Dev Team";
+
+async function upsertSalonUser(params: {
+  salonId: string;
+  email: string;
+  password: string;
+  fullName: string;
+  role?: string;
+  phone?: string;
+  legacyEmails?: string[];
+}) {
+  const passwordHash = await bcrypt.hash(params.password, 10);
+  const legacy = params.legacyEmails ?? [];
+  const existing =
+    (await prisma.user.findFirst({
+      where: { salonId: params.salonId, email: params.email },
+    })) ??
+    (legacy.length
+      ? await prisma.user.findFirst({
+          where: { salonId: params.salonId, email: { in: legacy } },
+        })
+      : null);
+
+  if (existing) {
+    return prisma.user.update({
+      where: { id: existing.id },
+      data: {
+        email: params.email,
+        passwordHash,
+        fullName: params.fullName,
+        role: params.role ?? "manager",
+        emailVerifiedAt: new Date(),
+        isActive: true,
+      },
+    });
+  }
+
+  return prisma.user.create({
+    data: {
+      salonId: params.salonId,
+      email: params.email,
+      passwordHash,
+      fullName: params.fullName,
+      role: params.role ?? "manager",
+      phone: params.phone,
+      emailVerifiedAt: new Date(),
+    },
+  });
+}
 
 async function main() {
   const salon = await prisma.salon.upsert({
@@ -40,20 +94,22 @@ async function main() {
     },
   });
 
-  const passwordHash = await bcrypt.hash(DEMO_LOGIN_PASSWORD, 10);
+  const owner = await upsertSalonUser({
+    salonId: salon.id,
+    email: DEMO_LOGIN_EMAIL,
+    password: DEMO_LOGIN_PASSWORD,
+    fullName: DEMO_LOGIN_NAME,
+    role: "manager",
+    phone: "+91 98765 43210",
+    legacyEmails: [LEGACY_DEMO_LOGIN_EMAIL],
+  });
 
-  const owner = await prisma.user.upsert({
-    where: { salonId_email: { salonId: salon.id, email: DEMO_LOGIN_EMAIL } },
-    update: { passwordHash, emailVerifiedAt: new Date() },
-    create: {
-      salonId: salon.id,
-      email: DEMO_LOGIN_EMAIL,
-      passwordHash,
-      fullName: "Vikram Malhotra",
-      role: "manager",
-      phone: "+91 98765 43210",
-      emailVerifiedAt: new Date(),
-    },
+  await upsertSalonUser({
+    salonId: salon.id,
+    email: DEV_TEAM_LOGIN_EMAIL,
+    password: DEV_TEAM_LOGIN_PASSWORD,
+    fullName: DEV_TEAM_LOGIN_NAME,
+    role: "manager",
   });
 
   await prisma.salonFinancialSettings.upsert({
@@ -219,7 +275,8 @@ async function main() {
   // Intentionally not seeded — keep production DB free of demo transactional data.
 
   console.log("Seed complete.");
-  console.log(`Demo login → email: ${DEMO_LOGIN_EMAIL}  password: ${DEMO_LOGIN_PASSWORD}`);
+  console.log(`Manager login → email: ${DEMO_LOGIN_EMAIL}  password: ${DEMO_LOGIN_PASSWORD}`);
+  console.log(`Dev team login → email: ${DEV_TEAM_LOGIN_EMAIL}  password: ${DEV_TEAM_LOGIN_PASSWORD}`);
 }
 
 main()

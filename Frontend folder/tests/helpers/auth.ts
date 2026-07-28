@@ -1,7 +1,7 @@
 import { expect, type Page } from '@playwright/test';
 
-export const DEMO_EMAIL = 'demo@starrkuts.com';
-export const DEMO_PASSWORD = 'Demo@1234';
+export const DEMO_EMAIL = 'manager@starrkuts.com';
+export const DEMO_PASSWORD = 'manager@1234';
 
 async function readDevOtp(page: Page): Promise<string> {
   const hint = page.getByTestId('dev-otp-hint');

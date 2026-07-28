@@ -5,8 +5,8 @@
  * Requires backend .env with valid DATABASE_URL and API running on PORT (default 3000).
  */
 const API = process.env.API_BASE ?? "http://localhost:3000/api";
-const EMAIL = process.env.TEST_EMAIL ?? "demo@starrkuts.com";
-const PASSWORD = process.env.TEST_PASSWORD ?? "Demo@1234";
+const EMAIL = process.env.TEST_EMAIL ?? "manager@starrkuts.com";
+const PASSWORD = process.env.TEST_PASSWORD ?? "manager@1234";
 
 type Json = Record<string, unknown>;
 
