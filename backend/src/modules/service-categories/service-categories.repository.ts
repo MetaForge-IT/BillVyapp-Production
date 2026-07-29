@@ -24,6 +24,7 @@ function mapServiceCategory(category: ServiceCategoryWithCount) {
     id: category.id,
     name: category.name,
     description: category.description ?? "",
+    icon: category.icon ?? null,
     status: mapStatus(category.isActive),
     sortOrder: category.sortOrder,
     serviceCount: category._count.services,
@@ -97,6 +98,7 @@ export class ServiceCategoriesRepository {
         salonId: auth.salonId,
         name: input.name,
         description: input.description ?? null,
+        icon: input.icon === undefined ? undefined : input.icon,
         isActive: toIsActive(input.status) ?? true,
         sortOrder: input.sortOrder ?? (maxSortOrder._max.sortOrder ?? 0) + 1,
       },
@@ -142,6 +144,7 @@ export class ServiceCategoriesRepository {
       data: {
         name: input.name,
         description: input.description === "" ? null : input.description,
+        icon: input.icon === undefined ? undefined : input.icon,
         isActive: toIsActive(input.status),
         sortOrder: input.sortOrder,
       },

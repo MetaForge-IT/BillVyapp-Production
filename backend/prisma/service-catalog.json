@@ -102,17 +102,6 @@
     ]
   },
   {
-    "category": "Intimate Woman",
-    "services": [
-      { "name": "Back Strip", "price": 500, "memberPrice": null, "durationMinutes": 25 },
-      { "name": "Under Arms", "price": 500, "memberPrice": null, "durationMinutes": 25 },
-      { "name": "Buttocks", "price": 600, "memberPrice": null, "durationMinutes": 25 },
-      { "name": "Bikini Line", "price": 750, "memberPrice": null, "durationMinutes": 30 },
-      { "name": "G String Bikini Line", "price": 900, "memberPrice": null, "durationMinutes": 30 },
-      { "name": "Brazilian Bikini", "price": 1800, "memberPrice": null, "durationMinutes": 45 }
-    ]
-  },
-  {
     "category": "Stripless Waxing for Men",
     "services": [
       { "name": "Underarms", "price": 900, "memberPrice": null, "durationMinutes": 25 },
@@ -142,7 +131,7 @@
       { "name": "Soft Make Over", "price": 4000, "memberPrice": null, "durationMinutes": 60 },
       { "name": "Trial Make Up", "price": 2000, "memberPrice": null, "durationMinutes": 60 },
       { "name": "Saree Draping", "price": 500, "memberPrice": null, "durationMinutes": 20 },
-      { "name": "Pre Bridal Pack (Full waxing, Intimate waxing, Signature Facial, Manicure & Pedicure)", "price": 10000, "memberPrice": null, "durationMinutes": 180 },
+      { "name": "Pre Bridal Pack (Full waxing, Signature Facial, Manicure & Pedicure)", "price": 10000, "memberPrice": null, "durationMinutes": 180 },
       { "name": "Pre Bride Groom Package (Facial, Manicure, Pedicure, Hair spa, Body polish)", "price": 6780, "memberPrice": null, "durationMinutes": 180 },
       { "name": "Mac Make up for Men", "price": 3000, "memberPrice": null, "durationMinutes": 60 }
     ]
@@ -341,9 +330,7 @@
     "services": [
       { "name": "Pre Bridal Package - Platinum", "price": 14500, "memberPrice": null, "durationMinutes": 300 },
       { "name": "Pre Bridal Package - Gold", "price": 9100, "memberPrice": null, "durationMinutes": 300 },
-      { "name": "Pre Bridal Package - Silver", "price": 5300, "memberPrice": null, "durationMinutes": 270 },
-      { "name": "Pre Bridal Package - 1 Month", "price": 28900, "memberPrice": null, "durationMinutes": 90 },
-      { "name": "Pre Bridal Package - 2 Months", "price": 43400, "memberPrice": null, "durationMinutes": 90 }
+      { "name": "Pre Bridal Package - Silver", "price": 5300, "memberPrice": null, "durationMinutes": 270 }
     ]
   },
   {

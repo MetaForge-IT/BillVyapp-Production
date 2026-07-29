@@ -1,42 +1,80 @@
 import { apiClient } from "../lib/axios";
 
+export type ServiceGender = "MALE" | "FEMALE" | "UNISEX";
+
 export interface CatalogService {
   id: string;
   name: string;
+  displayName?: string;
+  serviceGroup?: string | null;
+  serviceCode?: string;
   price: number;
   memberPrice: number;
   duration?: number;
   category?: string;
+  categoryId?: string;
   tax?: number | null;
+  gender?: ServiceGender;
+  /** @deprecated use gender — kept for older clients */
   tag?: "Male" | "Female";
 }
 
 export interface ServiceRecord {
   id: string;
+  serviceCode: string;
   name: string;
+  displayName: string;
+  serviceGroup: string | null;
   categoryId: string;
   categoryName: string;
+  categoryIcon?: string | null;
   description: string;
   duration: number;
   price: number;
   memberPrice: number | null;
   tax: number | null;
+  gender: ServiceGender;
   popularity: number;
+  sortOrder: number;
   status: "active" | "inactive";
   createdAt: string;
   updatedAt: string;
 }
 
+export interface ServiceListResponse {
+  items: ServiceRecord[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 export interface CreateServicePayload {
-  name: string;
+  name?: string;
+  displayName?: string;
+  serviceCode?: string;
   categoryId: string;
+  serviceGroup?: string | null;
   description?: string;
   duration: number;
   price: number;
   tax?: number;
   popularity?: number;
+  sortOrder?: number;
+  gender?: ServiceGender;
   status?: "active" | "inactive";
   memberPrice?: number;
+}
+
+export interface ListServicesParams {
+  gender?: ServiceGender;
+  categoryId?: string;
+  serviceGroup?: string;
+  search?: string;
+  active?: boolean;
+  page?: number;
+  limit?: number;
+  sort?: "sortOrder" | "name" | "displayName" | "price" | "createdAt" | "popularity";
 }
 
 interface ApiEnvelope<T> {
@@ -50,8 +88,13 @@ export async function fetchServiceCatalog(): Promise<CatalogService[]> {
   return data.data;
 }
 
-export async function fetchServices(): Promise<ServiceRecord[]> {
-  const { data } = await apiClient.get<ApiEnvelope<ServiceRecord[]>>("/services");
+export async function fetchServices(params: ListServicesParams = {}): Promise<ServiceListResponse> {
+  const { data } = await apiClient.get<ApiEnvelope<ServiceListResponse>>("/services", {
+    params: {
+      ...params,
+      active: params.active === undefined ? undefined : params.active ? "true" : "false",
+    },
+  });
   return data.data;
 }
 

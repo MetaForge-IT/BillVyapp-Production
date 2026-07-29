@@ -26,13 +26,51 @@ const loginPasswordSchema = z
   .min(8, "Password must be at least 8 characters");
 
 /**
- * Validates manager login credentials.
+ * Validates manager login credentials (email and/or mobile + password).
  */
-export const loginSchema = z.object({
-  email: emailSchema,
-  password: loginPasswordSchema,
-  rememberMe: z.boolean().optional(),
-});
+export const loginSchema = z
+  .object({
+    email: z.string().trim().optional().default(""),
+    mobileNumber: z.string().trim().optional().default(""),
+    password: loginPasswordSchema,
+    rememberMe: z.boolean().optional(),
+  })
+  .superRefine((data, ctx) => {
+    const email = data.email.trim();
+    const mobileDigits = data.mobileNumber.replace(/\D/g, "");
+
+    if (!email && mobileDigits.length < 10) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Email or mobile number is required",
+        path: ["email"],
+      });
+    }
+
+    if (email && !z.string().email().safeParse(email).success) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Invalid email format",
+        path: ["email"],
+      });
+    }
+
+    if (data.mobileNumber && !/^[0-9+\-\s()]*$/.test(data.mobileNumber)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Mobile number contains invalid characters",
+        path: ["mobileNumber"],
+      });
+    }
+
+    if (data.mobileNumber.trim() && mobileDigits.length > 0 && mobileDigits.length < 10) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Mobile number must be at least 10 digits",
+        path: ["mobileNumber"],
+      });
+    }
+  });
 
 export const verifyLoginOtpSchema = z.object({
   challengeId: z

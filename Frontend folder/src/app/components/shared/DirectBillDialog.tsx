@@ -194,13 +194,27 @@ export function DirectBillDialog({
     if (!query) return [];
     return [
       ...services
-        .filter((service) => service.name.toLowerCase().includes(query))
+        .filter((service) => {
+          const q = query;
+          return (
+            service.name.toLowerCase().includes(q) ||
+            (service.displayName ?? "").toLowerCase().includes(q) ||
+            (service.serviceGroup ?? "").toLowerCase().includes(q) ||
+            (service.category ?? "").toLowerCase().includes(q)
+          );
+        })
         .map((service) => ({
           type: "service" as const,
-          name: service.name,
+          name: service.displayName || service.name,
           price: service.price,
           serviceId: service.id,
-          meta: service.duration ? `${service.duration} min` : "Service",
+          meta: [
+            service.category,
+            service.serviceGroup,
+            service.duration ? `${service.duration} min` : null,
+          ]
+            .filter(Boolean)
+            .join(" · ") || "Service",
         })),
       ...products
         .filter(
@@ -234,9 +248,15 @@ export function DirectBillDialog({
     return services.map((service) => ({
       type: "service" as const,
       id: service.id,
-      name: service.name,
+      name: service.displayName || service.name,
       price: service.price,
-      meta: service.duration ? `${service.duration} min` : "Service",
+      meta: [
+        service.category,
+        service.serviceGroup,
+        service.duration ? `${service.duration} min` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ") || "Service",
       serviceId: service.id,
     }));
   }, [catalogTab, products, services]);

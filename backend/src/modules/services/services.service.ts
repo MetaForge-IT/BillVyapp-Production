@@ -1,14 +1,18 @@
 import type { AuthContext } from "../auth/auth.types";
 import { servicesRepository } from "./services.repository";
-import type { CreateServiceInput, UpdateServiceInput } from "./services.validators";
+import type {
+  CreateServiceInput,
+  ListServicesQuery,
+  UpdateServiceInput,
+} from "./services.validators";
 
 export class ServicesService {
   listCatalog(auth: AuthContext) {
     return servicesRepository.listCatalog(auth.salonId);
   }
 
-  list(auth: AuthContext) {
-    return servicesRepository.list(auth.salonId);
+  list(auth: AuthContext, query: ListServicesQuery) {
+    return servicesRepository.list(auth.salonId, query);
   }
 
   getById(auth: AuthContext, serviceId: string) {

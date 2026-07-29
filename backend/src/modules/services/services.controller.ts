@@ -4,6 +4,7 @@ import { asyncHandler } from "../../utils/asyncHandler";
 import type { AuthenticatedRequest } from "../auth/auth.controller";
 import { servicesService } from "./services.service";
 import type { CreateServiceInput, UpdateServiceInput } from "./services.validators";
+import { listServicesQuerySchema } from "./services.validators";
 
 export class ServicesController {
   listCatalog = asyncHandler(async (req: Request, res: Response): Promise<void> => {
@@ -14,8 +15,9 @@ export class ServicesController {
 
   list = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const auth = (req as AuthenticatedRequest).auth;
-    const services = await servicesService.list(auth);
-    sendSuccess(res, { message: "Services retrieved", data: services });
+    const query = listServicesQuerySchema.parse(req.query);
+    const result = await servicesService.list(auth, query);
+    sendSuccess(res, { message: "Services retrieved", data: result });
   });
 
   getById = asyncHandler(async (req: Request, res: Response): Promise<void> => {

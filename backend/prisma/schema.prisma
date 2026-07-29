@@ -14,6 +14,13 @@ datasource db {
 }
 
 // Status / type columns use VarChar. Valid values enforced in the application layer.
+// Service gender is a Prisma enum for type-safety across the catalog API.
+
+enum ServiceGender {
+  MALE
+  FEMALE
+  UNISEX
+}
 
 // ─── Core ────────────────────────────────────────────────────────────────────
 
@@ -94,6 +101,7 @@ model User {
   passwordHash    String    @map("password_hash") @db.VarChar(255)
   fullName        String    @map("full_name") @db.VarChar(200)
   role            String    @default("manager") @db.VarChar(20)
+  /// Staff mobile number used for SMS login OTP (10-digit / E.164).
   phone           String?   @db.VarChar(20)
   avatarUrl       String?   @map("avatar_url") @db.VarChar(500)
   isActive        Boolean   @default(true) @map("is_active")
@@ -420,6 +428,7 @@ model ServiceCategory {
   salonId     String   @map("salon_id") @db.Char(36)
   name        String   @db.VarChar(100)
   description String?  @db.Text
+  icon        String?  @db.VarChar(100)
   sortOrder   Int      @default(0) @map("sort_order") @db.SmallInt
   isActive    Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
@@ -433,24 +442,32 @@ model ServiceCategory {
 }
 
 model Service {
-  id              String    @id @default(uuid()) @db.Char(36)
-  salonId         String    @map("salon_id") @db.Char(36)
-  categoryId      String    @map("category_id") @db.Char(36)
-  name            String    @db.VarChar(200)
-  description     String?   @db.Text
-  price           Decimal   @db.Decimal(10, 2)
-  memberPrice     Decimal?  @map("member_price") @db.Decimal(10, 2)
-  tax             Decimal?  @db.Decimal(5, 2)
-  durationMinutes Int       @default(30) @map("duration_minutes") @db.SmallInt
-  popularity      Int       @default(0) @db.SmallInt
-  genderTag       String?   @map("gender_tag") @db.VarChar(20)
-  isActive        Boolean   @default(true) @map("is_active")
-  deletedAt       DateTime? @map("deleted_at") @db.DateTime(3)
-  deletedById     String?   @map("deleted_by") @db.Char(36)
-  createdById     String?   @map("created_by") @db.Char(36)
-  updatedById     String?   @map("updated_by") @db.Char(36)
-  createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime(3)
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  id              String        @id @default(uuid()) @db.Char(36)
+  salonId         String        @map("salon_id") @db.Char(36)
+  categoryId      String        @map("category_id") @db.Char(36)
+  /// Immutable catalog code (e.g. F-THREAD-FACE-UPPERLIP). Never change after create.
+  serviceCode     String        @map("service_code") @db.VarChar(64)
+  /// Full searchable name: "Threading - Face - Upper Lip"
+  name            String        @db.VarChar(200)
+  /// Short UI label: "Upper Lip"
+  displayName     String        @map("display_name") @db.VarChar(200)
+  /// Logical group inside a category (e.g. Face, Upper Body) — not a separate table.
+  serviceGroup    String?       @map("service_group") @db.VarChar(100)
+  description     String?       @db.Text
+  price           Decimal       @db.Decimal(10, 2)
+  memberPrice     Decimal?      @map("member_price") @db.Decimal(10, 2)
+  tax             Decimal?      @db.Decimal(5, 2)
+  durationMinutes Int           @default(30) @map("duration_minutes") @db.SmallInt
+  gender          ServiceGender @default(UNISEX)
+  popularity      Int           @default(0) @db.SmallInt
+  sortOrder       Int           @default(0) @map("sort_order") @db.SmallInt
+  isActive        Boolean       @default(true) @map("is_active")
+  deletedAt       DateTime?     @map("deleted_at") @db.DateTime(3)
+  deletedById     String?       @map("deleted_by") @db.Char(36)
+  createdById     String?       @map("created_by") @db.Char(36)
+  updatedById     String?       @map("updated_by") @db.Char(36)
+  createdAt       DateTime      @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.DateTime(3)
 
   salon    Salon           @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   category ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -465,7 +482,11 @@ model Service {
   salonPlanServices  SalonPlanService[]
   productLinks       ServiceProductLink[]
 
-  @@index([salonId, categoryId, isActive])
+  @@unique([salonId, serviceCode])
+  @@index([salonId, categoryId, gender, isActive])
+  @@index([salonId, displayName])
+  @@index([salonId, serviceGroup])
+  @@index([salonId, sortOrder])
   @@index([salonId, name])
   @@map("services")
 }

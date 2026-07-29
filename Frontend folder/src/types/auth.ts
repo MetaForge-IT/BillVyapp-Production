@@ -18,7 +18,8 @@ export interface RegisterPayload {
 }
 
 export interface LoginPayload {
-  email: string;
+  email?: string;
+  mobileNumber?: string;
   password: string;
   rememberMe?: boolean;
 }

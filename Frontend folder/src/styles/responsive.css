@@ -45,6 +45,10 @@ body {
   overscroll-behavior-x: contain;
 }
 
+.no-table-scroll {
+  overflow-x: hidden !important;
+}
+
 /* Full-screen dialogs on phones */
 @media (max-width: 639px) {
   .dialog-mobile-sheet {

@@ -13,6 +13,7 @@ import {
   TrendingUp,
   MapPin,
   Scissors,
+  UserPlus,
 } from "lucide-react";
 
 function isActive(pathname: string, search: string, href: string) {
@@ -27,22 +28,30 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
   const quickStats = useMemo(() => {
     const revenue = kpis?.todayRevenue ?? 0;
     const appointments = kpis?.todayAppointments ?? 0;
+    const walkIns = kpis?.walkInCount ?? 0;
     const placeholder = loading && !kpis ? "…" : null;
 
     return [
       {
-        label: "Today's Revenue",
+        label: "Revenue",
         value: placeholder ?? formatCompactInr(revenue),
         icon: TrendingUp,
         to: "/finance?tab=receipts&section=sales",
         accent: "#00C896",
       },
       {
-        label: "Today's Appointments",
+        label: "Appointments",
         value: placeholder ?? String(appointments),
         icon: Zap,
         to: "/appointments",
         accent: "#D4AF37",
+      },
+      {
+        label: "Walk-ins",
+        value: placeholder ?? String(walkIns),
+        icon: UserPlus,
+        to: "/appointments?type=walk-in",
+        accent: "#7C6FCD",
       },
     ];
   }, [kpis, loading]);
@@ -151,18 +160,19 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
             className="relative z-10 shrink-0 mx-3 mb-2.5"
           >
             <p className="mb-1.5 px-1 text-[9px] font-bold uppercase tracking-[0.16em] text-white/30">Today&apos;s Salon Overview</p>
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="flex items-stretch gap-1.5">
               {quickStats.map((s, i) => (
                 <motion.div
                   key={s.label}
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.15 + i * 0.06 }}
+                  className="min-w-0 flex-1"
                 >
                   <Link
                     to={s.to}
                     onClick={onNavigate}
-                    className="group flex flex-col items-center gap-1 rounded-xl border border-white/[0.07] bg-white/[0.03] py-2.5 px-1 hover:border-[#D4AF37]/35 hover:bg-[#D4AF37]/[0.08] transition-all duration-200"
+                    className="group flex h-full flex-col items-center justify-center gap-1 rounded-xl border border-white/[0.07] bg-white/[0.03] py-2.5 px-1 hover:border-[#D4AF37]/35 hover:bg-[#D4AF37]/[0.08] transition-all duration-200"
                   >
                     <s.icon className="h-3 w-3 transition-colors" style={{ color: s.accent }} />
                     <span className="text-[12px] font-bold text-white tabular-nums leading-none">{s.value}</span>

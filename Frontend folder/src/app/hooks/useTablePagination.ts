@@ -6,9 +6,10 @@ export const PAGE_SIZE_OPTIONS = [5, 10, 15, 20] as const;
 export function useTablePagination(
   totalRecords: number,
   resetDeps: unknown[] = [],
+  initialPageSize: number = DEFAULT_PAGE_SIZE,
 ) {
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [pageSize, setPageSize] = useState(initialPageSize);
 
   useEffect(() => {
     setPage(1);

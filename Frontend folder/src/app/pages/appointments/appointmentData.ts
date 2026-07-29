@@ -12,6 +12,9 @@ export interface ServiceProductUsage {
 export interface AppointmentService {
   id: string;
   name: string;
+  displayName?: string;
+  serviceGroup?: string;
+  categoryLabel?: string;
   price: number;
   memberPrice: number;
   duration: number;

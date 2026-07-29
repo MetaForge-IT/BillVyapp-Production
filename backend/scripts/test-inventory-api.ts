@@ -6,7 +6,7 @@
  */
 const API = process.env.API_BASE ?? "http://localhost:3000/api";
 const EMAIL = process.env.TEST_EMAIL ?? "manager@starrkuts.com";
-const PASSWORD = process.env.TEST_PASSWORD ?? "manager@1234";
+const PASSWORD = process.env.TEST_PASSWORD ?? "Du@24m#";
 
 type Json = Record<string, unknown>;
 

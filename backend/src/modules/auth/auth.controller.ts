@@ -32,7 +32,8 @@ export class AuthController {
 
     const result = await this.service.login(
       {
-        email: body.email,
+        email: body.email || undefined,
+        mobileNumber: body.mobileNumber || undefined,
         password: body.password,
         rememberMe: body.rememberMe,
       },

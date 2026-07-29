@@ -28,7 +28,8 @@ export interface AuthContext {
 }
 
 export interface LoginRequest {
-  email: string;
+  email?: string;
+  mobileNumber?: string;
   password: string;
   rememberMe?: boolean;
 }

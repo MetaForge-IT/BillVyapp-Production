@@ -30,8 +30,12 @@ import { BRAND } from "../../config/brand";
 type ServiceItem = {
   id: string;
   name: string;
+  displayName?: string;
+  serviceGroup?: string | null;
+  category?: string;
   price: number;
   memberPrice: number;
+  gender?: "MALE" | "FEMALE" | "UNISEX";
   tag?: "Male" | "Female";
 };
 
@@ -92,8 +96,12 @@ export function NewAppointmentModal({
           mapApiCatalog(services).map((service) => ({
             id: service.id,
             name: service.name,
+            displayName: service.displayName,
+            serviceGroup: service.serviceGroup,
+            category: service.category,
             price: service.price,
             memberPrice: service.memberPrice,
+            gender: service.gender,
             tag: service.tag,
           })),
         ),
@@ -105,10 +113,19 @@ export function NewAppointmentModal({
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const filteredServices = serviceList.filter((s) => {
-    const matchesGender = genderTab === "All" || s.tag === genderTab;
+    const matchesGender =
+      genderTab === "Male"
+        ? s.gender === "MALE" || s.tag === "Male"
+        : genderTab === "Female"
+          ? s.gender === "FEMALE" || s.tag === "Female"
+          : true;
+    const q = serviceSearch.toLowerCase().trim();
     const matchesSearch =
-      serviceSearch === "" ||
-      s.name.toLowerCase().includes(serviceSearch.toLowerCase());
+      q === "" ||
+      s.name.toLowerCase().includes(q) ||
+      (s.displayName ?? "").toLowerCase().includes(q) ||
+      (s.serviceGroup ?? "").toLowerCase().includes(q) ||
+      (s.category ?? "").toLowerCase().includes(q);
     return matchesGender && matchesSearch;
   });
 
@@ -431,12 +448,21 @@ export function NewAppointmentModal({
                   <div className="space-y-2">
                     {filteredServices.map((s) => (
                       <div
-                        key={s.name}
+                        key={s.id}
                         className="flex items-center justify-between gap-4 rounded-xl px-5 py-4 hover:bg-[#FAF8F2] border border-transparent hover:border-[#D4AF37]/20 transition-all cursor-pointer"
                       >
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-semibold text-[#121212]">{s.name}</p>
+                            <div className="min-w-0">
+                              {(s.category || s.serviceGroup) && (
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-[#9a9a9a]">
+                                  {[s.category, s.serviceGroup].filter(Boolean).join(" · ")}
+                                </p>
+                              )}
+                              <p className="text-sm font-semibold text-[#121212]">
+                                {s.displayName || s.name}
+                              </p>
+                            </div>
                             {s.tag && (
                               <Badge className="bg-[#121212] text-[#D4AF37] border-0 text-[10px] px-2 py-0.5 rounded-lg">
                                 {s.tag}

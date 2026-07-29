@@ -4,8 +4,12 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from "axios";
 import { ApiError } from "./api";
-import { useAuthStore } from "../stores/authStore";
-import { getAccessToken, saveAccessToken } from "./tokenStorage";
+import {
+  clearAccessToken,
+  getAccessToken,
+  saveAccessToken,
+  useAuthStore,
+} from "../stores/authStore";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -127,7 +131,7 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         processRefreshQueue(refreshError, null);
-        useAuthStore.getState().clearSession();
+        clearAccessToken();
         return Promise.reject(
           refreshError instanceof AxiosError ? toApiError(refreshError) : refreshError,
         );

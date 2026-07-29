@@ -30,6 +30,9 @@ export interface LoginOtpChallengeResult {
   challengeId: string;
   expiresIn: number;
   message: string;
+  /** Masked mobile for SMS OTP UI (falls back to masked email if phone missing). */
+  phoneHint: string;
+  /** @deprecated Prefer phoneHint — kept for older clients. */
   emailHint: string;
   /** Present only when LOGIN_OTP_RETURN_IN_RESPONSE=true in development. */
   otp?: string;
@@ -60,7 +63,21 @@ export class AuthService {
     credentials: LoginRequest,
     _session: SessionMetadata = {},
   ): Promise<LoginOtpChallengeResult> {
-    const user = await this.repository.findUserByEmail(credentials.email);
+    const email = credentials.email?.trim().toLowerCase() || "";
+    const mobile = credentials.mobileNumber?.trim() || "";
+
+    let user =
+      (email ? await this.repository.findUserByEmail(email) : null) ??
+      (mobile ? await this.repository.findUserByPhone(mobile) : null);
+
+    // If both were provided, require the phone to match the email account
+    if (user && email && mobile && user.phone) {
+      const entered = mobile.replace(/\D/g, "").slice(-10);
+      const stored = user.phone.replace(/\D/g, "").slice(-10);
+      if (entered.length === 10 && stored !== entered) {
+        throw this.invalidCredentialsError();
+      }
+    }
 
     if (!user) {
       throw this.invalidCredentialsError();
@@ -103,12 +120,16 @@ export class AuthService {
 
     await this.sendLoginOtpEmail(user, rawOtp);
 
+    const phoneHint = this.maskPhone(user.phone) || this.maskEmail(user.email);
     const result: LoginOtpChallengeResult = {
       requiresOtp: true,
       challengeId: challenge.id,
       expiresIn,
-      message: "Enter the verification code sent to your email.",
-      emailHint: this.maskEmail(user.email),
+      message: user.phone
+        ? "Enter the verification code sent to your phone."
+        : "Enter the verification code sent to your email.",
+      phoneHint,
+      emailHint: phoneHint,
     };
 
     if (authConfig.loginOtpReturnInResponse) {
@@ -233,12 +254,17 @@ export class AuthService {
     await this.repository.refreshLoginOtpChallenge(challenge.id, { otpHash, expiresAt });
     await this.sendLoginOtpEmail(credentialsUser, rawOtp);
 
+    const phoneHint =
+      this.maskPhone(credentialsUser.phone) || this.maskEmail(user.email);
     const result: LoginOtpChallengeResult = {
       requiresOtp: true,
       challengeId: challenge.id,
       expiresIn,
-      message: "A new verification code has been sent to your email.",
-      emailHint: this.maskEmail(user.email),
+      message: credentialsUser.phone
+        ? "A new verification code has been sent to your phone."
+        : "A new verification code has been sent to your email.",
+      phoneHint,
+      emailHint: phoneHint,
     };
 
     if (authConfig.loginOtpReturnInResponse) {
@@ -389,6 +415,15 @@ export class AuthService {
     if (!local || !domain) return "***";
     const visible = local.slice(0, Math.min(2, local.length));
     return `${visible}***@${domain}`;
+  }
+
+  /** Masks a mobile number for OTP UI, e.g. 7995352422 → ******2422 */
+  private maskPhone(phone: string | null | undefined): string | null {
+    if (!phone) return null;
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 4) return null;
+    const last4 = digits.slice(-4);
+    return `${"*".repeat(Math.max(digits.length - 4, 4))}${last4}`;
   }
 
   private async issueRefreshSession(

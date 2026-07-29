@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { motion } from "framer-motion";
 import {
+  ArrowLeft,
   ArrowRight,
   Building2,
   CheckCircle2,
@@ -93,6 +94,14 @@ export function SignUpPage() {
         transition={{ duration: 0.5 }}
         className="relative z-10 w-full max-w-md"
       >
+        <Link
+          to="/"
+          className="mb-6 inline-flex items-center gap-1.5 text-sm text-white/40 transition-colors hover:text-white/70"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to home
+        </Link>
+
         <div className="mb-8 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#D4AF37]/15 border border-[#D4AF37]/25">
             <Scissors className="h-5 w-5 text-[#D4AF37]" />

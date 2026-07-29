@@ -1,13 +1,9 @@
-const AUTH_TOKEN_KEY = "salon_access_token";
-
-export function saveAccessToken(token: string): void {
-  localStorage.setItem(AUTH_TOKEN_KEY, token);
-}
-
-export function getAccessToken(): string | null {
-  return localStorage.getItem(AUTH_TOKEN_KEY);
-}
-
-export function clearAccessToken(): void {
-  localStorage.removeItem(AUTH_TOKEN_KEY);
-}
+/**
+ * Thin re-exports for JWT access.
+ * Source of truth is the Zustand `useAuthStore` (persisted to localStorage).
+ */
+export {
+  getAccessToken,
+  saveAccessToken,
+  clearAccessToken,
+} from "../stores/authStore";

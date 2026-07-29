@@ -1,11 +1,15 @@
 import * as authApi from "../api/auth";
-import { clearAccessToken, getAccessToken, saveAccessToken } from "../lib/tokenStorage";
-import { useAuthStore } from "../stores/authStore";
+import {
+  clearAccessToken,
+  getAccessToken,
+  saveAccessToken,
+  useAuthStore,
+} from "../stores/authStore";
 import type { AuthUser, LoginPayload, RegisterPayload } from "../types/auth";
 import { isLoginOtpChallenge } from "../types/auth";
 
 export type { AuthUser, LoginPayload, RegisterPayload } from "../types/auth";
-export { getAccessToken, clearAccessToken } from "../lib/tokenStorage";
+export { getAccessToken, clearAccessToken, saveAccessToken } from "../stores/authStore";
 
 export const authService = {
   async register(payload: RegisterPayload) {
@@ -30,7 +34,6 @@ export const authService = {
     // Password step only — tokens are issued after OTP verification.
     if (response.data && !isLoginOtpChallenge(response.data) && response.data.accessToken) {
       saveAccessToken(response.data.accessToken);
-      useAuthStore.getState().syncAuth();
     }
 
     return response;
@@ -41,7 +44,6 @@ export const authService = {
 
     if (response.data?.accessToken) {
       saveAccessToken(response.data.accessToken);
-      useAuthStore.getState().syncAuth();
     }
 
     return response;
@@ -60,7 +62,6 @@ export const authService = {
 
     if (response.data?.accessToken) {
       saveAccessToken(response.data.accessToken);
-      useAuthStore.getState().syncAuth();
     }
 
     return response;
@@ -102,7 +103,7 @@ export const authService = {
   },
 
   isAuthenticated(): boolean {
-    return Boolean(getAccessToken());
+    return useAuthStore.getState().isAuthenticated;
   },
 };
 

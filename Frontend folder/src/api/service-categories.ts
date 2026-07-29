@@ -4,6 +4,7 @@ export interface ServiceCategory {
   id: string;
   name: string;
   description: string;
+  icon?: string | null;
   status: "active" | "inactive";
   sortOrder: number;
   serviceCount: number;
@@ -14,6 +15,7 @@ export interface ServiceCategory {
 export interface CreateServiceCategoryPayload {
   name: string;
   description?: string;
+  icon?: string | null;
   status?: "active" | "inactive";
   sortOrder?: number;
 }

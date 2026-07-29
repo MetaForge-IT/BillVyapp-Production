@@ -40,7 +40,7 @@ type SelectedPackage = AppointmentPackage & { qty: number };
 type SelectedProduct = AppointmentProduct & { qty: number };
 type ServiceTab = ServiceCategory | "Packages" | "Products";
 
-const SERVICES_PAGE_SIZE = 6;
+const SERVICES_PAGE_SIZE = 5;
 
 type ProductOverride = { sku: string; name: string; qty: number; unit: string; defaultQty: number };
 
@@ -173,7 +173,7 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
       .then((plans) =>
         setLoadedPackages(
           plans
-            .filter((plan) => plan.planType === "package")
+            .filter((plan) => plan.planType === "package" && plan.isActive)
             .map((plan) => ({
               id: plan.id,
               name: plan.name,
@@ -186,7 +186,10 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
             })),
         ),
       )
-      .catch(() => setLoadedPackages([]));
+      .catch((err) => {
+        setLoadedPackages([]);
+        toast.error(getApiErrorMessage(err, "Failed to load packages"));
+      });
   }, []);
 
   useEffect(() => {
@@ -287,6 +290,14 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
   const [serviceListPage, setServiceListPage]   = useState(1);
   const [serviceTab, setServiceTab]             = useState<ServiceTab>(draft.serviceTab);
   const [serviceSearch, setServiceSearch]       = useState(draft.serviceSearch);
+  const [serviceSearchInput, setServiceSearchInput] = useState(draft.serviceSearch);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+  // 300ms debounce for service catalog search
+  useEffect(() => {
+    const timer = window.setTimeout(() => setServiceSearch(serviceSearchInput), 300);
+    return () => window.clearTimeout(timer);
+  }, [serviceSearchInput]);
   const [selectedServices, setSelectedServices] = useState<SelectedService[]>(draft.selectedServices);
   const [selectedPackages, setSelectedPackages] = useState<SelectedPackage[]>(draft.selectedPackages);
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>(draft.selectedProducts);
@@ -373,6 +384,99 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
     return inventoryProducts.find(p => p.sku === sku)?.stock ?? 0;
   }
 
+  function renderProductOverrides(serviceId: string) {
+    const overrides = productOverrides[serviceId];
+    if (!overrides?.length) return null;
+    return (
+      <div className="mt-1 overflow-hidden rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/04">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpandedServiceId(expandedServiceId === serviceId ? null : serviceId);
+          }}
+          className="flex w-full items-center gap-2 px-3 py-2 text-left"
+        >
+          <Package className="h-3 w-3 shrink-0 text-[#d4af37]" />
+          <span className="flex-1 text-[10.5px] font-semibold text-[#b8962e]">
+            {overrides.length} product{overrides.length > 1 ? "s" : ""} linked
+            {overrides.some((o) => stockOf(o.sku) < o.qty) && (
+              <span className="ml-1.5 text-orange-500">· ⚠ low stock</span>
+            )}
+          </span>
+          <ChevronDown
+            className={`h-3 w-3 text-[#d4af37] transition-transform ${
+              expandedServiceId === serviceId ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+        {expandedServiceId === serviceId && (
+          <div className="space-y-2 border-t border-[#D4AF37]/15 px-3 py-2">
+            {overrides.map((override) => {
+              const stock = stockOf(override.sku);
+              const status = stockStatus(override.sku);
+              const isLow = status === "low" || status === "critical" || status === "out";
+              const insufficient = stock < override.qty;
+              return (
+                <div key={override.sku} className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[11px] font-semibold text-[#1a1a1a]">{override.name}</p>
+                    <p className={`text-[10px] ${insufficient ? "font-bold text-orange-500" : "text-gray-400"}`}>
+                      {stock} in stock {isLow ? "⚠" : ""}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        updateOverrideQty(serviceId, override.sku, Math.max(0, override.qty - 1));
+                      }}
+                      className="flex h-6 w-6 items-center justify-center rounded-lg border border-gray-200 bg-white text-[11px] font-bold text-gray-500 hover:bg-gray-50"
+                    >
+                      −
+                    </button>
+                    <span
+                      className={`w-8 text-center text-[12px] font-bold ${
+                        override.qty !== override.defaultQty ? "text-[#d4af37]" : "text-[#1a1a1a]"
+                      }`}
+                    >
+                      {override.qty}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        updateOverrideQty(serviceId, override.sku, override.qty + 1);
+                      }}
+                      className="flex h-6 w-6 items-center justify-center rounded-lg border border-gray-200 bg-white text-[11px] font-bold text-gray-500 hover:bg-gray-50"
+                    >
+                      +
+                    </button>
+                    <span className="w-16 text-[10px] text-gray-400">{override.unit}</span>
+                    {override.qty !== override.defaultQty && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateOverrideQty(serviceId, override.sku, override.defaultQty);
+                        }}
+                        className="text-[9px] text-gray-400 underline hover:text-[#d4af37]"
+                      >
+                        reset
+                      </button>
+                    )}
+                  </div>
+                  {insufficient && <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-orange-500" />}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // backward compat alias
   const serviceCategory = serviceTab as ServiceCategory;
   const setServiceCategory = (c: ServiceCategory) => setServiceTab(c);
@@ -384,13 +488,50 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
     ), [customerSearch]);
 
   const filteredServices = useMemo(() => {
-    const q = serviceSearch.toLowerCase();
+    const q = serviceSearch.toLowerCase().trim();
     if (serviceTab === "Packages" || serviceTab === "Products") return [];
-    return catalogServices.filter(s =>
-      s.category === serviceTab &&
-      (q === "" || s.name.toLowerCase().includes(q))
-    );
+    return catalogServices.filter((s) => {
+      if (s.category !== serviceTab) return false;
+      if (!q) return true;
+      return (
+        s.name.toLowerCase().includes(q) ||
+        (s.displayName ?? "").toLowerCase().includes(q) ||
+        (s.serviceGroup ?? "").toLowerCase().includes(q) ||
+        (s.categoryLabel ?? "").toLowerCase().includes(q)
+      );
+    });
   }, [serviceTab, serviceSearch, catalogServices]);
+
+  /** Category → Group → services for accordion listing (when not searching). */
+  const groupedServices = useMemo(() => {
+    const map = new Map<string, Map<string, AppointmentService[]>>();
+    for (const service of filteredServices) {
+      const category = service.categoryLabel || service.category;
+      const group = service.serviceGroup || category;
+      if (!map.has(category)) map.set(category, new Map());
+      const groups = map.get(category)!;
+      if (!groups.has(group)) groups.set(group, []);
+      groups.get(group)!.push(service);
+    }
+    return map;
+  }, [filteredServices]);
+
+  /** Flat list of subcategory (group) accordion rows — paginated 5 at a time. */
+  const groupSections = useMemo(() => {
+    const sections: Array<{
+      categoryName: string;
+      groupName: string;
+      services: AppointmentService[];
+    }> = [];
+    for (const [categoryName, groups] of groupedServices.entries()) {
+      for (const [groupName, services] of groups.entries()) {
+        sections.push({ categoryName, groupName, services });
+      }
+    }
+    return sections;
+  }, [groupedServices]);
+
+  const useGroupedServiceList = serviceSearch.trim().length === 0;
 
   const filteredPackages = useMemo(() => {
     const q = serviceSearch.toLowerCase();
@@ -420,7 +561,9 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
       ? filteredPackages.length
       : serviceTab === "Products"
         ? filteredProducts.length
-        : filteredServices.length;
+        : useGroupedServiceList
+          ? groupSections.length
+          : filteredServices.length;
 
   useEffect(() => {
     setServiceListPage(1);
@@ -430,6 +573,11 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
     const maxPage = Math.max(1, Math.ceil(catalogListTotal / SERVICES_PAGE_SIZE) || 1);
     if (serviceListPage > maxPage) setServiceListPage(maxPage);
   }, [catalogListTotal, serviceListPage]);
+
+  const paginatedGroupSections = useMemo(() => {
+    const offset = (serviceListPage - 1) * SERVICES_PAGE_SIZE;
+    return groupSections.slice(offset, offset + SERVICES_PAGE_SIZE);
+  }, [groupSections, serviceListPage]);
 
   const paginatedServices = useMemo(() => {
     const offset = (serviceListPage - 1) * SERVICES_PAGE_SIZE;
@@ -935,7 +1083,7 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
             {/* Tab bar: Male | Female | Others | Packages | Products */}
             <div className="tabs-scroll-x p-1 rounded-xl bg-white border border-black/[0.07]">
               {(["Male", "Female", "Others", "Packages", "Products"] as ServiceTab[]).map(tab => (
-                <button key={tab} type="button" onClick={() => { setServiceTab(tab); setServiceSearch(""); }}
+                <button key={tab} type="button" onClick={() => { setServiceTab(tab); setServiceSearch(""); setServiceSearchInput(""); }}
                   className={cn(
                     "rounded-lg py-2 px-3 text-[10.5px] font-bold transition-all whitespace-nowrap",
                     serviceTab === tab
@@ -957,115 +1105,203 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
                   : serviceTab === "Products" ? "Search products…"
                   : `Search ${serviceTab.toLowerCase()} services…`
                 }
-                value={serviceSearch}
-                onChange={e => setServiceSearch(e.target.value)}
+                value={serviceSearchInput}
+                onChange={e => setServiceSearchInput(e.target.value)}
                 className="pl-9 h-10 rounded-xl bg-white border-black/[0.08] focus:border-[#D4AF37]/40 text-[12.5px]"
               />
             </div>
 
-            {/* ── Services list (Male/Female/Others) ── */}
+            {/* ── Services list (Male/Female/Others) — grouped by category / service_group ── */}
             {(serviceTab === "Male" || serviceTab === "Female" || serviceTab === "Others") && (
               <div className="space-y-2">
                 {filteredServices.length === 0 && (
                   <p className="text-center text-[12px] text-[#c0c0c0] italic py-6">No services found</p>
                 )}
-                {paginatedServices.map(service => {
-                  const sel = selectedServices.some(s => s.id === service.id);
-                  return (
-                    <div key={service.id} className="space-y-1">
-                    <button type="button"
-                      onClick={() => setSelectedServices(prev => {
-                        const exists = prev.find(s => s.id === service.id);
-                        if (exists) {
-                          setProductOverrides(po => { const n = { ...po }; delete n[service.id]; return n; });
-                          return prev.filter(s => s.id !== service.id);
-                        }
-                        initOverridesForService(service);
-                        return [...prev, { ...service, qty: 1 }];
-                      })}
-                      className={cn(
-                        "w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all duration-200",
-                        sel ? "border-[#D4AF37]/40 bg-white shadow-[0_0_0_1.5px_rgba(212,175,55,0.15)]"
-                           : "border-black/[0.07] bg-white hover:border-[#D4AF37]/20 hover:shadow-sm"
-                      )}
-                    >
-                      <div className={cn("h-9 w-9 rounded-xl shrink-0 flex items-center justify-center bg-gradient-to-br", service.tone ?? "from-[#9a9a9a] to-[#6b6b6b]")}>
-                        <Scissors className="h-4 w-4 text-white/90" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[12.5px] font-semibold text-[#111118] leading-tight">{service.name}</p>
-                        <p className="text-[10.5px] text-[#9a9a9a] mt-0.5 flex items-center gap-1">
-                          <Clock className="h-3 w-3" /> {service.duration} min
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[12.5px] font-bold text-[#111118]">₹{service.price.toLocaleString("en-IN")}</span>
-                        <div className={cn("h-6 w-6 rounded-full flex items-center justify-center transition-all",
-                          sel ? "bg-[#D4AF37] text-[#111118]" : "bg-[#f4f2ed] text-[#c0c0c0]")}>
-                          {sel ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : <Plus className="h-3.5 w-3.5" />}
-                        </div>
-                      </div>
-                    </button>
 
-                    {/* ── Product override panel ── */}
-                    {sel && productOverrides[service.id]?.length > 0 && (
-                      <div className="mt-1 rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/04 overflow-hidden">
-                        <button type="button"
-                          onClick={e => { e.stopPropagation(); setExpandedServiceId(expandedServiceId === service.id ? null : service.id); }}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-left">
-                          <Package className="h-3 w-3 text-[#d4af37] shrink-0" />
-                          <span className="text-[10.5px] font-semibold text-[#b8962e] flex-1">
-                            {productOverrides[service.id].length} product{productOverrides[service.id].length > 1 ? "s" : ""} linked
-                            {productOverrides[service.id].some(o => stockOf(o.sku) < o.qty) && (
-                              <span className="ml-1.5 text-orange-500">· ⚠ low stock</span>
-                            )}
-                          </span>
-                          <ChevronDown className={`h-3 w-3 text-[#d4af37] transition-transform ${expandedServiceId === service.id ? "rotate-180" : ""}`} />
-                        </button>
-                        {expandedServiceId === service.id && (
-                          <div className="border-t border-[#D4AF37]/15 px-3 py-2 space-y-2">
-                            {productOverrides[service.id].map(override => {
-                              const stock = stockOf(override.sku);
-                              const status = stockStatus(override.sku);
-                              const isLow = status === "low" || status === "critical" || status === "out";
-                              const insufficient = stock < override.qty;
-                              return (
-                                <div key={override.sku} className="flex items-center gap-2">
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-[11px] font-semibold text-[#1a1a1a] truncate">{override.name}</p>
-                                    <p className={`text-[10px] ${insufficient ? "text-orange-500 font-bold" : "text-gray-400"}`}>
-                                      {stock} in stock {isLow ? "⚠" : ""}
-                                    </p>
-                                  </div>
-                                  <div className="flex items-center gap-1.5 shrink-0">
-                                    <button type="button" onClick={e => { e.stopPropagation(); updateOverrideQty(service.id, override.sku, Math.max(0, override.qty - 1)); }}
-                                      className="h-6 w-6 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 text-[11px] font-bold">−</button>
-                                    <span className={`w-8 text-center text-[12px] font-bold ${override.qty !== override.defaultQty ? "text-[#d4af37]" : "text-[#1a1a1a]"}`}>
-                                      {override.qty}
-                                    </span>
-                                    <button type="button" onClick={e => { e.stopPropagation(); updateOverrideQty(service.id, override.sku, override.qty + 1); }}
-                                      className="h-6 w-6 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 text-[11px] font-bold">+</button>
-                                    <span className="text-[10px] text-gray-400 w-16">{override.unit}</span>
-                                    {override.qty !== override.defaultQty && (
-                                      <button type="button" onClick={e => { e.stopPropagation(); updateOverrideQty(service.id, override.sku, override.defaultQty); }}
-                                        className="text-[9px] text-gray-400 hover:text-[#d4af37] underline">reset</button>
-                                    )}
-                                  </div>
-                                  {insufficient && <AlertTriangle className="h-3.5 w-3.5 text-orange-500 shrink-0" />}
-                                </div>
-                              );
-                            })}
-                          </div>
+                {useGroupedServiceList
+                  ? paginatedGroupSections.map(({ categoryName, groupName, services }, index) => {
+                      const groupKey = `${categoryName}::${groupName}`;
+                      const open = expandedGroups[groupKey] ?? false;
+                      const showCategoryLabel =
+                        index === 0 ||
+                        paginatedGroupSections[index - 1]?.categoryName !== categoryName;
+                      const accordionTitle = groupName;
+                      return (
+                      <div key={groupKey} className="space-y-2">
+                        {showCategoryLabel && (
+                          <p className="px-1 pt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a9a9a]">
+                            {categoryName}
+                          </p>
                         )}
+                            <div className="overflow-hidden rounded-xl border border-black/[0.07] bg-white">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExpandedGroups((prev) => ({ ...prev, [groupKey]: !open }))
+                                }
+                                className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-[#faf9f7]"
+                              >
+                                <ChevronDown
+                                  className={cn(
+                                    "h-3.5 w-3.5 text-[#D4AF37] transition-transform",
+                                    open ? "rotate-0" : "-rotate-90",
+                                  )}
+                                />
+                                <span className="text-[12px] font-bold text-[#111118]">{accordionTitle}</span>
+                                <span className="ml-auto text-[10px] text-[#9a9a9a]">{services.length}</span>
+                              </button>
+                              {open && (
+                                <div className="space-y-1.5 border-t border-black/[0.05] px-2 py-2">
+                                  {services.map((service) => {
+                                    const sel = selectedServices.some((s) => s.id === service.id);
+                                    return (
+                                      <div key={service.id} className="space-y-1">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setSelectedServices((prev) => {
+                                            const exists = prev.find((s) => s.id === service.id);
+                                            if (exists) {
+                                              setProductOverrides((po) => {
+                                                const n = { ...po };
+                                                delete n[service.id];
+                                                return n;
+                                              });
+                                              return prev.filter((s) => s.id !== service.id);
+                                            }
+                                            initOverridesForService(service);
+                                            return [...prev, { ...service, qty: 1 }];
+                                          })
+                                        }
+                                        className={cn(
+                                          "flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all duration-200",
+                                          sel
+                                            ? "border-[#D4AF37]/40 bg-white shadow-[0_0_0_1.5px_rgba(212,175,55,0.15)]"
+                                            : "border-black/[0.07] bg-[#faf9f7] hover:border-[#D4AF37]/20",
+                                        )}
+                                      >
+                                        <div
+                                          className={cn(
+                                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br",
+                                            service.tone ?? "from-[#9a9a9a] to-[#6b6b6b]",
+                                          )}
+                                        >
+                                          <Scissors className="h-4 w-4 text-white/90" />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                          <p className="text-[10px] font-semibold uppercase tracking-wide text-[#9a9a9a]">
+                                            {service.categoryLabel || categoryName}
+                                            {service.serviceGroup ? ` · ${service.serviceGroup}` : ""}
+                                          </p>
+                                          <p className="text-[12.5px] font-semibold leading-tight text-[#111118]">
+                                            {service.displayName || service.name}
+                                          </p>
+                                          <p className="mt-0.5 flex items-center gap-1 text-[10.5px] text-[#9a9a9a]">
+                                            <Clock className="h-3 w-3" /> {service.duration} min
+                                          </p>
+                                        </div>
+                                        <div className="flex shrink-0 items-center gap-2">
+                                          <span className="text-[12.5px] font-bold text-[#111118]">
+                                            ₹{service.price.toLocaleString("en-IN")}
+                                          </span>
+                                          <div
+                                            className={cn(
+                                              "flex h-6 w-6 items-center justify-center rounded-full transition-all",
+                                              sel
+                                                ? "bg-[#D4AF37] text-[#111118]"
+                                                : "bg-[#f4f2ed] text-[#c0c0c0]",
+                                            )}
+                                          >
+                                            {sel ? (
+                                              <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                                            ) : (
+                                              <Plus className="h-3.5 w-3.5" />
+                                            )}
+                                          </div>
+                                        </div>
+                                      </button>
+                                      {sel && renderProductOverrides(service.id)}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
                       </div>
-                    )}
-                    </div>
-                  );
-                })}
-                {filteredServices.length > SERVICES_PAGE_SIZE && (
+                      );
+                    })
+                  : paginatedServices.map((service) => {
+                      const sel = selectedServices.some((s) => s.id === service.id);
+                      return (
+                        <div key={service.id} className="space-y-1">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedServices((prev) => {
+                              const exists = prev.find((s) => s.id === service.id);
+                              if (exists) {
+                                setProductOverrides((po) => {
+                                  const n = { ...po };
+                                  delete n[service.id];
+                                  return n;
+                                });
+                                return prev.filter((s) => s.id !== service.id);
+                              }
+                              initOverridesForService(service);
+                              return [...prev, { ...service, qty: 1 }];
+                            })
+                          }
+                          className={cn(
+                            "flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all duration-200",
+                            sel
+                              ? "border-[#D4AF37]/40 bg-white shadow-[0_0_0_1.5px_rgba(212,175,55,0.15)]"
+                              : "border-black/[0.07] bg-white hover:border-[#D4AF37]/20 hover:shadow-sm",
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br",
+                              service.tone ?? "from-[#9a9a9a] to-[#6b6b6b]",
+                            )}
+                          >
+                            <Scissors className="h-4 w-4 text-white/90" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-[#9a9a9a]">
+                              {service.categoryLabel}
+                              {service.serviceGroup ? ` · ${service.serviceGroup}` : ""}
+                            </p>
+                            <p className="text-[12.5px] font-semibold leading-tight text-[#111118]">
+                              {service.displayName || service.name}
+                            </p>
+                            <p className="mt-0.5 flex items-center gap-1 text-[10.5px] text-[#9a9a9a]">
+                              <Clock className="h-3 w-3" /> {service.duration} min
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <span className="text-[12.5px] font-bold text-[#111118]">
+                              ₹{service.price.toLocaleString("en-IN")}
+                            </span>
+                            <div
+                              className={cn(
+                                "flex h-6 w-6 items-center justify-center rounded-full transition-all",
+                                sel ? "bg-[#D4AF37] text-[#111118]" : "bg-[#f4f2ed] text-[#c0c0c0]",
+                              )}
+                            >
+                              {sel ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : <Plus className="h-3.5 w-3.5" />}
+                            </div>
+                          </div>
+                        </button>
+                        {sel && renderProductOverrides(service.id)}
+                        </div>
+                      );
+                    })}
+
+                {catalogListTotal > SERVICES_PAGE_SIZE && (serviceTab === "Male" || serviceTab === "Female" || serviceTab === "Others") && (
                   <div className="flex items-center justify-between gap-2 pt-1">
                     <p className="text-[11px] font-medium text-[#9a9a9a]">
-                      {catalogPageStart}–{catalogPageEnd} of {filteredServices.length}
+                      {catalogPageStart}–{catalogPageEnd} of {catalogListTotal}
+                      {useGroupedServiceList ? " groups" : " services"}
                     </p>
                     <div className="flex items-center gap-1.5">
                       <button

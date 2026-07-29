@@ -10,6 +10,7 @@ export interface UserCredentialsRecord {
   passwordHash: string;
   fullName: string;
   role: string;
+  phone: string | null;
   isActive: boolean;
   emailVerifiedAt: Date | null;
 }
@@ -90,6 +91,7 @@ function toUserCredentialsRecord(user: {
   passwordHash: string;
   fullName: string;
   role: string;
+  phone: string | null;
   isActive: boolean;
   emailVerifiedAt: Date | null;
 }): UserCredentialsRecord {
@@ -100,6 +102,7 @@ function toUserCredentialsRecord(user: {
     passwordHash: user.passwordHash,
     fullName: user.fullName,
     role: user.role,
+    phone: user.phone,
     isActive: user.isActive,
     emailVerifiedAt: user.emailVerifiedAt,
   };
@@ -212,12 +215,71 @@ export class AuthRepository {
         passwordHash: true,
         fullName: true,
         role: true,
+        phone: true,
         isActive: true,
         emailVerifiedAt: true,
       },
     });
 
     return user ? toUserCredentialsRecord(user) : null;
+  }
+
+  /**
+   * Looks up a user by mobile number (matches common Indian phone formats).
+   */
+  async findUserByPhone(phone: string): Promise<UserCredentialsRecord | null> {
+    const digits = phone.replace(/\D/g, "");
+    const last10 = digits.length >= 10 ? digits.slice(-10) : digits;
+    if (last10.length < 10) return null;
+
+    const variants = [
+      last10,
+      `+91${last10}`,
+      `91${last10}`,
+      `+91 ${last10}`,
+      `+91 ${last10.slice(0, 5)} ${last10.slice(5)}`,
+    ];
+
+    const user = await this.db.user.findFirst({
+      where: { phone: { in: variants } },
+      select: {
+        id: true,
+        salonId: true,
+        email: true,
+        passwordHash: true,
+        fullName: true,
+        role: true,
+        phone: true,
+        isActive: true,
+        emailVerifiedAt: true,
+      },
+    });
+
+    if (user) return toUserCredentialsRecord(user);
+
+    // Fallback: scan phones that may include spaces/dashes
+    const candidates = await this.db.user.findMany({
+      where: { phone: { not: null } },
+      select: {
+        id: true,
+        salonId: true,
+        email: true,
+        passwordHash: true,
+        fullName: true,
+        role: true,
+        phone: true,
+        isActive: true,
+        emailVerifiedAt: true,
+      },
+      take: 500,
+    });
+
+    const match = candidates.find((row) => {
+      const stored = (row.phone ?? "").replace(/\D/g, "");
+      return stored.slice(-10) === last10;
+    });
+
+    return match ? toUserCredentialsRecord(match) : null;
   }
 
   async findUserById(id: string): Promise<UserRecord | null> {

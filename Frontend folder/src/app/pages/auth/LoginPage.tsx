@@ -37,7 +37,7 @@ export function LoginPage() {
   const otpInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState(() =>
-    readFormDraft(LOGIN_DRAFT_KEY, { email: "", password: "" }),
+    readFormDraft(LOGIN_DRAFT_KEY, { email: "", mobileNumber: "", password: "" }),
   );
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -109,15 +109,22 @@ export function LoginPage() {
     setError("");
     setUnverifiedEmail(null);
 
-    if (!form.email || !form.password) {
-      setError("Please fill in all fields.");
+    if ((!form.email.trim() && !form.mobileNumber.trim()) || !form.password) {
+      setError("Please enter your email or mobile number, and password.");
+      return;
+    }
+
+    const mobileDigits = form.mobileNumber.replace(/\D/g, "");
+    if (form.mobileNumber.trim() && mobileDigits.length < 10) {
+      setError("Enter a valid 10-digit mobile number.");
       return;
     }
 
     setLoading(true);
     try {
       const response = await authService.login({
-        email: form.email.trim(),
+        email: form.email.trim() || undefined,
+        mobileNumber: form.mobileNumber.trim() || undefined,
         password: form.password,
       });
 
@@ -134,7 +141,7 @@ export function LoginPage() {
         setUnverifiedEmail(form.email.trim());
         setError("Your account hasn't been verified yet.");
       } else {
-        setError(getApiErrorMessage(err, "Invalid email or password."));
+        setError(getApiErrorMessage(err, "Invalid email, mobile, or password."));
       }
     } finally {
       setLoading(false);
@@ -231,6 +238,14 @@ export function LoginPage() {
         transition={{ duration: 0.5 }}
         className="relative z-10 w-full max-w-md"
       >
+        <Link
+          to="/"
+          className="mb-6 inline-flex items-center gap-1.5 text-sm text-white/40 transition-colors hover:text-white/70"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to home
+        </Link>
+
         <div className="mb-8 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#D4AF37]/15 border border-[#D4AF37]/25">
             {step === "otp" ? (
@@ -263,8 +278,9 @@ export function LoginPage() {
               >
                 <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
                   <p className="text-[12px] text-white/55 leading-relaxed">
-                    After you continue, a <span className="text-white/80">6-digit code</span> will be sent to
-                    your registered mobile number via SMS for secure login.
+                    Sign in with your <span className="text-white/80">email or mobile</span>. A{" "}
+                    <span className="text-white/80">6-digit code</span> will be sent to your registered
+                    mobile for secure login.
                   </p>
                 </div>
 
@@ -278,6 +294,24 @@ export function LoginPage() {
                       onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                       placeholder="you@salon.com"
                       autoComplete="email"
+                      className="w-full h-12 pl-10 pr-4 bg-white/[0.05] border border-white/10 rounded-xl text-sm text-white placeholder-white/25 focus:outline-none focus:border-[#D4AF37]/50"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-white/60 uppercase tracking-wider">
+                    Mobile number
+                  </label>
+                  <div className="relative">
+                    <Smartphone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      value={form.mobileNumber}
+                      onChange={(e) => setForm((f) => ({ ...f, mobileNumber: e.target.value }))}
+                      placeholder="98765 43210"
+                      autoComplete="tel"
                       className="w-full h-12 pl-10 pr-4 bg-white/[0.05] border border-white/10 rounded-xl text-sm text-white placeholder-white/25 focus:outline-none focus:border-[#D4AF37]/50"
                     />
                   </div>

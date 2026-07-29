@@ -24,6 +24,7 @@ import {
   deleteService,
   fetchServices,
   updateService,
+  type ServiceGender,
   type ServiceRecord,
 } from "../../api/services";
 import { fetchSalonPlans } from "../../api/plans";
@@ -53,12 +54,14 @@ type ServiceRow = ServiceRecord & {
 
 type EditingState = {
   id: string;
-  name: string;
+  displayName: string;
+  serviceGroup: string;
   categoryId: string;
   duration: number;
   price: number;
   memberPrice: number;
   popularity: number;
+  gender: ServiceGender;
   status: "active" | "inactive";
   description: string;
 };
@@ -95,12 +98,14 @@ function resolveCategoryId(categoryLabel: string, categories: ServiceCategory[])
 }
 
 const emptyForm = {
-  name: "",
+  displayName: "",
+  serviceGroup: "",
   categoryId: "",
   duration: "",
   price: "",
   memberPrice: "",
   description: "",
+  gender: "UNISEX" as ServiceGender,
   status: "active" as "active" | "inactive",
 };
 
@@ -130,9 +135,10 @@ export function Services() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
-  const [genderFilter, setGenderFilter] = useState<"all" | "male" | "female" | "others">("all");
+  const [genderFilter, setGenderFilter] = useState<"all" | "MALE" | "FEMALE" | "UNISEX">("all");
   const [showAdd, setShowAdd] = useState(false);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -157,11 +163,11 @@ export function Services() {
     setLoading(true);
     try {
       const [servicesData, categoriesData, plansData] = await Promise.all([
-        fetchServices(),
+        fetchServices({ limit: 1000, sort: "createdAt" }),
         fetchServiceCategories(),
         fetchSalonPlans(),
       ]);
-      setServices(servicesData);
+      setServices(servicesData.items);
       setCategories(categoriesData);
       setActivePackageCount(
         plansData.filter((plan) => plan.planType === "package" && plan.isActive).length,
@@ -176,6 +182,12 @@ export function Services() {
   useEffect(() => {
     void loadServices();
   }, [loadServices]);
+
+  // 300ms debounce for management search
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSearch(searchInput), 300);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -209,28 +221,19 @@ export function Services() {
     return Math.round(allServicesFlat.reduce((a, s) => a + s.price, 0) / allServicesFlat.length);
   }, [allServicesFlat]);
 
-  const genderCategoryMap = useMemo(() => {
-    const map: Record<string, string[]> = { male: [], female: [], others: [] };
-    categories.forEach((category) => {
-      const lower = category.name.toLowerCase();
-      if (lower.includes("men") || lower.includes("male")) map.male.push(category.name);
-      else if (lower.includes("women") || lower.includes("female") || lower.includes("spa") || lower.includes("bridal")) {
-        map.female.push(category.name);
-      } else if (lower.includes("kid") || lower.includes("child")) map.others.push(category.name);
-    });
-    return map;
-  }, [categories]);
-
   const filteredServices = useMemo(() => {
+    const q = search.toLowerCase().trim();
     const rows = allServicesFlat.filter((s) => {
       const matchesSearch =
-        s.name.toLowerCase().includes(search.toLowerCase()) ||
-        s.category.toLowerCase().includes(search.toLowerCase());
+        !q ||
+        s.name.toLowerCase().includes(q) ||
+        s.displayName.toLowerCase().includes(q) ||
+        (s.serviceGroup ?? "").toLowerCase().includes(q) ||
+        s.category.toLowerCase().includes(q) ||
+        s.serviceCode.toLowerCase().includes(q);
       const matchesCategory = categoryFilter === "all" || s.category === categoryFilter;
       const matchesStatus = statusFilter === "all" || s.status === statusFilter;
-      const matchesGender =
-        genderFilter === "all" ||
-        (genderCategoryMap[genderFilter] ?? []).includes(s.category);
+      const matchesGender = genderFilter === "all" || s.gender === genderFilter;
       return matchesSearch && matchesCategory && matchesStatus && matchesGender;
     });
     // Newest created first
@@ -238,13 +241,14 @@ export function Services() {
       const aTime = new Date(a.createdAt).getTime();
       const bTime = new Date(b.createdAt).getTime();
       if (aTime !== bTime) return bTime - aTime;
-      return a.name.localeCompare(b.name);
+      return a.displayName.localeCompare(b.displayName);
     });
-  }, [allServicesFlat, search, categoryFilter, statusFilter, genderFilter, genderCategoryMap]);
+  }, [allServicesFlat, search, categoryFilter, statusFilter, genderFilter]);
 
   const { page, setPage, pageSize, setPageSize, paginate } = useTablePagination(
     filteredServices.length,
     [search, categoryFilter, statusFilter, genderFilter],
+    5,
   );
   const paginatedServices = useMemo(() => paginate(filteredServices), [filteredServices, paginate]);
 
@@ -263,7 +267,7 @@ export function Services() {
 
       try {
         const created = await createService({
-          name: row.service_name,
+          displayName: row.service_name,
           categoryId,
           description: row.description,
           duration: row.duration_minutes,
@@ -293,7 +297,7 @@ export function Services() {
   }
 
   async function handleAddService() {
-    if (!form.name.trim() || !form.categoryId || !form.duration || !form.price) return;
+    if (!form.displayName.trim() || !form.categoryId || !form.duration || !form.price) return;
 
     const price = Number(form.price);
     const memberPrice = form.memberPrice ? Number(form.memberPrice) : Math.round(price * 0.88);
@@ -302,16 +306,18 @@ export function Services() {
     setSaving(true);
     try {
       const created = await createService({
-        name: form.name.trim(),
+        displayName: form.displayName.trim(),
+        serviceGroup: form.serviceGroup.trim() || undefined,
         categoryId: form.categoryId,
         description: form.description || undefined,
         duration,
         price,
         memberPrice,
+        gender: form.gender,
         status: form.status,
       });
       setServices((prev) => [...prev, created]);
-      toast.success("Service created", { description: created.name });
+      toast.success("Service created", { description: created.displayName });
       resetAddForm();
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Failed to create service"));
@@ -323,12 +329,14 @@ export function Services() {
   function startEdit(service: ServiceRow) {
     setEditing({
       id: service.id,
-      name: service.name,
+      displayName: service.displayName,
+      serviceGroup: service.serviceGroup ?? "",
       categoryId: service.categoryId,
       duration: service.duration,
       price: service.price,
       memberPrice: service.memberPrice,
       popularity: service.popularity,
+      gender: service.gender,
       status: service.status,
       description: service.description,
     });
@@ -340,17 +348,19 @@ export function Services() {
     setSaving(true);
     try {
       const updated = await updateService(editing.id, {
-        name: editing.name.trim(),
+        displayName: editing.displayName.trim(),
+        serviceGroup: editing.serviceGroup.trim() || null,
         categoryId: editing.categoryId,
         description: editing.description || undefined,
         duration: editing.duration,
         price: editing.price,
         memberPrice: editing.memberPrice,
         popularity: Math.min(100, Math.max(0, Math.round(Number(editing.popularity) || 0))),
+        gender: editing.gender,
         status: editing.status,
       });
       setServices((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
-      toast.success("Service updated", { description: updated.name });
+      toast.success("Service updated", { description: updated.displayName });
       setEditing(null);
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Failed to update service"));
@@ -424,7 +434,7 @@ export function Services() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 max-w-full space-y-6 overflow-x-hidden">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -463,7 +473,7 @@ export function Services() {
       {/* Stats */}
       <div className="grid gap-3 md:grid-cols-4">
         <PageStatCard label="Total Services" value={String(totalServices)} sub="Across all categories" icon={Scissors} index={0} onClick={() => handleMainTabChange("categories")} />
-        <PageStatCard label="Most Popular" value={mostPopular?.name ?? "—"} sub={`${mostPopular?.popularity ?? 0}% booking rate`} icon={Star} index={1} onClick={() => handleMainTabChange("categories")} />
+        <PageStatCard label="Most Popular" value={mostPopular?.displayName ?? "—"} sub={`${mostPopular?.popularity ?? 0}% booking rate`} icon={Star} index={1} onClick={() => handleMainTabChange("categories")} />
         <PageStatCard label="Avg. Service Price" value={currency(avgPrice)} sub="Across all services" icon={IndianRupee} index={2} href="/reports" />
         <PageStatCard label="Active Packages" value={String(activePackageCount)} sub="Combo & bundle deals" icon={Crown} index={3} onClick={() => handleMainTabChange("packages")} />
       </div>
@@ -487,32 +497,30 @@ export function Services() {
 
         <TabsContent value="categories" className="space-y-4">
           {/* Filter Bar */}
-          <div className="flex items-center gap-2.5 p-3 bg-white rounded-2xl border border-black/[0.07] shadow-sm flex-wrap">
+          <div className="flex w-full min-w-0 flex-col gap-2.5 p-3 bg-white rounded-2xl border border-black/[0.07] shadow-sm sm:flex-row sm:flex-wrap sm:items-center">
             {/* Search */}
-            <div className="relative flex-1 min-w-[180px]">
+            <div className="relative w-full min-w-0 flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#d4af37]" />
               <input
-                placeholder="Search services by name or category…"
-                value={search}
-                onChange={e => { setSearch(e.target.value); }}
+                placeholder="Search name, group, category…"
+                value={searchInput}
+                onChange={e => { setSearchInput(e.target.value); }}
                 className="w-full h-9 pl-9 pr-3 rounded-xl border border-gray-200 bg-[#fafaf8] text-[13px] text-[#111] placeholder:text-gray-400 outline-none focus:border-[#d4af37]/60 focus:ring-2 focus:ring-[#d4af37]/10 transition-all"
               />
             </div>
 
-            <div className="w-px h-6 bg-gray-200 shrink-0" />
-
             {/* Gender Pills */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               {([
-                { key: "all",    label: "All" },
-                { key: "male",   label: "Male" },
-                { key: "female", label: "Female" },
-                { key: "others", label: "Others" },
+                { key: "all", label: "All" },
+                { key: "MALE", label: "Male" },
+                { key: "FEMALE", label: "Female" },
+                { key: "UNISEX", label: "Unisex" },
               ] as const).map(({ key, label }) => (
                 <button
                   key={key}
                   onClick={() => { setGenderFilter(key); }}
-                  className={`h-8 px-3.5 rounded-xl text-[12px] font-semibold transition-all ${
+                  className={`h-8 px-3 rounded-xl text-[12px] font-semibold transition-all ${
                     genderFilter === key
                       ? "bg-[#1a1a1a] text-[#d4af37] shadow-sm"
                       : "bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
@@ -522,20 +530,19 @@ export function Services() {
                   <span className={`ml-1.5 text-[10px] font-bold ${genderFilter === key ? "text-[#d4af37]/70" : "text-gray-400"}`}>
                     {key === "all"
                       ? allServicesFlat.length
-                      : allServicesFlat.filter(s => (genderCategoryMap[key] ?? []).includes(s.category)).length}
+                      : allServicesFlat.filter(s => s.gender === key).length}
                   </span>
                 </button>
               ))}
             </div>
 
-            <div className="w-px h-6 bg-gray-200 shrink-0" />
-
+            <div className="flex flex-wrap items-center gap-2">
             {/* Category Dropdown */}
-            <div className="relative shrink-0">
+            <div className="relative min-w-0 shrink">
               <select
                 value={categoryFilter}
                 onChange={e => { setCategoryFilter(e.target.value); }}
-                className={`h-9 pl-3 pr-7 rounded-xl border text-[12px] font-medium outline-none appearance-none cursor-pointer transition-all ${
+                className={`h-9 max-w-full pl-3 pr-7 rounded-xl border text-[12px] font-medium outline-none appearance-none cursor-pointer transition-all ${
                   categoryFilter !== "all"
                     ? "border-[#d4af37]/60 bg-amber-50 text-[#b8962e] font-semibold"
                     : "border-gray-200 bg-[#fafaf8] text-[#555] hover:border-gray-300"
@@ -553,7 +560,7 @@ export function Services() {
             </div>
 
             {/* Status Dropdown */}
-            <div className="relative shrink-0">
+            <div className="relative shrink">
               <select
                 value={statusFilter}
                 onChange={e => { setStatusFilter(e.target.value as "all" | "active" | "inactive"); }}
@@ -572,11 +579,12 @@ export function Services() {
               </div>
               {statusFilter !== "all" && <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#d4af37]" />}
             </div>
+            </div>
 
           </div>
 
           {/* Services Table */}
-          <Card className="shadow-lg overflow-hidden">
+          <Card className="shadow-lg overflow-hidden min-w-0">
             <CardHeader className="bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d] text-white">
               <CardTitle className="flex items-center gap-3">
                 All Services
@@ -585,24 +593,23 @@ export function Services() {
                 </Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
+            <CardContent className="p-0 min-w-0">
+              <Table
+                className="table-fixed"
+                containerClassName="no-table-scroll"
+              >
                   <TableHeader>
                     <TableRow className="bg-gray-50">
-                      <TableHead>Service Name</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead className="text-right">Price</TableHead>
-                      <TableHead className="text-right">Member Price</TableHead>
-                      <TableHead className="text-center">Popularity</TableHead>
-                      <TableHead className="text-center">Actions</TableHead>
+                      <TableHead className="w-[34%] whitespace-normal">Service</TableHead>
+                      <TableHead className="w-[26%] whitespace-normal">Category</TableHead>
+                      <TableHead className="w-[18%] whitespace-normal">Pricing</TableHead>
+                      <TableHead className="w-[22%] text-center whitespace-normal">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {loading ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                        <TableCell colSpan={4} className="text-center py-10 text-muted-foreground whitespace-normal">
                           <span className="inline-flex items-center gap-2">
                             <Loader2 className="h-4 w-4 animate-spin text-[#d4af37]" />
                             Loading services…
@@ -611,34 +618,46 @@ export function Services() {
                       </TableRow>
                     ) : paginatedServices.map((s) => (
                       <TableRow key={s.id} className="hover:bg-gray-50">
-                        <TableCell className="font-medium text-[#1a1a1a]">{s.name}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-xs">{s.category}</Badge>
+                        <TableCell className="font-medium text-[#1a1a1a] whitespace-normal align-top">
+                          <div className="min-w-0">
+                            <p className="truncate text-[13px]">{s.displayName}</p>
+                            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] font-normal text-muted-foreground">
+                              <span className="inline-flex items-center gap-1">
+                                <Clock className="h-3 w-3 shrink-0" />
+                                {s.duration} mins
+                              </span>
+                              <Badge variant="secondary" className="text-[9px] px-1.5 py-0">{s.gender}</Badge>
+                              <span className="inline-flex items-center gap-0.5">
+                                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                                {s.popularity}%
+                              </span>
+                            </p>
+                          </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          <span className="inline-flex items-center gap-1">
-                            <Clock className="h-3.5 w-3.5" />
-                            {s.duration} mins
-                          </span>
+                        <TableCell className="whitespace-normal align-top">
+                          <div className="min-w-0 flex flex-col gap-1">
+                            <Badge variant="outline" className="text-[10px] w-fit max-w-full truncate">
+                              {s.category}
+                            </Badge>
+                            {s.serviceGroup && (
+                              <span className="text-[10px] text-muted-foreground truncate">{s.serviceGroup}</span>
+                            )}
+                          </div>
                         </TableCell>
-                        <TableCell className="text-right font-semibold text-[#1a1a1a]">
-                          {currency(s.price)}
+                        <TableCell className="whitespace-normal align-top">
+                          <div className="min-w-0">
+                            <p className="text-[13px] font-semibold text-[#1a1a1a]">{currency(s.price)}</p>
+                            <p className="text-[11px] font-semibold text-[#d4af37]">
+                              Member {currency(s.memberPrice)}
+                            </p>
+                          </div>
                         </TableCell>
-                        <TableCell className="text-right font-semibold text-[#d4af37]">
-                          {currency(s.memberPrice)}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <span className="inline-flex items-center gap-1 text-sm">
-                            <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                            {s.popularity}%
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-2">
+                        <TableCell className="text-center whitespace-normal align-middle">
+                          <div className="flex items-center justify-center gap-1.5 flex-wrap">
                             <Button
                               size="sm"
                               variant="outline"
-                              className="h-8 border-[#1a1a1a]/20 hover:border-[#1a1a1a]"
+                              className="h-8 w-8 p-0 border-[#1a1a1a]/20 hover:border-[#1a1a1a]"
                               onClick={() => startEdit(s)}
                               disabled={saving}
                             >
@@ -648,8 +667,8 @@ export function Services() {
                               size="sm"
                               variant="outline"
                               title="Manage product links"
-                              className="h-8 border-[#d4af37]/40 text-[#b8962e] hover:bg-[#d4af37]/10 relative"
-                              onClick={() => setProductLinks({ serviceId: s.id, serviceName: s.name })}
+                              className="h-8 w-8 p-0 border-[#d4af37]/40 text-[#b8962e] hover:bg-[#d4af37]/10 relative"
+                              onClick={() => setProductLinks({ serviceId: s.id, serviceName: s.displayName })}
                             >
                               <Package className="h-3.5 w-3.5" />
                               {getLinks(s.id).length > 0 && (
@@ -661,8 +680,8 @@ export function Services() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="h-8 border-red-200 text-red-500 hover:bg-red-50"
-                              onClick={() => void handleDeleteService(s.id, s.name)}
+                              className="h-8 w-8 p-0 border-red-200 text-red-500 hover:bg-red-50"
+                              onClick={() => void handleDeleteService(s.id, s.displayName)}
                               disabled={saving}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -673,14 +692,13 @@ export function Services() {
                     ))}
                     {!loading && filteredServices.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                        <TableCell colSpan={4} className="text-center py-10 text-muted-foreground whitespace-normal">
                           No services found matching your search.
                         </TableCell>
                       </TableRow>
                     )}
                   </TableBody>
                 </Table>
-              </div>
               <Pagination
                 page={page}
                 pageSize={pageSize}
@@ -719,18 +737,18 @@ export function Services() {
           </div>
 
           <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
-            {/* Service name */}
+            {/* Display name */}
             <div className="space-y-1.5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Service Name <span className="text-[#d4af37]">*</span></p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Display Name <span className="text-[#d4af37]">*</span></p>
               <input
-                placeholder="e.g. Hot Towel Shave"
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="e.g. Cheeks"
+                value={form.displayName}
+                onChange={(e) => setForm((f) => ({ ...f, displayName: e.target.value }))}
                 className="w-full h-10 px-3.5 rounded-xl border border-gray-200 bg-gray-50 text-[13px] text-[#111118] focus:outline-none focus:border-[#d4af37] focus:ring-2 focus:ring-[#d4af37]/12 focus:bg-white transition-all placeholder:text-gray-300"
               />
             </div>
 
-            {/* Category + Duration */}
+            {/* Category + Group */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Category <span className="text-[#d4af37]">*</span></p>
@@ -742,6 +760,32 @@ export function Services() {
                     {categories.map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Service Group</p>
+                <input
+                  placeholder="e.g. Face"
+                  value={form.serviceGroup}
+                  onChange={(e) => setForm((f) => ({ ...f, serviceGroup: e.target.value }))}
+                  className="w-full h-10 px-3.5 rounded-xl border border-gray-200 bg-gray-50 text-[13px] text-[#111118] focus:outline-none focus:border-[#d4af37] focus:ring-2 focus:ring-[#d4af37]/12 focus:bg-white transition-all placeholder:text-gray-300"
+                />
+              </div>
+            </div>
+
+            {/* Gender + Duration */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Gender</p>
+                <Select value={form.gender} onValueChange={(v) => setForm((f) => ({ ...f, gender: v as ServiceGender }))}>
+                  <SelectTrigger className="h-10 rounded-xl border-gray-200 bg-gray-50 text-[13px] focus:border-[#d4af37] focus:ring-[#d4af37]/12">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="MALE">Male</SelectItem>
+                    <SelectItem value="FEMALE">Female</SelectItem>
+                    <SelectItem value="UNISEX">Unisex</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -837,7 +881,7 @@ export function Services() {
             </button>
             <button
               onClick={() => void handleAddService()}
-              disabled={saving || !form.name.trim() || !form.categoryId || !form.duration || !form.price}
+              disabled={saving || !form.displayName.trim() || !form.categoryId || !form.duration || !form.price}
               className="h-10 px-6 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b8962e] text-[13px] font-bold text-black disabled:opacity-40 transition-all flex items-center gap-2 shadow-md shadow-[#d4af37]/20">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               {saving ? "Saving…" : "Add Service"}
@@ -857,7 +901,7 @@ export function Services() {
               </div>
               <div>
                 <DialogTitle className="text-[15px] font-bold text-white leading-tight">Edit Service</DialogTitle>
-                <p className="text-[11px] text-white/40 mt-0.5">{editing?.name}</p>
+                <p className="text-[11px] text-white/40 mt-0.5">{editing?.displayName}</p>
               </div>
             </div>
             <button onClick={() => setEditing(null)} className="h-7 w-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
@@ -868,10 +912,10 @@ export function Services() {
           {editing && (
             <div className="px-6 py-5 bg-[#faf8f2] space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold uppercase tracking-widest text-[#b8962e]">Service Name</label>
+                <label className="text-[11px] font-bold uppercase tracking-widest text-[#b8962e]">Display Name</label>
                 <Input
-                  value={editing.name}
-                  onChange={(e) => setEditing((cur) => cur && { ...cur, name: e.target.value })}
+                  value={editing.displayName}
+                  onChange={(e) => setEditing((cur) => cur && { ...cur, displayName: e.target.value })}
                   className="h-10 px-3.5 rounded-xl border border-gray-200 bg-white focus:border-[#d4af37] focus:ring-2 focus:ring-[#d4af37]/12"
                 />
               </div>
@@ -890,6 +934,34 @@ export function Services() {
                       {categories.map((c) => (
                         <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold uppercase tracking-widest text-[#b8962e]">Service Group</label>
+                  <Input
+                    value={editing.serviceGroup}
+                    onChange={(e) => setEditing((cur) => cur && { ...cur, serviceGroup: e.target.value })}
+                    placeholder="e.g. Face"
+                    className="h-10 px-3.5 rounded-xl border border-gray-200 bg-white focus:border-[#d4af37] focus:ring-2 focus:ring-[#d4af37]/12"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold uppercase tracking-widest text-[#b8962e]">Gender</label>
+                  <Select
+                    value={editing.gender}
+                    onValueChange={(v) => setEditing((cur) => cur && { ...cur, gender: v as ServiceGender })}
+                  >
+                    <SelectTrigger className="h-10 rounded-xl border-gray-200 bg-white text-[13px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MALE">Male</SelectItem>
+                      <SelectItem value="FEMALE">Female</SelectItem>
+                      <SelectItem value="UNISEX">Unisex</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

@@ -1,0 +1,50 @@
+[
+  {
+    "category": "Laser Hair Reduction",
+    "description": "Diode / laser hair reduction by treatment area",
+    "icon": "zap",
+    "services": [
+      { "displayName": "Cheeks", "serviceGroup": "Face", "gender": "FEMALE", "price": 400, "memberPrice": 350, "durationMinutes": 15 },
+      { "displayName": "Nose", "serviceGroup": "Face", "gender": "FEMALE", "price": 400, "memberPrice": 350, "durationMinutes": 15 },
+      { "displayName": "Chin", "serviceGroup": "Face", "gender": "FEMALE", "price": 350, "memberPrice": 300, "durationMinutes": 15 },
+      { "displayName": "Neck", "serviceGroup": "Face", "gender": "FEMALE", "price": 500, "memberPrice": 450, "durationMinutes": 20 },
+      { "displayName": "Forehead", "serviceGroup": "Face", "gender": "FEMALE", "price": 500, "memberPrice": 450, "durationMinutes": 20 },
+      { "displayName": "Upper Lip", "serviceGroup": "Face", "gender": "FEMALE", "price": 300, "memberPrice": 250, "durationMinutes": 10 },
+      { "displayName": "Lower Lip", "serviceGroup": "Face", "gender": "FEMALE", "price": 300, "memberPrice": 250, "durationMinutes": 10 },
+      { "displayName": "Side Locks", "serviceGroup": "Face", "gender": "FEMALE", "price": 500, "memberPrice": 450, "durationMinutes": 20 },
+      { "displayName": "Full Face", "serviceGroup": "Face", "gender": "FEMALE", "price": 2500, "memberPrice": 2200, "durationMinutes": 45 },
+
+      { "displayName": "Underarms", "serviceGroup": "Upper Body", "gender": "FEMALE", "price": 900, "memberPrice": 800, "durationMinutes": 20 },
+      { "displayName": "Chest", "serviceGroup": "Upper Body", "gender": "FEMALE", "price": 1200, "memberPrice": 1000, "durationMinutes": 30 },
+      { "displayName": "Back", "serviceGroup": "Upper Body", "gender": "FEMALE", "price": 1500, "memberPrice": 1300, "durationMinutes": 40 },
+      { "displayName": "Shoulders", "serviceGroup": "Upper Body", "gender": "FEMALE", "price": 1000, "memberPrice": 900, "durationMinutes": 25 },
+      { "displayName": "Full Arms", "serviceGroup": "Upper Body", "gender": "FEMALE", "price": 1800, "memberPrice": 1600, "durationMinutes": 40 },
+      { "displayName": "Stomach", "serviceGroup": "Upper Body", "gender": "FEMALE", "price": 1200, "memberPrice": 1000, "durationMinutes": 30 },
+
+      { "displayName": "Half Legs", "serviceGroup": "Lower Body", "gender": "FEMALE", "price": 1800, "memberPrice": 1600, "durationMinutes": 40 },
+      { "displayName": "Full Legs", "serviceGroup": "Lower Body", "gender": "FEMALE", "price": 2800, "memberPrice": 2500, "durationMinutes": 60 },
+
+      { "displayName": "Full Body", "serviceGroup": "Full Body", "gender": "FEMALE", "price": 12000, "memberPrice": 11000, "durationMinutes": 120 },
+
+      { "displayName": "Cheeks", "serviceGroup": "Face", "gender": "MALE", "price": 500, "memberPrice": 450, "durationMinutes": 15 },
+      { "displayName": "Nose", "serviceGroup": "Face", "gender": "MALE", "price": 400, "memberPrice": 350, "durationMinutes": 15 },
+      { "displayName": "Chin", "serviceGroup": "Face", "gender": "MALE", "price": 450, "memberPrice": 400, "durationMinutes": 15 },
+      { "displayName": "Neck", "serviceGroup": "Face", "gender": "MALE", "price": 600, "memberPrice": 550, "durationMinutes": 20 },
+      { "displayName": "Forehead", "serviceGroup": "Face", "gender": "MALE", "price": 600, "memberPrice": 550, "durationMinutes": 20 },
+      { "displayName": "Ears", "serviceGroup": "Face", "gender": "MALE", "price": 350, "memberPrice": 300, "durationMinutes": 15 },
+      { "displayName": "Full Face", "serviceGroup": "Face", "gender": "MALE", "price": 2800, "memberPrice": 2500, "durationMinutes": 45 },
+
+      { "displayName": "Underarms", "serviceGroup": "Upper Body", "gender": "MALE", "price": 1000, "memberPrice": 900, "durationMinutes": 25 },
+      { "displayName": "Chest", "serviceGroup": "Upper Body", "gender": "MALE", "price": 1500, "memberPrice": 1300, "durationMinutes": 35 },
+      { "displayName": "Back", "serviceGroup": "Upper Body", "gender": "MALE", "price": 1800, "memberPrice": 1600, "durationMinutes": 45 },
+      { "displayName": "Shoulders", "serviceGroup": "Upper Body", "gender": "MALE", "price": 1200, "memberPrice": 1000, "durationMinutes": 30 },
+      { "displayName": "Full Arms", "serviceGroup": "Upper Body", "gender": "MALE", "price": 2000, "memberPrice": 1800, "durationMinutes": 45 },
+      { "displayName": "Stomach", "serviceGroup": "Upper Body", "gender": "MALE", "price": 1400, "memberPrice": 1200, "durationMinutes": 30 },
+
+      { "displayName": "Half Legs", "serviceGroup": "Lower Body", "gender": "MALE", "price": 2000, "memberPrice": 1800, "durationMinutes": 45 },
+      { "displayName": "Full Legs", "serviceGroup": "Lower Body", "gender": "MALE", "price": 3200, "memberPrice": 2900, "durationMinutes": 60 },
+
+      { "displayName": "Full Body", "serviceGroup": "Full Body", "gender": "MALE", "price": 14000, "memberPrice": 12500, "durationMinutes": 150 }
+    ]
+  }
+]

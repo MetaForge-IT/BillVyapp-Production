@@ -1,69 +1,133 @@
 import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 import * as authApi from "../api/auth";
-import { clearAccessToken, getAccessToken, saveAccessToken } from "../lib/tokenStorage";
+
+/** Legacy raw JWT key — migrated into the Zustand persist blob once. */
+const LEGACY_TOKEN_KEY = "salon_access_token";
+const AUTH_PERSIST_KEY = "salon-auth";
 
 interface AuthState {
+  accessToken: string | null;
   isReady: boolean;
   isAuthenticated: boolean;
-  bootstrap: () => Promise<void>;
+
+  setAccessToken: (token: string | null) => void;
+  /** @deprecated Prefer setAccessToken — kept for LoginPage / AuthContext callers. */
   syncAuth: () => void;
   clearSession: () => void;
+  bootstrap: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  isReady: false,
-  isAuthenticated: false,
+function migrateLegacyToken(): string | null {
+  try {
+    const legacy = localStorage.getItem(LEGACY_TOKEN_KEY);
+    if (!legacy) return null;
+    localStorage.removeItem(LEGACY_TOKEN_KEY);
+    return legacy;
+  } catch {
+    return null;
+  }
+}
 
-  syncAuth: () => {
-    set({ isAuthenticated: Boolean(getAccessToken()) });
-  },
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set, get) => ({
+      accessToken: null,
+      isReady: false,
+      isAuthenticated: false,
 
-  clearSession: () => {
-    clearAccessToken();
-    set({ isAuthenticated: false });
-  },
+      setAccessToken: (token) => {
+        set({
+          accessToken: token,
+          isAuthenticated: Boolean(token),
+        });
+      },
 
-  /**
-   * Restore session on hard refresh.
-   * - Prefer silently rotating via httpOnly refresh cookie.
-   * - If refresh fails but an access token still exists, keep the user logged in
-   *   (do not auto-logout). Token validity is checked on the next API call.
-   */
-  bootstrap: async () => {
-    try {
-      const existing = getAccessToken();
+      syncAuth: () => {
+        set({ isAuthenticated: Boolean(get().accessToken) });
+      },
 
-      try {
-        const response = await authApi.refresh();
-        if (response.data?.accessToken) {
-          saveAccessToken(response.data.accessToken);
+      clearSession: () => {
+        set({ accessToken: null, isAuthenticated: false });
+      },
+
+      /**
+       * Restore session on hard refresh.
+       * - Prefer silently rotating via httpOnly refresh cookie.
+       * - If refresh fails but an access token still exists, keep the user logged in
+       *   (token validity is checked on the next API call).
+       */
+      bootstrap: async () => {
+        // Wait for Zustand persist to rehydrate from localStorage
+        if (!useAuthStore.persist.hasHydrated()) {
+          await new Promise<void>((resolve) => {
+            const unsub = useAuthStore.persist.onFinishHydration(() => {
+              unsub();
+              resolve();
+            });
+          });
         }
-      } catch {
-        // No usable refresh cookie — keep existing access token if present.
-        if (!existing) {
-          clearAccessToken();
+
+        // One-time migration from the old raw localStorage JWT key
+        const legacy = migrateLegacyToken();
+        if (legacy && !get().accessToken) {
+          get().setAccessToken(legacy);
         }
-      }
-    } finally {
-      set({
-        isAuthenticated: Boolean(getAccessToken()),
-        isReady: true,
-      });
-    }
-  },
 
-  logout: async () => {
-    // Clear local auth immediately to prevent other in-flight requests
-    // from triggering /auth/refresh after cookies may already be cleared.
-    clearAccessToken();
-    set({ isAuthenticated: false });
+        const existing = get().accessToken;
 
-    try {
-      await authApi.logout();
-    } catch {
-      // Best-effort. If refresh cookie is already missing, we still consider
-      // the user logged out locally.
-    }
-  },
-}));
+        try {
+          try {
+            const response = await authApi.refresh();
+            if (response.data?.accessToken) {
+              get().setAccessToken(response.data.accessToken);
+            }
+          } catch {
+            if (!existing) {
+              get().clearSession();
+            }
+          }
+        } finally {
+          set({
+            isAuthenticated: Boolean(get().accessToken),
+            isReady: true,
+          });
+        }
+      },
+
+      logout: async () => {
+        // Clear local auth immediately so in-flight requests don't race /auth/refresh
+        get().clearSession();
+
+        try {
+          await authApi.logout();
+        } catch {
+          // Best-effort — missing refresh cookie still counts as logged out locally
+        }
+      },
+    }),
+    {
+      name: AUTH_PERSIST_KEY,
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ accessToken: state.accessToken }),
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        state.isAuthenticated = Boolean(state.accessToken);
+      },
+    },
+  ),
+);
+
+/** Non-React accessors for axios / services (use getState — never call hooks outside React). */
+export function getAccessToken(): string | null {
+  return useAuthStore.getState().accessToken;
+}
+
+export function saveAccessToken(token: string): void {
+  useAuthStore.getState().setAccessToken(token);
+}
+
+export function clearAccessToken(): void {
+  useAuthStore.getState().clearSession();
+}

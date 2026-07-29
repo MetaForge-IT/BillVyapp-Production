@@ -513,23 +513,38 @@ export function Packages() {
                   />
                 </div>
                 <div className="p-3 max-h-40 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                  {availableServices.filter(s => s.toLowerCase().includes(serviceSearch.toLowerCase())).map(s => (
+                  {serviceCatalog
+                    .filter((svc) => {
+                      const q = serviceSearch.toLowerCase().trim();
+                      if (!q) return true;
+                      return (
+                        svc.name.toLowerCase().includes(q) ||
+                        (svc.displayName ?? "").toLowerCase().includes(q) ||
+                        (svc.serviceGroup ?? "").toLowerCase().includes(q) ||
+                        (svc.category ?? "").toLowerCase().includes(q)
+                      );
+                    })
+                    .map((svc) => {
+                      const selected = selectedServices.includes(svc.name);
+                      const label = svc.displayName || svc.name;
+                      return (
                     <button
-                      key={s}
+                      key={svc.id}
                       type="button"
-                      onClick={() => toggleService(s)}
+                      onClick={() => toggleService(svc.name)}
                       className={cn(
                         "text-left text-xs px-3 py-2 rounded-lg border transition-all truncate font-medium",
-                        selectedServices.includes(s)
+                        selected
                           ? "bg-[#111118] text-[#D4AF37] border-[#111118] shadow-sm"
                           : "bg-gray-50 text-gray-600 border-gray-200 hover:border-[#D4AF37]/40 hover:bg-[#faf8f2]"
                       )}
-                      title={s}
+                      title={svc.name}
                     >
-                      {selectedServices.includes(s) && <CheckCircle2 className="h-3 w-3 inline mr-1 shrink-0" />}
-                      {s}
+                      {selected && <CheckCircle2 className="h-3 w-3 inline mr-1 shrink-0" />}
+                      {label}
                     </button>
-                  ))}
+                      );
+                    })}
                 </div>
               </div>
             </div>

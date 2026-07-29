@@ -1,6 +1,11 @@
 /**
- * Demo data seed — creates a working demo account plus sample catalog/customer
- * data so the app has something to show. Safe to re-run (upserts by unique keys).
+ * Production-safe seed — salon + service catalog + login accounts.
+ * Safe to re-run (upserts by unique keys). Does NOT seed inventory/vendors.
+ *
+ * Production login accounts (always upserted):
+ *   Dev     → devteam@metaforgeit.com / Dev Team / dev@1234 / 9644925737
+ *   Manager → manager@starrkuts.com   / Durga    / Du@24m#  / 7995352422
+ *   Admin   → admin@starrkuts.com     / Vikram   / vik@247Admin / 9849992474
  *
  * Run with: npm run prisma:seed
  */
@@ -8,26 +13,63 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
+import {
+  buildSearchableName,
+  buildServiceCode,
+  inferGenderFromText,
+  inferServiceGroup,
+} from "../src/modules/services/services.catalog";
 
 type CatalogService = {
-  name: string;
+  name?: string;
+  displayName?: string;
+  serviceGroup?: string | null;
+  gender?: "MALE" | "FEMALE" | "UNISEX";
   price: number;
   memberPrice: number | null;
   durationMinutes: number;
 };
-type CatalogCategory = { category: string; services: CatalogService[] };
+type CatalogCategory = {
+  category: string;
+  description?: string;
+  icon?: string | null;
+  services: CatalogService[];
+};
 
 const prisma = new PrismaClient();
 
 const DEMO_SALON_EMAIL = "hello@starrkuts-demo.com";
-export const DEMO_LOGIN_EMAIL = "manager@starrkuts.com";
-const DEMO_LOGIN_PASSWORD = "manager@1234";
-const DEMO_LOGIN_NAME = "Starrkuts Manager";
 const LEGACY_DEMO_LOGIN_EMAIL = "demo@starrkuts.com";
 
+/** Production login accounts — kept in seed so deploy/seed always restores them. */
+const PRODUCTION_LOGIN_ACCOUNTS = [
+  {
+    role: "manager",
+    email: "devteam@metaforgeit.com",
+    fullName: "Dev Team",
+    password: "dev@1234",
+    phone: "9644925737",
+  },
+  {
+    role: "manager",
+    email: "manager@starrkuts.com",
+    fullName: "Durga",
+    password: "Du@24m#",
+    phone: "7995352422",
+    legacyEmails: [LEGACY_DEMO_LOGIN_EMAIL],
+  },
+  {
+    role: "admin",
+    email: "admin@starrkuts.com",
+    fullName: "Vikram",
+    password: "vik@247Admin",
+    phone: "9849992474",
+  },
+] as const;
+
+export const DEMO_LOGIN_EMAIL = "manager@starrkuts.com";
 export const DEV_TEAM_LOGIN_EMAIL = "devteam@metaforgeit.com";
-const DEV_TEAM_LOGIN_PASSWORD = "dev@1234";
-const DEV_TEAM_LOGIN_NAME = "Dev Team";
+export const ADMIN_LOGIN_EMAIL = "admin@starrkuts.com";
 
 async function upsertSalonUser(params: {
   salonId: string;
@@ -36,7 +78,7 @@ async function upsertSalonUser(params: {
   fullName: string;
   role?: string;
   phone?: string;
-  legacyEmails?: string[];
+  legacyEmails?: readonly string[];
 }) {
   const passwordHash = await bcrypt.hash(params.password, 10);
   const legacy = params.legacyEmails ?? [];
@@ -46,7 +88,7 @@ async function upsertSalonUser(params: {
     })) ??
     (legacy.length
       ? await prisma.user.findFirst({
-          where: { salonId: params.salonId, email: { in: legacy } },
+          where: { salonId: params.salonId, email: { in: [...legacy] } },
         })
       : null);
 
@@ -58,6 +100,7 @@ async function upsertSalonUser(params: {
         passwordHash,
         fullName: params.fullName,
         role: params.role ?? "manager",
+        phone: params.phone,
         emailVerifiedAt: new Date(),
         isActive: true,
       },
@@ -94,23 +137,27 @@ async function main() {
     },
   });
 
-  const owner = await upsertSalonUser({
-    salonId: salon.id,
-    email: DEMO_LOGIN_EMAIL,
-    password: DEMO_LOGIN_PASSWORD,
-    fullName: DEMO_LOGIN_NAME,
-    role: "manager",
-    phone: "+91 98765 43210",
-    legacyEmails: [LEGACY_DEMO_LOGIN_EMAIL],
-  });
+  // ── Production login accounts (Dev / Manager / Admin) ────────────────────
+  let ownerId: string | null = null;
+  for (const account of PRODUCTION_LOGIN_ACCOUNTS) {
+    const user = await upsertSalonUser({
+      salonId: salon.id,
+      email: account.email,
+      password: account.password,
+      fullName: account.fullName,
+      role: account.role,
+      phone: account.phone,
+      legacyEmails: "legacyEmails" in account ? account.legacyEmails : undefined,
+    });
+    if (account.email === DEMO_LOGIN_EMAIL) {
+      ownerId = user.id;
+    }
+  }
 
-  await upsertSalonUser({
-    salonId: salon.id,
-    email: DEV_TEAM_LOGIN_EMAIL,
-    password: DEV_TEAM_LOGIN_PASSWORD,
-    fullName: DEV_TEAM_LOGIN_NAME,
-    role: "manager",
-  });
+  if (!ownerId) {
+    throw new Error("Manager account missing after seed — cannot continue catalog seed.");
+  }
+  const owner = { id: ownerId };
 
   await prisma.salonFinancialSettings.upsert({
     where: { salonId: salon.id },
@@ -181,92 +228,120 @@ async function main() {
     }
   }
 
-  // ── Service catalog (from prisma/service-catalog.json) ───────────────────
-  const catalog = JSON.parse(
-    readFileSync(join(__dirname, "service-catalog.json"), "utf-8"),
-  ) as CatalogCategory[];
+  // ── Service catalog (PDF menu + Laser Hair Reduction) ────────────────────
+  const catalogFiles = ["service-catalog.json", "laser-hair-reduction-catalog.json"];
+  const catalog: CatalogCategory[] = catalogFiles.flatMap((file) =>
+    JSON.parse(readFileSync(join(__dirname, file), "utf-8")) as CatalogCategory[],
+  );
   for (let i = 0; i < catalog.length; i += 1) {
     const block = catalog[i];
     const category = await prisma.serviceCategory.upsert({
       where: { salonId_name: { salonId: salon.id, name: block.category } },
-      update: { sortOrder: i + 1 },
-      create: { salonId: salon.id, name: block.category, sortOrder: i + 1 },
+      update: {
+        sortOrder: i + 1,
+        description: block.description ?? undefined,
+        icon: block.icon ?? undefined,
+      },
+      create: {
+        salonId: salon.id,
+        name: block.category,
+        description: block.description ?? null,
+        icon: block.icon ?? null,
+        sortOrder: i + 1,
+      },
     });
-    for (const s of block.services) {
+    for (let si = 0; si < block.services.length; si += 1) {
+      const s = block.services[si];
+      const displayName = (s.displayName ?? s.name)!.trim();
+      const serviceGroup =
+        s.serviceGroup?.trim() || inferServiceGroup(block.category, displayName);
+      const gender =
+        s.gender ?? inferGenderFromText(block.category, displayName, serviceGroup);
+      const fullName = buildSearchableName(block.category, serviceGroup, displayName, gender);
+      const serviceCode = buildServiceCode({
+        gender,
+        categoryName: block.category,
+        serviceGroup,
+        displayName,
+        suffix: String(si + 1),
+      });
+
       const existing = await prisma.service.findFirst({
-        where: { salonId: salon.id, categoryId: category.id, name: s.name },
+        where: {
+          salonId: salon.id,
+          categoryId: category.id,
+          OR: [
+            { serviceCode },
+            { displayName, gender, serviceGroup },
+            { name: fullName },
+          ],
+        },
       });
       if (!existing) {
         await prisma.service.create({
           data: {
             salonId: salon.id,
             categoryId: category.id,
-            name: s.name,
+            serviceCode,
+            name: fullName,
+            displayName,
+            serviceGroup,
             price: s.price,
             memberPrice: s.memberPrice,
             durationMinutes: s.durationMinutes,
+            gender,
+            sortOrder: si + 1,
             createdById: owner.id,
+          },
+        });
+      } else {
+        await prisma.service.update({
+          where: { id: existing.id },
+          data: {
+            name: fullName,
+            displayName,
+            serviceGroup,
+            gender,
+            sortOrder: si + 1,
           },
         });
       }
     }
   }
 
-  // ── Vendor + products ────────────────────────────────────────────────────
-  const vendor = await prisma.vendor.upsert({
-    where: { salonId_name: { salonId: salon.id, name: "GlowSupply Distributors" } },
-    update: {},
-    create: {
+  // ── Inventory / vendors ───────────────────────────────────────────────────
+  // Intentionally NOT seeded. Demo products/vendors caused production noise;
+  // inventory stays empty until staff add real stock.
+
+  // ── Sellable packages (Walk-In / Appointments Packages tab) ───────────────
+  const packageCategoryNames = ["Package", "Make Up Package", "Pre Bridal Package"];
+  const packageServices = await prisma.service.findMany({
+    where: {
       salonId: salon.id,
-      name: "GlowSupply Distributors",
-      contactPerson: "Ramesh Iyer",
-      phone: "+91 98765 20000",
-      email: "orders@glowsupply.example.com",
-      createdById: owner.id,
+      deletedAt: null,
+      isActive: true,
+      category: { name: { in: packageCategoryNames } },
     },
+    include: { category: { select: { name: true } } },
   });
-
-  const productCategoryDefs = [
-    { name: "Hair Care", sortOrder: 1 },
-    { name: "Skin Care", sortOrder: 2 },
-  ];
-  const productCategories: Record<string, string> = {};
-  for (const cat of productCategoryDefs) {
-    const created = await prisma.productCategory.upsert({
-      where: { salonId_name: { salonId: salon.id, name: cat.name } },
-      update: {},
-      create: {
-        salonId: salon.id,
-        name: cat.name,
-        sortOrder: cat.sortOrder,
-      },
+  for (const service of packageServices) {
+    const name = service.displayName || service.name;
+    const existingPkg = await prisma.salonPlan.findFirst({
+      where: { salonId: salon.id, planType: "package", name },
     });
-    productCategories[cat.name] = created.id;
-  }
-
-  const products = [
-    { sku: "LPS-001", name: "Hair Serum Premium", category: "Hair Care", brand: "L'Oreal", stock: 45, min: 20, retail: 850, cost: 620 },
-    { sku: "ARG-014", name: "Argan Oil Shampoo", category: "Hair Care", brand: "Moroccanoil", stock: 30, min: 15, retail: 650, cost: 470 },
-    { sku: "KRT-007", name: "Keratin Conditioner", category: "Hair Care", brand: "Kerastase", stock: 5, min: 15, retail: 550, cost: 400 },
-    { sku: "VTC-022", name: "Vitamin C Face Cream", category: "Skin Care", brand: "Olay", stock: 18, min: 10, retail: 1200, cost: 880 },
-  ];
-  for (const p of products) {
-    await prisma.product.upsert({
-      where: { salonId_sku: { salonId: salon.id, sku: p.sku } },
-      update: {},
-      create: {
+    if (existingPkg) continue;
+    await prisma.salonPlan.create({
+      data: {
         salonId: salon.id,
-        vendorId: vendor.id,
-        categoryId: productCategories[p.category],
-        sku: p.sku,
-        name: p.name,
-        brand: p.brand,
-        stockQty: p.stock,
-        minStockQty: p.min,
-        retailPrice: p.retail,
-        costPrice: p.cost,
-        stockStatus: p.stock < p.min ? "low" : "ok",
-        createdById: owner.id,
+        name,
+        namePreset: "custom",
+        planType: "package",
+        price: service.price,
+        validityDays: 30,
+        serviceLimit: 1,
+        description: `${service.category.name} offer`,
+        isActive: true,
+        planServices: { create: [{ serviceId: service.id, quantity: 1 }] },
       },
     });
   }
@@ -275,8 +350,12 @@ async function main() {
   // Intentionally not seeded — keep production DB free of demo transactional data.
 
   console.log("Seed complete.");
-  console.log(`Manager login → email: ${DEMO_LOGIN_EMAIL}  password: ${DEMO_LOGIN_PASSWORD}`);
-  console.log(`Dev team login → email: ${DEV_TEAM_LOGIN_EMAIL}  password: ${DEV_TEAM_LOGIN_PASSWORD}`);
+  console.log("Production login accounts:");
+  for (const account of PRODUCTION_LOGIN_ACCOUNTS) {
+    console.log(
+      `  ${account.role.padEnd(8)} → ${account.email} / ${account.fullName} / ${account.password} / ${account.phone}`,
+    );
+  }
 }
 
 main()

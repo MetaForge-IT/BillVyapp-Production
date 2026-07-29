@@ -81,7 +81,8 @@ async function main() {
 
   console.log("Wipe complete. Remaining counts:");
   console.log({ services, categories, users, customers, invoices, products });
-  console.log("Logins (seed): manager@starrkuts.com / manager@1234");
+  console.log("Logins (seed): manager@starrkuts.com / Du@24m#");
+  console.log("               admin@starrkuts.com / vik@247Admin");
   console.log("               devteam@metaforgeit.com / dev@1234");
 }
 
