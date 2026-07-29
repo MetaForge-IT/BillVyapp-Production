@@ -6,6 +6,7 @@
  *   Dev     → devteam@metaforgeit.com / Dev Team / dev@1234 / 9644925737
  *   Manager → manager@starrkuts.com   / Durga    / Du@24m#R / 7995352422
  *   Admin   → admin@starrkuts.com     / Vikram   / vik@247Admin / 9849992474
+ *   Admin   → srinivas@starrkuts.com  / Srinivas Varma / sri@91#Ad / 8341539999
  *
  * Run with: npm run prisma:seed
  */
@@ -64,6 +65,13 @@ const PRODUCTION_LOGIN_ACCOUNTS = [
     fullName: "Vikram",
     password: "vik@247Admin",
     phone: "9849992474",
+  },
+  {
+    role: "admin",
+    email: "srinivas@starrkuts.com",
+    fullName: "Srinivas Varma",
+    password: "sri@91#Ad",
+    phone: "8341539999",
   },
 ] as const;
 
