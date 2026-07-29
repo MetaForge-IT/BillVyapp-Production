@@ -4,7 +4,7 @@
  *
  * Production login accounts (always upserted):
  *   Dev     → devteam@metaforgeit.com / Dev Team / dev@1234 / 9644925737
- *   Manager → manager@starrkuts.com   / Durga    / Du@24m#  / 7995352422
+ *   Manager → manager@starrkuts.com   / Durga    / Du@24m#R / 7995352422
  *   Admin   → admin@starrkuts.com     / Vikram   / vik@247Admin / 9849992474
  *
  * Run with: npm run prisma:seed
@@ -54,7 +54,7 @@ const PRODUCTION_LOGIN_ACCOUNTS = [
     role: "manager",
     email: "manager@starrkuts.com",
     fullName: "Durga",
-    password: "Du@24m#",
+    password: "Du@24m#R",
     phone: "7995352422",
     legacyEmails: [LEGACY_DEMO_LOGIN_EMAIL],
   },
