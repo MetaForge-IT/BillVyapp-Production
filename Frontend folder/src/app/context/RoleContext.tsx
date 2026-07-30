@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { authService } from "../../services/authService";
 
 export type UserRole =
+  | "admin"
   | "manager"
   | "receptionist"
   | "stylist"
@@ -12,6 +13,7 @@ export const roleConfig: Record<
   UserRole,
   { label: string; description: string; emoji: string }
 > = {
+  admin: { label: "Admin", description: "Full access · revenue & reports", emoji: "👑" },
   manager: { label: "Manager", description: "Manage salon operations", emoji: "🏢" },
   receptionist: { label: "Receptionist", description: "Front desk & bookings", emoji: "💁" },
   stylist: { label: "Stylist / Employee", description: "Your daily schedule", emoji: "💇" },
@@ -19,8 +21,19 @@ export const roleConfig: Record<
   inventory: { label: "Inventory Manager", description: "Stock & supplies", emoji: "📦" },
 };
 
+/** Roles allowed to view revenue / revenue reports. */
+export const REVENUE_ROLES: ReadonlyArray<UserRole> = ["admin"];
+
 function isUserRole(value: string): value is UserRole {
   return value in roleConfig;
+}
+
+export function canViewRevenue(role: UserRole): boolean {
+  return REVENUE_ROLES.includes(role);
+}
+
+export function isAdmin(role: UserRole): boolean {
+  return role === "admin";
 }
 
 interface RoleContextType {

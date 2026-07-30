@@ -1,6 +1,7 @@
 import React from "react";
 import { createBrowserRouter, Navigate } from "react-router";
 import { RequireAuth } from "./components/layout/RequireAuth";
+import { RequireRole } from "./components/layout/RequireRole";
 import { ProtectedAppShell } from "./components/layout/ProtectedAppShell";
 import { AuthLayout } from "./components/layout/AuthLayout";
 import { PublicHome } from "./components/layout/PublicHome";
@@ -61,7 +62,7 @@ export const router = createBrowserRouter([
       { path: "queue", Component: () => <Navigate to="/appointments" replace /> },
       { path: "customers", Component: Customers },
       { path: "customers/new", Component: NewCustomer },
-      { path: "finance", Component: Finance },
+      { path: "finance", element: <RequireRole roles={["admin"]}><Finance /></RequireRole> },
       { path: "billing", Component: () => <Navigate to="/finance?tab=receipts" replace /> },
       { path: "billing/new", Component: () => <Navigate to="/finance?tab=receipts" replace /> },
       { path: "billing/save", Component: () => <Navigate to="/finance?tab=receipts" replace /> },

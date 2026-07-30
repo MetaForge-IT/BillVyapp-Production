@@ -6,6 +6,7 @@ import { BRAND } from "../../config/brand";
 import { cn } from "../ui/utils";
 import { SidebarProfileSection } from "./SidebarProfileSection";
 import { formatCompactInr, useDashboard } from "../../pages/dashboard/useDashboard";
+import { useRole } from "../../context/RoleContext";
 import {
   Zap,
   ChevronRight,
@@ -23,6 +24,7 @@ function isActive(pathname: string, search: string, href: string) {
 export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigate?: () => void; collapsed?: boolean }) {
   const location = useLocation();
   const { data, loading } = useDashboard();
+  const { role } = useRole();
   const kpis = data?.businessKpis;
 
   const quickStats = useMemo(() => {
@@ -56,7 +58,18 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
     ];
   }, [kpis, loading]);
 
-  const filteredNav = useMemo(() => enterpriseNavigation, []);
+  const filteredNav = useMemo(
+    () =>
+      enterpriseNavigation
+        .map((section) => ({
+          ...section,
+          items: section.items.filter(
+            (item) => !item.roles || item.roles.includes(role),
+          ),
+        }))
+        .filter((section) => section.items.length > 0),
+    [role],
+  );
   const flatNavItems = useMemo(
     () => filteredNav.flatMap((section) => section.items),
     [filteredNav],

@@ -38,6 +38,8 @@ export interface NavItem {
   href: string;
   icon: LucideIcon;
   children?: NavChildItem[];
+  /** Roles that can see this nav item. Undefined = visible to all. */
+  roles?: string[];
 }
 
 export interface NavSection {
@@ -71,7 +73,7 @@ export const enterpriseNavigation: NavSection[] = [
   {
     title: "Finance",
     items: [
-      { label: "Revenue Report", href: "/finance?tab=receipts", icon: Wallet },
+      { label: "Revenue Report", href: "/finance?tab=receipts", icon: Wallet, roles: ["admin"] },
     ],
   },
   {

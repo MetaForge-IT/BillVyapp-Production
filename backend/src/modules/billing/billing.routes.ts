@@ -39,7 +39,7 @@ billingRouter.use(authenticate);
 
 billingRouter.post("/confirm-only", validateRequest(confirmOnlySchema), billingController.confirmOnly);
 billingRouter.post("/checkout", validateRequest(checkoutSchema), billingController.checkout);
-billingRouter.get("/invoices", billingController.listInvoices);
+billingRouter.get("/invoices", authorize("admin"), billingController.listInvoices);
 billingRouter.get("/refunds", billingController.listRefunds);
 billingRouter.get("/pending", billingController.listPending);
 billingRouter.post("/:invoiceId/refund/request", validateRequest(requestRefundSchema), billingController.requestRefund);
