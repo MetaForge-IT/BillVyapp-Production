@@ -1,9 +1,12 @@
 /**
- * Production-safe seed — franchise + platform/franchise admin login accounts.
+ * Production-safe seed — franchise + platform/franchise admin login accounts +
+ * service catalog on every existing franchise shop.
+ *
  * Safe to re-run (upserts by unique keys).
  *
  * No shops are seeded — franchise admins create shops (and managers) in the app.
- * No service catalog / membership / inventory / transactional demo data.
+ * When a shop already exists (or is created later), the full Starr Kuts service
+ * catalog / membership / packages are applied.
  *
  * Production login accounts (always upserted):
  *   Super Admin → superadmin@metaforgeit.com / Metaforge Super Admin / meta@12#IT / 9849154456
@@ -14,6 +17,7 @@
  */
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
+import { seedServiceCatalogForSalon } from "../src/modules/services/seed-service-catalog";
 
 const prisma = new PrismaClient();
 
@@ -146,14 +150,18 @@ async function main() {
   await upsertSuperAdmin();
 
   // ── Franchise admins (Srinivas + Dev Team) ───────────────────────────────
+  let catalogOwnerId: string | null = null;
   for (const account of FRANCHISE_ADMIN_ACCOUNTS) {
-    await upsertFranchiseAdmin({
+    const user = await upsertFranchiseAdmin({
       franchiseId: franchise.id,
       email: account.email,
       password: account.password,
       fullName: account.fullName,
       phone: account.phone,
     });
+    if (account.email === ADMIN_LOGIN_EMAIL) {
+      catalogOwnerId = user.id;
+    }
   }
 
   // Deactivate legacy seed accounts (Vikram / Durga) if they still exist.
@@ -163,6 +171,25 @@ async function main() {
     },
     data: { isActive: false },
   });
+
+  // ── Service catalog on every existing franchise shop ─────────────────────
+  const shops = await prisma.salon.findMany({
+    where: { franchiseId: franchise.id },
+    select: { id: true, name: true, city: true },
+  });
+
+  if (shops.length === 0) {
+    console.log(
+      "No shops under franchise yet — catalog will be applied automatically when an admin creates a shop.",
+    );
+  } else {
+    for (const shop of shops) {
+      const result = await seedServiceCatalogForSalon(prisma, shop.id, catalogOwnerId);
+      console.log(
+        `Catalog seeded for "${shop.name}"${shop.city ? ` (${shop.city})` : ""}: ${result.categories} categories, ${result.services} services`,
+      );
+    }
+  }
 
   console.log("Seed complete.");
   console.log(`Franchise: ${franchise.name} (${franchise.slug}) — no shops seeded`);
