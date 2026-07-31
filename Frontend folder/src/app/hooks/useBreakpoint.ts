@@ -9,7 +9,7 @@ export interface BreakpointState {
   isDesktop: boolean;
   /** Phone-sized: < 640px */
   isPhone: boolean;
-  /** Sidebar layout: >= 768px */
+  /** Persistent sidebar layout: >= 1024px (tablets use the drawer) */
   isSidebarLayout: boolean;
 }
 
@@ -23,7 +23,7 @@ function readBreakpoint(): BreakpointState {
     isMobile: width < BREAKPOINTS.md,
     isTablet: width >= BREAKPOINTS.sm && width < BREAKPOINTS.lg,
     isDesktop: width >= BREAKPOINTS.lg,
-    isSidebarLayout: width >= BREAKPOINTS.md,
+    isSidebarLayout: width >= BREAKPOINTS.lg,
   };
 }
 

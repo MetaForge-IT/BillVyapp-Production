@@ -48,7 +48,7 @@ export class VerificationService {
       email: user.email,
       fullName: user.fullName,
       phone: user.phone,
-      salonName: user.salon.name,
+      salonName: user.salon?.name ?? "Your salon",
       verificationUrl: this.emails.buildVerificationUrl(rawLinkToken),
       otp: rawOtp,
       loginUrl: this.emails.buildLoginUrl(),
@@ -146,7 +146,7 @@ export class VerificationService {
       { email: user.email, name: user.fullName },
       {
         managerName: user.fullName,
-        salonName: user.salon.name,
+        salonName: user.salon?.name ?? "Your salon",
         loginUrl: this.emails.buildLoginUrl(),
         supportEmail: emailConfig.supportEmail,
       },

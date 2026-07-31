@@ -24,12 +24,16 @@ import { inventoryRouter } from "../modules/inventory/inventory.routes";
 import { stockAdjustmentsRouter } from "../modules/stock-adjustments/stock-adjustments.routes";
 import { stockPurchasesRouter } from "../modules/stock-purchases/stock-purchases.routes";
 import { vendorsRouter } from "../modules/vendors/vendors.routes";
+import { franchisesRouter } from "../modules/franchises/franchises.routes";
+import { myFranchiseRouter } from "../modules/my-franchise/my-franchise.routes";
 import healthRoutes from "./healthRoutes";
 
 const apiRouter = Router();
 
 apiRouter.use(healthRoutes);
 apiRouter.use("/auth", authRouter);
+apiRouter.use("/franchises", franchisesRouter);
+apiRouter.use("/my-franchise", myFranchiseRouter);
 apiRouter.use("/customers", customersRouter);
 apiRouter.use("/dashboard", dashboardRouter);
 apiRouter.use("/notifications", appNotificationsRouter);

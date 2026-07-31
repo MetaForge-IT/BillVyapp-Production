@@ -136,6 +136,9 @@ const METHOD_OPTIONS: { id: PayMethod; label: string; Icon: typeof Banknote }[] 
 
 const WALLET_PROVIDERS = ["Paytm", "Amazon Pay", "PhonePe", "Mobikwik"] as const;
 
+/** Methods accepted at checkout — bills are not settled by wallet or split payments. */
+export const BILL_PAY_METHODS: PayMethod[] = ["cash", "card", "upi"];
+
 interface PaymentMethodPickerProps {
   amountDue: number;
   value: PaymentMethodValue;
@@ -148,6 +151,18 @@ interface PaymentMethodPickerProps {
   upiNote?: string;
   /** Show the "Payment Method" header + due badge. */
   showHeader?: boolean;
+  /** Hide Cash/Card/UPI choices, used by the customer-facing QR-only view. */
+  hideMethodTabs?: boolean;
+  /** Remove manager-only controls such as the UPI reference field. */
+  qrOnly?: boolean;
+  /** Opens the dedicated customer-facing QR screen instead of showing QR inline. */
+  onOpenQr?: () => void;
+  /**
+   * Fill the parent's remaining height instead of sizing to content. The UPI QR
+   * then grows to whatever space is left, so a scroll-free checkout can still
+   * show a large, easy-to-scan code. Applies from tablet width up; phones scroll.
+   */
+  fluid?: boolean;
   className?: string;
 }
 
@@ -159,6 +174,10 @@ export function PaymentMethodPicker({
   amountFieldLabel = "Bill Amount",
   upiNote,
   showHeader = true,
+  hideMethodTabs = false,
+  qrOnly = false,
+  onOpenQr,
+  fluid = false,
   className,
 }: PaymentMethodPickerProps) {
   const options = METHOD_OPTIONS.filter((m) => methods.includes(m.id));
@@ -175,10 +194,13 @@ export function PaymentMethodPicker({
   const splitTotal = value.splitRows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
   const splitRemaining = amountDue - splitTotal;
 
+  // Height-filling kicks in from tablet up; phones still scroll.
+  const fillsHeight = fluid && value.method === "upi";
+
   return (
-    <div className={className}>
+    <div className={cn(fluid && "md:flex md:min-h-0 md:flex-col", className)}>
       {showHeader && (
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-2 flex shrink-0 items-center justify-between">
           <h4 className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a9a9a]">Payment Method</h4>
           <span className="rounded-full border border-[#D4AF37]/30 bg-[#FFFBEB] px-2.5 py-0.5 text-[10px] font-bold text-[#9a7a1e]">
             Due {formatInr(amountDue)}
@@ -186,30 +208,37 @@ export function PaymentMethodPicker({
         </div>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-black/[0.08] bg-white shadow-sm">
-        <div
-          className="gap-1.5 border-b border-black/[0.06] bg-[#faf9f7] p-3 grid"
-          style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
-        >
-          {options.map(({ id, label, Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => patch({ method: id })}
-              className={cn(
-                "flex flex-col items-center gap-1 rounded-lg border py-2 transition-all",
-                value.method === id
-                  ? "border-[#111118] bg-[#111118] text-[#D4AF37] shadow-sm"
-                  : "border-black/[0.08] bg-white text-[#9a9a9a] hover:border-[#D4AF37]/30 hover:text-[#111118]",
-              )}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              <span className="text-[8px] font-bold leading-none sm:text-[9px]">{label}</span>
-            </button>
-          ))}
-        </div>
+      <div
+        className={cn(
+          "overflow-hidden rounded-xl border border-black/[0.08] bg-white shadow-sm",
+          fillsHeight && "md:flex md:min-h-0 md:flex-1 md:flex-col",
+        )}
+      >
+        {!hideMethodTabs && (
+          <div
+            className="gap-1.5 border-b border-black/[0.06] bg-[#faf9f7] p-3 grid shrink-0"
+            style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+          >
+            {options.map(({ id, label, Icon }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => patch({ method: id })}
+                className={cn(
+                  "flex flex-col items-center gap-1 rounded-lg border py-2 transition-all",
+                  value.method === id
+                    ? "border-[#111118] bg-[#111118] text-[#D4AF37] shadow-sm"
+                    : "border-black/[0.08] bg-white text-[#9a9a9a] hover:border-[#D4AF37]/30 hover:text-[#111118]",
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                <span className="text-[8px] font-bold leading-none sm:text-[9px]">{label}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
-        <div className="p-4">
+        <div className={cn("p-4", fillsHeight && "md:flex md:min-h-0 md:flex-1 md:flex-col")}>
           {value.method === "cash" && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div>
@@ -249,38 +278,70 @@ export function PaymentMethodPicker({
             </div>
           )}
 
-          {value.method === "upi" && (
-            <div className="space-y-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-4">
-              <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
-                <div className="flex h-44 w-44 shrink-0 items-center justify-center rounded-2xl border border-blue-200 bg-white p-3 shadow-sm sm:h-48 sm:w-48">
+          {value.method === "upi" && !qrOnly && onOpenQr && (
+            <div className="flex min-h-32 flex-col items-center justify-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-5">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-blue-200 bg-white text-blue-600 shadow-sm">
+                <QrCode className="h-5 w-5" />
+              </div>
+              <div className="text-center">
+                <p className="text-[13px] font-bold text-[#111118]">UPI selected</p>
+                <p className="mt-0.5 text-[11px] text-gray-500">Open a clean customer screen to scan and pay</p>
+              </div>
+              <button
+                type="button"
+                onClick={onOpenQr}
+                className="flex h-10 items-center justify-center gap-2 rounded-xl bg-[#111118] px-5 text-[12px] font-bold text-[#D4AF37] shadow-sm transition-colors hover:bg-[#24242c]"
+              >
+                <QrCode className="h-4 w-4" />
+                Full-screen QR for the customer
+              </button>
+            </div>
+          )}
+
+          {value.method === "upi" && (qrOnly || !onOpenQr) && (
+            <div
+              className={cn(
+                "flex flex-col items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-4",
+                fillsHeight && "md:min-h-0 md:flex-1",
+              )}
+            >
+              <div className={cn("flex items-center justify-center", fillsHeight && "md:min-h-0 md:flex-1")}>
+                <div
+                  className={cn(
+                    "flex items-center justify-center rounded-2xl border border-blue-200 bg-white p-3 shadow-sm",
+                    "h-56 w-56 sm:h-64 sm:w-64",
+                    fillsHeight && "md:aspect-square md:h-full md:max-h-[420px] md:min-h-[240px] md:w-auto md:max-w-full",
+                  )}
+                >
                   <QRCodeSVG
                     value={buildUpiUri(
                       amountDue,
                       upiNote ?? `${BRAND.appName} payment`,
                     )}
-                    size={176}
+                    size={320}
                     level="M"
                     includeMargin={false}
-                    className="h-40 w-40 sm:h-44 sm:w-44"
+                    className="h-full w-full"
                   />
                 </div>
-                <div className="min-w-0 flex-1 text-center sm:text-left">
-                  <p className="text-[11px] font-medium text-gray-500">
-                    Scan &amp; Pay via GPay / PhonePe / Paytm
-                  </p>
-                  <p className="mt-1 text-[14px] font-bold text-[#111118]">{UPI_VPA}</p>
-                  <p className="text-[12px] text-[#6b6b6b]">{UPI_PAYEE_NAME}</p>
-                  <p className="mt-2 text-[20px] font-black tabular-nums text-[#111]">
-                    {formatInr(amountDue)}
-                  </p>
-                </div>
               </div>
-              <input
-                value={value.upiRefId}
-                onChange={(e) => patch({ upiRefId: e.target.value })}
-                placeholder="Transaction / Reference ID (optional)"
-                className="h-9 w-full rounded-lg border border-blue-300 bg-white px-3 text-[12px] font-semibold text-[#111] outline-none focus:border-blue-500"
-              />
+              <div className="shrink-0 text-center">
+                <p className="text-[22px] font-black leading-none tabular-nums text-[#111]">
+                  {formatInr(amountDue)}
+                </p>
+                <p className="mt-1.5 text-[13px] font-bold text-[#111118]">{UPI_VPA}</p>
+                <p className="text-[11px] font-medium text-gray-500">
+                  Scan &amp; Pay via GPay / PhonePe / Paytm
+                </p>
+              </div>
+              {!qrOnly && (
+                <input
+                  value={value.upiRefId}
+                  onChange={(e) => patch({ upiRefId: e.target.value })}
+                  placeholder="Transaction / Reference ID (optional)"
+                  className="h-9 w-full shrink-0 rounded-lg border border-blue-300 bg-white px-3 text-[12px] font-semibold text-[#111] outline-none focus:border-blue-500"
+                />
+              )}
             </div>
           )}
 

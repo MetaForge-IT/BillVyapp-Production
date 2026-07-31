@@ -18,7 +18,7 @@ import {
 import { useReceipts, type ReceiptRecord } from "../context/ReceiptsContext";
 import { requestRefund } from "../../api/billing";
 import { getApiErrorMessage } from "../../lib/api";
-import { toast } from "sonner";
+import { toast } from "../components/ui/hot-toast";
 import { Pagination } from "../components/shared/Pagination";
 import { useTablePagination } from "../hooks/useTablePagination";
 import { BRAND, RECEIPT_FOOTER } from "../config/brand";

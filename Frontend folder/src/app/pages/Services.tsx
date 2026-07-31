@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router";
-import { toast } from "sonner";
+import { toast } from "../components/ui/hot-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
@@ -21,7 +21,6 @@ import {
 } from "lucide-react";
 import {
   createService,
-  deleteService,
   fetchServices,
   updateService,
   type ServiceGender,
@@ -36,6 +35,7 @@ import { CouponsSection } from "./CouponsSection";
 import { BulkUploadServices, type BulkServiceRow } from "../components/shared/BulkUploadServices";
 import { ServiceProductLinksModal } from "../components/shared/ServiceProductLinksModal";
 import { useServiceProducts } from "../context/ServiceProductsContext";
+import { useRole } from "../context/RoleContext";
 import { Upload } from "lucide-react";
 import { Pagination } from "../components/shared/Pagination";
 import { PageStatCard } from "../components/shared/PageStatCard";
@@ -110,6 +110,7 @@ const emptyForm = {
 };
 
 export function Services() {
+  const { role } = useRole();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get("tab");
   const [mainTab, setMainTab] = useState(
@@ -369,17 +370,6 @@ export function Services() {
     }
   }
 
-  async function handleDeleteService(id: string, name: string) {
-    try {
-      await deleteService(id);
-      setServices((prev) => prev.filter((s) => s.id !== id));
-      toast.success("Service deleted", { description: name });
-      void loadServices();
-    } catch (error) {
-      toast.error(getApiErrorMessage(error, "Failed to delete service"));
-    }
-  }
-
   function resetCategoryForm() {
     setCategoryForm({ ...emptyCategoryForm });
     setEditingCategory(null);
@@ -434,9 +424,9 @@ export function Services() {
   }
 
   return (
-    <div className="min-w-0 max-w-full space-y-6 overflow-x-hidden">
+    <div className="flex h-[calc(100dvh-8rem)] min-h-0 min-w-0 max-w-full flex-col gap-4 overflow-hidden">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex shrink-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-[#1a1a1a] to-[#d4af37] bg-clip-text text-transparent">
             Service Management
@@ -444,34 +434,38 @@ export function Services() {
           <p className="text-muted-foreground mt-1">Manage services, packages, and coupons</p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            className="border-[#d4af37]/50 text-[#9a7a1e] hover:bg-[#d4af37]/08 hover:border-[#d4af37]"
-            onClick={() => { resetCategoryForm(); setShowCategoryManager(true); }}
-          >
-            <Tag className="h-4 w-4 mr-2" />
-            Categories
-          </Button>
-          <Button
-            variant="outline"
-            className="border-[#d4af37]/50 text-[#9a7a1e] hover:bg-[#d4af37]/08 hover:border-[#d4af37]"
-            onClick={() => setShowBulkUpload(true)}
-          >
-            <Upload className="h-4 w-4 mr-2" />
-            Bulk Upload
-          </Button>
-          <Button
-            className="bg-gradient-to-r from-[#111118] to-[#1a1a1a] hover:from-[#1a1a1a] hover:to-[#D4AF37]/80 shadow-lg shadow-[#D4AF37]/20 text-white"
-            onClick={() => setShowAdd(true)}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Service
-          </Button>
+          {role !== "admin" && (
+            <>
+              <Button
+                variant="outline"
+                className="border-[#d4af37]/50 text-[#9a7a1e] hover:bg-[#d4af37]/08 hover:border-[#d4af37]"
+                onClick={() => { resetCategoryForm(); setShowCategoryManager(true); }}
+              >
+                <Tag className="h-4 w-4 mr-2" />
+                Categories
+              </Button>
+              <Button
+                variant="outline"
+                className="border-[#d4af37]/50 text-[#9a7a1e] hover:bg-[#d4af37]/08 hover:border-[#d4af37]"
+                onClick={() => setShowBulkUpload(true)}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Bulk Upload
+              </Button>
+              <Button
+                className="bg-gradient-to-r from-[#111118] to-[#1a1a1a] hover:from-[#1a1a1a] hover:to-[#D4AF37]/80 shadow-lg shadow-[#D4AF37]/20 text-white"
+                onClick={() => setShowAdd(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Service
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-3 md:grid-cols-4">
+      {/* Laptop/desktop only — tablets and phones prioritize service space. */}
+      <div className="hidden shrink-0 gap-3 lg:grid lg:grid-cols-4">
         <PageStatCard label="Total Services" value={String(totalServices)} sub="Across all categories" icon={Scissors} index={0} onClick={() => handleMainTabChange("categories")} />
         <PageStatCard label="Most Popular" value={mostPopular?.displayName ?? "—"} sub={`${mostPopular?.popularity ?? 0}% booking rate`} icon={Star} index={1} onClick={() => handleMainTabChange("categories")} />
         <PageStatCard label="Avg. Service Price" value={currency(avgPrice)} sub="Across all services" icon={IndianRupee} index={2} href="/reports" />
@@ -479,8 +473,8 @@ export function Services() {
       </div>
 
       {/* Main tabbed area */}
-      <Tabs value={mainTab} onValueChange={handleMainTabChange}>
-        <TabsList className={SEGMENTED_PILL_LIST}>
+      <Tabs value={mainTab} onValueChange={handleMainTabChange} className="min-h-0 flex-1 gap-4 overflow-hidden">
+        <TabsList className={`${SEGMENTED_PILL_LIST} shrink-0`}>
           <TabsTrigger value="categories" className={SEGMENTED_PILL_TRIGGER}>
             <Scissors className="h-3.5 w-3.5" />
             Services
@@ -495,97 +489,99 @@ export function Services() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="categories" className="space-y-4">
-          {/* Filter Bar */}
-          <div className="flex w-full min-w-0 flex-col gap-2.5 p-3 bg-white rounded-2xl border border-black/[0.07] shadow-sm sm:flex-row sm:flex-wrap sm:items-center">
+        <TabsContent value="categories" className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
+          {/* Filter Bar — search stays full-width on phone/tablet so it never gets squished */}
+          <div className="flex w-full min-w-0 shrink-0 flex-col gap-2.5 rounded-2xl border border-black/[0.07] bg-white p-3 shadow-sm lg:flex-row lg:items-center lg:gap-3">
             {/* Search */}
-            <div className="relative w-full min-w-0 flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#d4af37]" />
+            <div className="relative w-full min-w-0 shrink-0 lg:max-w-sm lg:flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#d4af37]" />
               <input
-                placeholder="Search name, group, category…"
+                placeholder="Search services…"
                 value={searchInput}
                 onChange={e => { setSearchInput(e.target.value); }}
-                className="w-full h-9 pl-9 pr-3 rounded-xl border border-gray-200 bg-[#fafaf8] text-[13px] text-[#111] placeholder:text-gray-400 outline-none focus:border-[#d4af37]/60 focus:ring-2 focus:ring-[#d4af37]/10 transition-all"
+                className="h-10 w-full rounded-xl border border-gray-200 bg-[#fafaf8] pl-9 pr-3 text-[13px] text-[#111] outline-none transition-all placeholder:text-gray-400 focus:border-[#d4af37]/60 focus:ring-2 focus:ring-[#d4af37]/10"
               />
             </div>
 
-            {/* Gender Pills */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              {([
-                { key: "all", label: "All" },
-                { key: "MALE", label: "Male" },
-                { key: "FEMALE", label: "Female" },
-                { key: "UNISEX", label: "Unisex" },
-              ] as const).map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => { setGenderFilter(key); }}
-                  className={`h-8 px-3 rounded-xl text-[12px] font-semibold transition-all ${
-                    genderFilter === key
-                      ? "bg-[#1a1a1a] text-[#d4af37] shadow-sm"
-                      : "bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
-                  }`}
-                >
-                  {label}
-                  <span className={`ml-1.5 text-[10px] font-bold ${genderFilter === key ? "text-[#d4af37]/70" : "text-gray-400"}`}>
-                    {key === "all"
-                      ? allServicesFlat.length
-                      : allServicesFlat.filter(s => s.gender === key).length}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-            {/* Category Dropdown */}
-            <div className="relative min-w-0 shrink">
-              <select
-                value={categoryFilter}
-                onChange={e => { setCategoryFilter(e.target.value); }}
-                className={`h-9 max-w-full pl-3 pr-7 rounded-xl border text-[12px] font-medium outline-none appearance-none cursor-pointer transition-all ${
-                  categoryFilter !== "all"
-                    ? "border-[#d4af37]/60 bg-amber-50 text-[#b8962e] font-semibold"
-                    : "border-gray-200 bg-[#fafaf8] text-[#555] hover:border-gray-300"
-                }`}
-              >
-                <option value="all">All Categories</option>
-                {categories.map(c => (
-                  <option key={c.id} value={c.name}>{c.name} ({categoryCounts[c.id] ?? 0})</option>
+            {/* Filters */}
+            <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:flex-1">
+              {/* Gender Pills */}
+              <div className="flex max-w-full items-center gap-1.5 overflow-x-auto table-scroll pb-0.5">
+                {([
+                  { key: "all", label: "All" },
+                  { key: "MALE", label: "Male" },
+                  { key: "FEMALE", label: "Female" },
+                  { key: "UNISEX", label: "Unisex" },
+                ] as const).map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => { setGenderFilter(key); }}
+                    className={`h-9 shrink-0 rounded-xl px-3 text-[12px] font-semibold transition-all ${
+                      genderFilter === key
+                        ? "bg-[#1a1a1a] text-[#d4af37] shadow-sm"
+                        : "bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
+                    }`}
+                  >
+                    {label}
+                    <span className={`ml-1.5 text-[10px] font-bold ${genderFilter === key ? "text-[#d4af37]/70" : "text-gray-400"}`}>
+                      {key === "all"
+                        ? allServicesFlat.length
+                        : allServicesFlat.filter(s => s.gender === key).length}
+                    </span>
+                  </button>
                 ))}
-              </select>
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </div>
-              {categoryFilter !== "all" && <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#d4af37]" />}
-            </div>
 
-            {/* Status Dropdown */}
-            <div className="relative shrink">
-              <select
-                value={statusFilter}
-                onChange={e => { setStatusFilter(e.target.value as "all" | "active" | "inactive"); }}
-                className={`h-9 pl-3 pr-7 rounded-xl border text-[12px] font-medium outline-none appearance-none cursor-pointer transition-all ${
-                  statusFilter !== "all"
-                    ? "border-[#d4af37]/60 bg-amber-50 text-[#b8962e] font-semibold"
-                    : "border-gray-200 bg-[#fafaf8] text-[#555] hover:border-gray-300"
-                }`}
-              >
-                <option value="all">All Status</option>
-                <option value="active">Active ({allServicesFlat.filter(s => s.status === "active").length})</option>
-                <option value="inactive">Inactive ({allServicesFlat.filter(s => s.status === "inactive").length})</option>
-              </select>
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                {/* Category Dropdown */}
+                <div className="relative min-w-0 flex-1 sm:flex-none">
+                  <select
+                    value={categoryFilter}
+                    onChange={e => { setCategoryFilter(e.target.value); }}
+                    className={`h-9 w-full max-w-full cursor-pointer appearance-none rounded-xl border pl-3 pr-7 text-[12px] font-medium outline-none transition-all sm:w-auto ${
+                      categoryFilter !== "all"
+                        ? "border-[#d4af37]/60 bg-amber-50 font-semibold text-[#b8962e]"
+                        : "border-gray-200 bg-[#fafaf8] text-[#555] hover:border-gray-300"
+                    }`}
+                  >
+                    <option value="all">All Categories</option>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.name}>{c.name} ({categoryCounts[c.id] ?? 0})</option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
+                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </div>
+                  {categoryFilter !== "all" && <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-[#d4af37]" />}
+                </div>
+
+                {/* Status Dropdown */}
+                <div className="relative min-w-0 flex-1 sm:flex-none">
+                  <select
+                    value={statusFilter}
+                    onChange={e => { setStatusFilter(e.target.value as "all" | "active" | "inactive"); }}
+                    className={`h-9 w-full cursor-pointer appearance-none rounded-xl border pl-3 pr-7 text-[12px] font-medium outline-none transition-all sm:w-auto ${
+                      statusFilter !== "all"
+                        ? "border-[#d4af37]/60 bg-amber-50 font-semibold text-[#b8962e]"
+                        : "border-gray-200 bg-[#fafaf8] text-[#555] hover:border-gray-300"
+                    }`}
+                  >
+                    <option value="all">All Status</option>
+                    <option value="active">Active ({allServicesFlat.filter(s => s.status === "active").length})</option>
+                    <option value="inactive">Inactive ({allServicesFlat.filter(s => s.status === "inactive").length})</option>
+                  </select>
+                  <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
+                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </div>
+                  {statusFilter !== "all" && <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-[#d4af37]" />}
+                </div>
               </div>
-              {statusFilter !== "all" && <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#d4af37]" />}
             </div>
-            </div>
-
           </div>
 
           {/* Services Table */}
-          <Card className="shadow-lg overflow-hidden min-w-0">
-            <CardHeader className="bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d] text-white">
+          <Card className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden shadow-lg">
+            <CardHeader className="shrink-0 bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d] text-white">
               <CardTitle className="flex items-center gap-3">
                 All Services
                 <Badge variant="secondary" className="ml-auto bg-white/20 text-white border-white/40">
@@ -593,12 +589,12 @@ export function Services() {
                 </Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-0 min-w-0">
+            <CardContent className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain p-0">
               <Table
                 className="table-fixed"
                 containerClassName="no-table-scroll"
               >
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 z-10 bg-gray-50">
                     <TableRow className="bg-gray-50">
                       <TableHead className="w-[34%] whitespace-normal">Service</TableHead>
                       <TableHead className="w-[26%] whitespace-normal">Category</TableHead>
@@ -677,15 +673,6 @@ export function Services() {
                                 </span>
                               )}
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 w-8 p-0 border-red-200 text-red-500 hover:bg-red-50"
-                              onClick={() => void handleDeleteService(s.id, s.displayName)}
-                              disabled={saving}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -710,11 +697,11 @@ export function Services() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="packages">
+        <TabsContent value="packages" className="min-h-0 overflow-y-auto overscroll-contain pr-1">
           <Packages />
         </TabsContent>
 
-        <TabsContent value="coupons">
+        <TabsContent value="coupons" className="min-h-0 overflow-y-auto overscroll-contain pr-1">
           <CouponsSection />
         </TabsContent>
       </Tabs>

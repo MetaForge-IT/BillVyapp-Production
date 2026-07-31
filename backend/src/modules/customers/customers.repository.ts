@@ -51,6 +51,7 @@ function mapCustomer(customer: CustomerWithRelations) {
     notes: customer.preferences?.notes ?? "",
     gstin: customer.gstin ?? "",
     status: customer.status as "active" | "inactive",
+    source: (customer as Customer & { source?: string }).source ?? "unknown",
   };
 }
 
@@ -108,6 +109,7 @@ export class CustomersRepository {
         address: input.address ?? null,
         gstin: input.gstin ?? null,
         status: input.status ?? "active",
+        source: input.source ?? "unknown",
         joinedAt: new Date(),
         createdById: auth.userId,
         preferences: input.notes

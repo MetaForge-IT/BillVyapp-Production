@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { toast } from "sonner";
+import { toast } from "../components/ui/hot-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -18,6 +18,7 @@ import {
   type VendorRecord,
 } from "../../api/vendors";
 import { getApiErrorMessage } from "../../lib/api";
+import { useRole } from "../context/RoleContext";
 
 type VendorRow = {
   id: string;
@@ -46,6 +47,7 @@ function mapVendor(vendor: VendorRecord): VendorRow {
 }
 
 export function Vendors() {
+  const { role } = useRole();
   const [vendors, setVendors] = useState<VendorRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -156,7 +158,7 @@ export function Vendors() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#FAF8F2] border border-[#D4AF37]/20">
@@ -167,10 +169,12 @@ export function Vendors() {
             <p className="text-sm text-[#6B6B6B]">Manage vendor relationships</p>
           </div>
         </div>
-        <Button className="bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d] shadow-lg shadow-[#d4af37]/30" onClick={() => { setNewVendor({ name: "", contact: "", email: "", phone: "", address: "", category: "", status: "active" }); setFormErrors({}); setIsAddVendorOpen(true); }}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Vendor
-        </Button>
+        {role !== "admin" && (
+          <Button className="bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d] shadow-lg shadow-[#d4af37]/30" onClick={() => { setNewVendor({ name: "", contact: "", email: "", phone: "", address: "", category: "", status: "active" }); setFormErrors({}); setIsAddVendorOpen(true); }}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Vendor
+          </Button>
+        )}
       </div>
 
       <div className="flex gap-3 flex-wrap">
@@ -199,7 +203,60 @@ export function Vendors() {
               Loading vendors…
             </div>
           ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="divide-y divide-black/[0.06] lg:hidden">
+            {paginatedVendors.map((vendor) => (
+              <article key={vendor.id} className="space-y-3 p-4 sm:p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#111118] text-[13px] font-black text-[#D4AF37]">
+                      {vendor.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-[15px] font-bold text-[#111118]">{vendor.name}</p>
+                      <p className="truncate text-[12px] text-[#6b6b6b]">{vendor.contact}</p>
+                    </div>
+                  </div>
+                  <Badge className={vendor.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
+                    {vendor.status === "active" ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
+                <div className="space-y-2 rounded-xl border border-black/[0.06] bg-[#FAF8F2] p-3">
+                  <p className="flex items-center gap-2 text-[12px] text-[#3d3d3d]"><Phone className="h-3.5 w-3.5 text-[#D4AF37]" />{vendor.phone}</p>
+                  <p className="flex items-center gap-2 text-[12px] text-[#3d3d3d]"><Mail className="h-3.5 w-3.5 text-[#D4AF37]" />{vendor.email}</p>
+                  <p className="flex items-start gap-2 text-[12px] text-[#6b6b6b]"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#D4AF37]" />{vendor.address}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-xl bg-[#FAF8F2] px-3 py-2.5">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Category</p>
+                    <p className="mt-1 truncate text-[13px] font-bold">{vendor.category}</p>
+                  </div>
+                  <div className="rounded-xl border border-[#D4AF37]/20 bg-[#FFFBEB] px-3 py-2.5">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a7d20]">Products</p>
+                    <p className="mt-1 text-[15px] font-black text-[#9a7d20]">{vendor.products}</p>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => openViewVendor(vendor)}>
+                    <Eye className="mr-1.5 h-3.5 w-3.5" /> View
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className={`h-10 rounded-xl ${vendor.status === "active" ? "border-red-200 text-red-500" : "border-emerald-200 text-emerald-600"}`}
+                    onClick={() => openDeactivate(vendor)}
+                  >
+                    {vendor.status === "active" ? "Deactivate" : "Activate"}
+                  </Button>
+                </div>
+              </article>
+            ))}
+            {filtered.length === 0 && (
+              <div className="py-10 text-center text-sm text-muted-foreground">No vendors found matching your search.</div>
+            )}
+          </div>
+
+          <div className="hidden overflow-x-auto lg:block">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-muted/30">
@@ -257,6 +314,7 @@ export function Vendors() {
               </tbody>
             </table>
           </div>
+          </>
           )}
           <Pagination
             page={page}
@@ -296,7 +354,7 @@ export function Vendors() {
             </div>
 
             {/* Contact Person + Email */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Contact Person <span className="text-[#d4af37]">*</span></p>
                 <div className="relative">
@@ -335,7 +393,7 @@ export function Vendors() {
             </div>
 
             {/* Address + Category */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Address <span className="text-[#d4af37]">*</span></p>
                 <div className="relative">

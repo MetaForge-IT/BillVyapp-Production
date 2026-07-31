@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { fetchSettings, updateSettings as apiUpdateSettings } from "../../api/settings";
 import { getApiErrorMessage } from "../../lib/api";
-import { toast } from "sonner";
+import { toast } from "../components/ui/hot-toast";
 import type { UserRole } from "./RoleContext";
 
 // ── Modules that can be toggled per role ──────────────────────────────────────
@@ -97,10 +97,12 @@ export interface AppSettings {
 }
 
 // ── Defaults ──────────────────────────────────────────────────────────────────
-const ROLES: UserRole[] = ["manager", "receptionist", "stylist", "accountant", "inventory"];
+const ROLES: UserRole[] = ["super_admin", "admin", "manager", "receptionist", "stylist", "accountant", "inventory"];
 const MODULES: AppModule[] = ["dashboard","appointments","customers","finance","employees","inventory","reports","marketing","settings"];
 
 const DEFAULT_PERMISSIONS: RolePermissions = {
+  super_admin:  { dashboard:true,  appointments:false, customers:false, finance:false, employees:false, inventory:false, reports:true,  marketing:false, settings:true },
+  admin:        { dashboard:true,  appointments:false, customers:true,  finance:true,  employees:true,  inventory:true,  reports:true,  marketing:true,  settings:false },
   manager:      { dashboard:true,  appointments:true,  customers:true,  finance:true,  employees:true,  inventory:true,  reports:true,  marketing:true,  settings:false },
   receptionist: { dashboard:true,  appointments:true,  customers:true,  finance:true,  employees:false, inventory:false, reports:false, marketing:false, settings:false },
   stylist:      { dashboard:true,  appointments:true,  customers:false, finance:false, employees:false, inventory:false, reports:false, marketing:false, settings:false },

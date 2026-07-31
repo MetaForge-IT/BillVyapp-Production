@@ -19,7 +19,7 @@ import {
   type FeedbackStats,
   type FeedbackStatus,
 } from "../../api/feedback";
-import { toast } from "sonner";
+import { toast } from "../components/ui/hot-toast";
 
 const SOURCE_META: Record<string, { label: string }> = {
   google: { label: "Google" },

@@ -1,12 +1,11 @@
 import { useNavigate, useLocation } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, PanelLeftClose, PanelLeftOpen, Receipt } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { EnterpriseSidebar } from "./layout/EnterpriseSidebar";
 import { PageBackButton } from "./layout/PageBackButton";
 import { BRAND } from "../config/brand";
 import { TooltipProvider } from "./ui/tooltip";
-import { Toaster } from "./ui/sonner";
 import { cn } from "./ui/utils";
 import { useBreakpoint } from "../hooks/useBreakpoint";
 import { useAppBackNavigation } from "../hooks/useAppBackNavigation";
@@ -36,25 +35,31 @@ export function Layout({ children }: { children: ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
-  const { isPhone } = useBreakpoint();
+  const { isDesktop } = useBreakpoint();
   const { showBack, goBack } = useAppBackNavigation();
+
+  // The drawer only exists below lg; don't leave it mounted after a resize.
+  useEffect(() => {
+    if (isDesktop) setMobileMenuOpen(false);
+  }, [isDesktop]);
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-[#f4f2ed]">
+      <div className="h-dvh overflow-hidden bg-[#f4f2ed]">
             <div
               className={cn(
-                "min-h-screen w-full",
+                "h-full w-full",
                 collapsed
-                  ? "md:grid md:grid-cols-[68px_minmax(0,1fr)]"
-                  : "md:grid md:grid-cols-[260px_minmax(0,1fr)]",
+                  ? "lg:grid lg:grid-cols-[68px_minmax(0,1fr)]"
+                  : "lg:grid lg:grid-cols-[260px_minmax(0,1fr)]",
               )}
             >
 
-            {/* ── TABLET / DESKTOP SIDEBAR (md+) ── */}
+            {/* ── DESKTOP SIDEBAR (lg+) — tablets use the drawer, screen width is
+                 too precious next to a permanent 260px rail ── */}
             <aside
               className={cn(
-                "hidden md:sticky md:top-0 md:z-40 md:flex md:h-screen md:flex-col md:shrink-0 md:overflow-visible transition-all duration-300 ease-in-out",
+                "hidden lg:sticky lg:top-0 lg:z-40 lg:flex lg:h-screen lg:flex-col lg:shrink-0 lg:overflow-visible transition-all duration-300 ease-in-out",
               )}
             >
               <div className="relative flex h-full min-h-0 grow flex-col overflow-visible bg-[#0a0a10] shadow-[6px_0_32px_rgba(0,0,0,0.35)]">
@@ -72,9 +77,9 @@ export function Layout({ children }: { children: ReactNode }) {
             </aside>
 
             {/* ── Main column: header + scrollable content ── */}
-            <div className="flex min-h-screen w-full min-w-0 flex-col">
-              {/* Mobile / narrow header */}
-              <header className="sticky top-0 z-50 grid h-20 shrink-0 grid-cols-[auto_1fr_auto] items-center overflow-visible border-b border-white/[0.08] bg-[#0a0a10] safe-area-top md:hidden">
+            <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
+              {/* Phone / tablet header — hamburger opens the sidebar drawer */}
+              <header className="sticky top-0 z-50 grid h-20 shrink-0 grid-cols-[auto_1fr_auto] items-center overflow-visible border-b border-white/[0.08] bg-[#0a0a10] safe-area-top lg:hidden">
                 <div className="flex shrink-0 items-center gap-2 bg-[#0a0a10] px-3">
                   <button
                     type="button"
@@ -97,8 +102,8 @@ export function Layout({ children }: { children: ReactNode }) {
                 </div>
               </header>
 
-              {/* Desktop / tablet header (sidebar visible) */}
-              <header className="sticky top-0 z-50 hidden h-20 shrink-0 grid-cols-[1fr_auto_1fr] items-center overflow-visible border-b border-white/[0.08] bg-[#0a0a10] safe-area-top md:grid">
+              {/* Desktop header (sidebar visible) */}
+              <header className="sticky top-0 z-50 hidden h-20 shrink-0 grid-cols-[1fr_auto_1fr] items-center overflow-visible border-b border-white/[0.08] bg-[#0a0a10] safe-area-top lg:grid">
                 <div className="flex items-center px-4 sm:px-6">
                   {showBack && <PageBackButton onClick={goBack} />}
                 </div>
@@ -115,14 +120,14 @@ export function Layout({ children }: { children: ReactNode }) {
               </header>
 
               {/* Page content */}
-              <main className="flex-1 min-w-0">
+              <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-none">
                 <div className="mx-auto w-full max-w-[1800px] px-6 py-6 safe-area-bottom lg:px-8">
                   <AnimatePresence mode="wait">
                       <motion.div
                         key={location.pathname}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -6 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
                         transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
                       >
                         {children}
@@ -133,10 +138,10 @@ export function Layout({ children }: { children: ReactNode }) {
             </div>
           </div>
 
-            {/* ── MOBILE MENU (overlay, outside grid) ── */}
+            {/* ── DRAWER MENU (overlay, outside grid) — phone + tablet ── */}
             <AnimatePresence>
               {mobileMenuOpen && (
-                <div className="fixed inset-0 z-50 md:hidden safe-area-top">
+                <div className="fixed inset-0 z-50 lg:hidden safe-area-top">
                   <motion.div
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                     className="fixed inset-0 bg-black/60 backdrop-blur-sm"
@@ -153,12 +158,6 @@ export function Layout({ children }: { children: ReactNode }) {
               )}
             </AnimatePresence>
 
-            <Toaster
-              richColors
-              closeButton
-              position={isPhone ? "bottom-center" : "top-right"}
-              toastOptions={{ className: "safe-area-x" }}
-            />
           </div>
     </TooltipProvider>
   );

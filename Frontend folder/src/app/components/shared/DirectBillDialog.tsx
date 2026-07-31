@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
-  CreditCard,
   Plus,
   Receipt,
   Search,
@@ -11,7 +10,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "../ui/hot-toast";
 import { confirmOnlyCheckout, completeCheckout } from "../../../api/billing";
 import { fetchCustomers, type Customer } from "../../../api/customers";
 import { fetchServiceCatalog } from "../../../api/services";
@@ -30,6 +29,7 @@ import { Dialog, DialogContent } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { cn } from "../ui/utils";
 import {
+  BILL_PAY_METHODS,
   PaymentMethodPicker,
   createPaymentMethodValue,
   isPaymentMethodValid,
@@ -114,11 +114,12 @@ export function DirectBillDialog({
   const [items, setItems] = useState<BillItem[]>([]);
   const [itemSearch, setItemSearch] = useState("");
   const [catalogTab, setCatalogTab] = useState<"products" | "services">("products");
-  const [discount, setDiscount] = useState(0);
+  const [discountPct, setDiscountPct] = useState(0);
+  const [discountFlat, setDiscountFlat] = useState(0);
+  const [discountMode, setDiscountMode] = useState<"pct" | "flat">("pct");
   const [discountReason, setDiscountReason] = useState("");
   const [couponInput, setCouponInput] = useState("");
   const [coupon, setCoupon] = useState<{ code: string; value: number; type: "%" | "₹" } | null>(null);
-  const [giftCardInput, setGiftCardInput] = useState("");
   const [loyaltyAvailable, setLoyaltyAvailable] = useState(0);
   const [loyaltyRedeem, setLoyaltyRedeem] = useState(0);
   const [advanceApplied, setAdvanceApplied] = useState(0);
@@ -126,8 +127,9 @@ export function DirectBillDialog({
   const [gstRate, setGstRate] = useState(5);
   const [customTaxMode, setCustomTaxMode] = useState(false);
   const [customTaxInput, setCustomTaxInput] = useState("");
-  const [notes, setNotes] = useState("");
-  const [payment, setPayment] = useState<PaymentMethodValue>(createPaymentMethodValue());
+  const [payment, setPayment] = useState<PaymentMethodValue>(
+    createPaymentMethodValue({ method: "upi" }),
+  );
   const [receipt, setReceipt] = useState<ReceiptResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -139,11 +141,12 @@ export function DirectBillDialog({
     setItems([]);
     setItemSearch("");
     setCatalogTab("products");
-    setDiscount(0);
+    setDiscountPct(0);
+    setDiscountFlat(0);
+    setDiscountMode("pct");
     setDiscountReason("");
     setCouponInput("");
     setCoupon(null);
-    setGiftCardInput("");
     setLoyaltyAvailable(0);
     setLoyaltyRedeem(0);
     setAdvanceApplied(0);
@@ -151,8 +154,7 @@ export function DirectBillDialog({
     setGstRate(5);
     setCustomTaxMode(false);
     setCustomTaxInput("");
-    setNotes("");
-    setPayment(createPaymentMethodValue());
+    setPayment(createPaymentMethodValue({ method: "upi" }));
   };
 
   useEffect(() => {
@@ -170,7 +172,29 @@ export function DirectBillDialog({
     setLoyaltyAvailable(matched?.loyaltyPoints ?? 0);
   };
 
+  const applyCouponCode = () => {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    const match = coupons.find((c) => c.code.toUpperCase() === code && c.status === "active");
+    if (!match) {
+      toast.error("Coupon not found or inactive");
+      return;
+    }
+    setCoupon({
+      code: match.code,
+      value: match.value,
+      type: match.type === "percentage" ? "%" : "₹",
+    });
+    setCouponInput("");
+  };
+
   const subtotal = items.reduce((total, item) => total + item.price * item.qty, 0);
+  // Manual discount is entered either as a percentage of the subtotal or as a
+  // flat rupee amount; the invoice always carries the rupee value.
+  const discount =
+    discountMode === "pct"
+      ? Math.round((subtotal * discountPct) / 100)
+      : Math.min(Math.round(discountFlat), subtotal);
   const couponDiscount = coupon
     ? coupon.type === "%"
       ? Math.round((subtotal * coupon.value) / 100)
@@ -319,12 +343,12 @@ export function DirectBillDialog({
     subtotal,
     discountAmount: loyaltyDiscount,
     couponDiscount,
+    couponCode: couponDiscount > 0 ? coupon?.code : undefined,
     manualDiscountAmount: discount,
     manualDiscountReason: discount > 0 ? discountReason.trim() : undefined,
     gstRate: gstEnabled ? gstRate : 0,
     gstAmount: gst,
     totalAmount: grandTotal,
-    notes: notes || undefined,
     dueDate: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
   });
 
@@ -989,125 +1013,87 @@ export function DirectBillDialog({
 
                   {/* Discounts */}
                   <div>
-                    <h4 className="mb-3 text-[11px] font-bold uppercase tracking-[0.12em] text-gray-500">
+                    <h4 className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-gray-500">
                       Discounts & Offers
                     </h4>
-                    <div className="space-y-3">
-                      <div className="rounded-xl border border-gray-200 bg-white p-4">
-                        <div className="mb-2.5 flex items-center gap-2">
-                          <Tag className="h-3.5 w-3.5 shrink-0 text-[#d4af37]" />
-                          <span className="text-[12px] font-semibold text-[#111]">Coupon Code</span>
-                          {coupon && (
-                            <span className="ml-auto rounded-full bg-[#d4af37]/10 px-2 py-0.5 text-[10px] font-black text-[#9a7a1e]">
+                    <div className="space-y-2">
+                      {coupon ? (
+                        <div className="flex h-10 items-center justify-between gap-2 rounded-xl border border-[#d4af37]/30 bg-[#FFFBEB] px-3">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <Tag className="h-3.5 w-3.5 shrink-0 text-[#d4af37]" />
+                            <span className="truncate text-[12px] font-black tracking-wider text-[#9a7a1e]">
+                              {coupon.code}
+                            </span>
+                            <span className="shrink-0 text-[10px] text-gray-400">applied</span>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <span className="text-[11px] font-black tabular-nums text-[#9a7a1e]">
                               -₹{couponDiscount.toLocaleString()}
                             </span>
-                          )}
-                        </div>
-                        {coupon ? (
-                          <div className="flex items-center justify-between rounded-lg border border-[#d4af37]/20 bg-[#d4af37]/06 px-3 py-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[13px] font-black tracking-wider text-[#9a7a1e]">
-                                {coupon.code}
-                              </span>
-                              <span className="text-[10px] text-gray-400">applied</span>
-                            </div>
                             <button type="button" onClick={() => setCoupon(null)} className="text-gray-400 hover:text-gray-700">
                               <X className="h-3.5 w-3.5" />
                             </button>
                           </div>
-                        ) : (
-                          <div className="flex gap-2">
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <Tag className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#d4af37]" />
                             <input
                               value={couponInput}
                               onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                              placeholder="Enter coupon code"
-                              className="h-9 flex-1 rounded-lg border border-gray-200 bg-white px-3 text-[12px] font-medium uppercase outline-none transition-colors placeholder:normal-case placeholder:font-normal placeholder:text-gray-400 focus:border-[#d4af37]"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const code = couponInput.trim().toUpperCase();
-                                const match = coupons.find(
-                                  (c) => c.code.toUpperCase() === code && c.status === "active",
-                                );
-                                if (match) {
-                                  setCoupon({
-                                    code: match.code,
-                                    value: match.value,
-                                    type: match.type === "percentage" ? "%" : "₹",
-                                  });
-                                  setCouponInput("");
-                                } else {
-                                  toast.error("Coupon not found or inactive");
-                                }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") applyCouponCode();
                               }}
-                              className="h-9 shrink-0 rounded-lg bg-[#111] px-4 text-[11px] font-bold text-[#d4af37] hover:bg-[#2a2a2a]"
-                            >
-                              Apply
-                            </button>
+                              placeholder="Coupon code"
+                              className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-9 pr-3 text-[12px] font-medium uppercase outline-none transition-colors placeholder:normal-case placeholder:font-normal placeholder:text-gray-400 focus:border-[#d4af37]"
+                            />
                           </div>
-                        )}
-                      </div>
-
-                      <div className="rounded-xl border border-gray-200 bg-white p-4">
-                        <div className="mb-2.5 flex items-center gap-2">
-                          <CreditCard className="h-3.5 w-3.5 shrink-0 text-[#d4af37]" />
-                          <span className="text-[12px] font-semibold text-[#111]">Gift Card</span>
-                        </div>
-                        <div className="flex gap-2">
-                          <input
-                            value={giftCardInput}
-                            onChange={(e) => setGiftCardInput(e.target.value.toUpperCase())}
-                            placeholder="GC-XXXX-XXXX"
-                            className="h-9 flex-1 rounded-lg border border-gray-200 bg-white px-3 text-[12px] font-medium uppercase outline-none transition-colors placeholder:normal-case placeholder:font-normal placeholder:text-gray-400 focus:border-[#d4af37]"
-                          />
                           <button
                             type="button"
-                            onClick={() => toast.info("Gift cards are not configured yet")}
-                            className="h-9 shrink-0 rounded-lg bg-[#111] px-4 text-[11px] font-bold text-[#d4af37] hover:bg-[#2a2a2a]"
+                            onClick={applyCouponCode}
+                            className="h-10 shrink-0 rounded-xl bg-[#111] px-4 text-[11px] font-bold text-[#d4af37] hover:bg-[#2a2a2a]"
                           >
-                            Redeem
+                            Apply
                           </button>
-                        </div>
-                      </div>
-
-                      {advanceAvailable > 0 && (
-                        <div className="rounded-xl border border-[#d4af37]/30 bg-white p-4">
-                          <div className="mb-2.5 flex items-center gap-2">
-                            <Wallet className="h-3.5 w-3.5 shrink-0 text-[#d4af37]" />
-                            <span className="text-[12px] font-semibold text-[#111]">Advance Payment</span>
-                            <span className="ml-auto rounded-full bg-[#d4af37]/10 px-2 py-0.5 text-[10px] font-black text-[#9a7a1e]">
-                              ₹{advanceAvailable.toLocaleString()} available
-                            </span>
-                          </div>
-                          {advanceApplied > 0 ? (
-                            <div className="flex items-center justify-between rounded-lg border border-[#d4af37]/20 bg-[#d4af37]/06 px-3 py-2">
-                              <span className="text-[13px] font-black text-[#9a7a1e]">
-                                ₹{advanceApplied.toLocaleString()} applied
-                              </span>
-                              <button type="button" onClick={() => setAdvanceApplied(0)} className="text-gray-400 hover:text-gray-700">
-                                <X className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setAdvanceApplied(Math.min(advanceAvailable, grandTotal))}
-                              className="h-9 w-full rounded-lg bg-[#111] text-[11px] font-bold text-[#d4af37] hover:bg-[#2a2a2a]"
-                            >
-                              Apply full advance (₹{Math.min(advanceAvailable, grandTotal).toLocaleString()})
-                            </button>
-                          )}
                         </div>
                       )}
 
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="rounded-xl border border-gray-200 bg-white p-4">
-                          <div className="mb-2 flex items-center justify-between">
-                            <span className="text-[12px] font-semibold text-[#111]">Loyalty</span>
-                            <span className="rounded-md bg-gray-50 px-1.5 py-0.5 text-[10px] text-gray-400">
-                              {loyaltyAvailable} pts
+                      {advanceAvailable > 0 && (
+                        advanceApplied > 0 ? (
+                          <div className="flex h-10 items-center justify-between gap-2 rounded-xl border border-[#d4af37]/30 bg-[#FFFBEB] px-3">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <Wallet className="h-3.5 w-3.5 shrink-0 text-[#d4af37]" />
+                              <span className="truncate text-[12px] font-black text-[#9a7a1e]">
+                                ₹{advanceApplied.toLocaleString()} advance applied
+                              </span>
+                            </div>
+                            <button type="button" onClick={() => setAdvanceApplied(0)} className="shrink-0 text-gray-400 hover:text-gray-700">
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setAdvanceApplied(Math.min(advanceAvailable, grandTotal))}
+                            className="flex h-10 w-full items-center justify-between gap-2 rounded-xl border border-[#d4af37]/30 bg-white px-3 transition-colors hover:bg-[#FFFBEB]"
+                          >
+                            <span className="flex items-center gap-2 text-[12px] font-semibold text-[#111]">
+                              <Wallet className="h-3.5 w-3.5 text-[#d4af37]" />
+                              Use advance
                             </span>
+                            <span className="text-[11px] font-black tabular-nums text-[#9a7a1e]">
+                              ₹{Math.min(advanceAvailable, grandTotal).toLocaleString()}
+                            </span>
+                          </button>
+                        )
+                      )}
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                          <div className="mb-1 flex items-center justify-between gap-1">
+                            <span className="text-[11px] font-semibold text-[#111]">Loyalty</span>
+                            <span className="shrink-0 text-[10px] text-gray-400">{loyaltyAvailable} pts</span>
                           </div>
                           <input
                             type="number"
@@ -1119,49 +1105,90 @@ export function DirectBillDialog({
                                 Math.min(loyaltyAvailable, Math.max(0, Number(e.target.value))),
                               )
                             }
-                            placeholder="Redeem pts"
-                            className="h-9 w-full rounded-lg border border-gray-200 px-3 text-[12px] outline-none focus:border-[#d4af37]"
+                            placeholder="0"
+                            className="h-8 w-full rounded-lg border border-gray-200 px-2.5 text-right text-[12px] tabular-nums outline-none focus:border-[#d4af37]"
                           />
+                          {loyaltyRedeem > 0 && (
+                            <p className="mt-1 text-right text-[10px] font-semibold text-[#9a7a1e]">
+                              = ₹{Math.round(loyaltyRedeem * 0.5).toLocaleString()} off
+                            </p>
+                          )}
                         </div>
-                        <div className="rounded-xl border border-gray-200 bg-white p-4">
-                          <div className="mb-2">
-                            <span className="text-[12px] font-semibold text-[#111]">Manual Discount</span>
+                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                          <div className="mb-1 flex items-center justify-between gap-1">
+                            <span className="text-[11px] font-semibold text-[#111]">Manual discount</span>
+                            {/* Percent or flat rupees — whichever the manager was quoted */}
+                            <div className="flex shrink-0 overflow-hidden rounded-md border border-gray-200">
+                              {(["pct", "flat"] as const).map((mode) => (
+                                <button
+                                  key={mode}
+                                  type="button"
+                                  onClick={() => setDiscountMode(mode)}
+                                  className={cn(
+                                    "h-6 w-7 text-[11px] font-bold transition-colors",
+                                    discountMode === mode
+                                      ? "bg-[#111] text-[#d4af37]"
+                                      : "bg-white text-gray-400 hover:text-[#111]",
+                                  )}
+                                >
+                                  {mode === "pct" ? "%" : "₹"}
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                          <input
-                            type="number"
-                            min={0}
-                            max={subtotal}
-                            value={discount || ""}
-                            onChange={(e) => {
-                              const next = Math.min(Number(e.target.value) || 0, subtotal);
-                              setDiscount(next);
-                              if (next <= 0) setDiscountReason("");
-                            }}
-                            placeholder="₹ amount"
-                            className="h-9 w-full rounded-lg border border-gray-200 px-3 text-[12px] outline-none focus:border-[#d4af37]"
-                          />
+                          <div className="relative">
+                            {discountMode === "pct" ? (
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                step={0.5}
+                                value={discountPct || ""}
+                                onChange={(e) => {
+                                  const next = Math.min(100, Math.max(0, Number(e.target.value) || 0));
+                                  setDiscountPct(next);
+                                  if (next <= 0) setDiscountReason("");
+                                }}
+                                placeholder="0"
+                                aria-label="Manual discount percent"
+                                className="h-8 w-full rounded-lg border border-gray-200 pl-2.5 pr-6 text-right text-[12px] tabular-nums outline-none focus:border-[#d4af37]"
+                              />
+                            ) : (
+                              <input
+                                type="number"
+                                min={0}
+                                max={subtotal}
+                                step={10}
+                                value={discountFlat || ""}
+                                onChange={(e) => {
+                                  const next = Math.min(subtotal, Math.max(0, Number(e.target.value) || 0));
+                                  setDiscountFlat(next);
+                                  if (next <= 0) setDiscountReason("");
+                                }}
+                                placeholder="0"
+                                aria-label="Manual discount amount"
+                                className="h-8 w-full rounded-lg border border-gray-200 pl-2.5 pr-6 text-right text-[12px] tabular-nums outline-none focus:border-[#d4af37]"
+                              />
+                            )}
+                            <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-gray-400">
+                              {discountMode === "pct" ? "%" : "₹"}
+                            </span>
+                          </div>
+                          {discount > 0 && (
+                            <p className="mt-1 text-right text-[10px] font-semibold text-[#9a7a1e]">
+                              -₹{discount.toLocaleString()}
+                            </p>
+                          )}
                         </div>
                       </div>
 
                       {discount > 0 && (
-                        <div className="rounded-xl border border-[#d4af37]/35 bg-[#FFFBEB] p-4">
-                          <div className="mb-2 flex items-center gap-2">
-                            <Tag className="h-3.5 w-3.5 shrink-0 text-[#d4af37]" />
-                            <span className="text-[12px] font-semibold text-[#111]">
-                              Manual discount reason <span className="text-red-500">*</span>
-                            </span>
-                          </div>
-                          <textarea
-                            value={discountReason}
-                            onChange={(e) => setDiscountReason(e.target.value)}
-                            placeholder="Why is this discount being given? (required)"
-                            rows={2}
-                            className="w-full resize-none rounded-lg border border-[#d4af37]/30 bg-white px-3 py-2 text-[12px] outline-none placeholder:text-gray-400 focus:border-[#d4af37]"
-                          />
-                          <p className="mt-1.5 text-[10px] text-[#9a7a1e]">
-                            Saved with this bill against the customer for audit.
-                          </p>
-                        </div>
+                        <input
+                          value={discountReason}
+                          onChange={(e) => setDiscountReason(e.target.value)}
+                          placeholder="Reason for the manual discount (required, saved for audit)"
+                          className="h-10 w-full rounded-xl border border-[#d4af37]/40 bg-[#FFFBEB] px-3 text-[12px] outline-none transition-colors placeholder:text-gray-400 focus:border-[#d4af37]"
+                        />
                       )}
                     </div>
                   </div>
@@ -1201,7 +1228,10 @@ export function DirectBillDialog({
                       {discount > 0 && (
                         <div className="flex items-center justify-between text-[13px]">
                           <span className="text-gray-500">
-                            Manual Discount
+                            Manual discount{" "}
+                            {discountMode === "pct" && (
+                              <span className="text-[11px] font-medium text-[#9a7a1e]">({discountPct}%)</span>
+                            )}
                             {discountReason.trim() ? (
                               <span className="mt-0.5 block text-[10px] font-medium text-[#9a7a1e]">
                                 {discountReason.trim()}
@@ -1261,20 +1291,9 @@ export function DirectBillDialog({
                     amountDue={dueNow}
                     value={payment}
                     onChange={setPayment}
+                    methods={BILL_PAY_METHODS}
                     upiNote={`${BRAND.appName} bill${customer.name ? ` — ${customer.name}` : ""}`}
                   />
-
-                  <div>
-                    <h4 className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a9a9a]">
-                      Notes
-                    </h4>
-                    <textarea
-                      placeholder="Add a note for this transaction…"
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      className="h-12 w-full resize-none rounded-xl border border-black/[0.08] bg-[#faf9f7] px-3 py-2 text-[12px] text-[#111118] outline-none transition-colors placeholder:text-[#9a9a9a] focus:border-[#D4AF37]/40"
-                    />
-                  </div>
                 </div>
 
                 <div className="flex shrink-0 flex-col gap-2.5 border-t border-black/[0.06] bg-[#faf9f7] px-4 py-3 sm:flex-row sm:gap-3 sm:px-5">

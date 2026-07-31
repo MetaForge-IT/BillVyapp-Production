@@ -202,16 +202,16 @@ export function ProfileDropdown({
           !collapsed && (
             <>
               <div className="min-w-0 flex-1 relative z-10 text-left overflow-hidden">
-                <p className="text-[11px] font-semibold text-white/90 truncate tracking-[-0.01em]">
+                <p className="text-[13px] font-semibold text-white truncate tracking-[-0.01em]">
                   {displayShortName}
                 </p>
-                <p className="text-[9px] text-[#D4AF37]/70 truncate font-medium leading-tight mt-0.5">
+                <p className="text-[11px] text-[#D4AF37] truncate font-medium leading-tight mt-0.5">
                   {roleInfo.label}
                 </p>
               </div>
               <ChevronDown
                 className={cn(
-                  "h-3 w-3 shrink-0 text-white/25 group-hover:text-[#D4AF37] transition-all duration-200 relative z-10",
+                  "h-4 w-4 shrink-0 text-white/70 group-hover:text-[#D4AF37] transition-all duration-200 relative z-10",
                   isOpen && "rotate-180 text-[#D4AF37]",
                 )}
               />

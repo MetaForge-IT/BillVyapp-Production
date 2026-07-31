@@ -5,6 +5,7 @@ import {
   saveAccessToken,
   useAuthStore,
 } from "../stores/authStore";
+import { cacheAuthUser, clearCachedAuthUser } from "../lib/authUserCache";
 import type { AuthUser, LoginPayload, RegisterPayload } from "../types/auth";
 import { isLoginOtpChallenge } from "../types/auth";
 
@@ -34,6 +35,7 @@ export const authService = {
     // Password step only — tokens are issued after OTP verification.
     if (response.data && !isLoginOtpChallenge(response.data) && response.data.accessToken) {
       saveAccessToken(response.data.accessToken);
+      if (response.data.user) cacheAuthUser(response.data.user);
     }
 
     return response;
@@ -45,6 +47,9 @@ export const authService = {
     if (response.data?.accessToken) {
       saveAccessToken(response.data.accessToken);
     }
+    if (response.data?.user) {
+      cacheAuthUser(response.data.user);
+    }
 
     return response;
   },
@@ -54,6 +59,7 @@ export const authService = {
   },
 
   async logout() {
+    clearCachedAuthUser();
     await useAuthStore.getState().logout();
   },
 
@@ -74,7 +80,9 @@ export const authService = {
 
     try {
       const response = await authApi.getCurrentUser();
-      return response.data?.user ?? null;
+      const user = response.data?.user ?? null;
+      if (user) cacheAuthUser(user);
+      return user;
     } catch (error) {
       // Only clear the session on hard auth failures. Network/5xx must NOT
       // force logout on page refresh / profile load.
@@ -87,6 +95,7 @@ export const authService = {
         // Axios interceptor already attempted refresh; if we still have a
         // token it may be mid-refresh — leave clearing to the interceptor.
         if (!getAccessToken()) {
+          clearCachedAuthUser();
           useAuthStore.getState().clearSession();
         }
       }

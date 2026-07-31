@@ -10,6 +10,7 @@ export const createCustomerSchema = z.object({
   notes: z.string().trim().max(1000).optional(),
   gstin: z.string().trim().max(15).optional(),
   status: z.enum(["active", "inactive"]).optional(),
+  source: z.enum(["walk-in", "online", "unknown"]).optional(),
 });
 
 export const updateCustomerSchema = createCustomerSchema.partial();

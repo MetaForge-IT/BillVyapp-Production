@@ -23,6 +23,8 @@ export interface BillingCheckoutBase {
   discountAmount?: number;
   membershipDiscount?: number;
   couponDiscount?: number;
+  /** Code of the applied coupon — recorded as a redemption against the invoice. */
+  couponCode?: string;
   /** Staff manual discount — requires manualDiscountReason when > 0 */
   manualDiscountAmount?: number;
   manualDiscountReason?: string;

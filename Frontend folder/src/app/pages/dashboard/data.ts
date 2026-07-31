@@ -46,7 +46,7 @@ export interface CriticalAlert {
 
 const KPI_ICONS: Record<string, LucideIcon> = {
   "Today's Revenue": IndianRupee,
-  "Appointments Today": Calendar,
+  "Today's Walk-ins": Calendar,
   "New Customers": Users,
   "Pending Payments": Wallet,
   "Customer Satisfaction": Star,
@@ -78,7 +78,8 @@ export function mapAlerts(alerts: DashboardAlert[]): CriticalAlert[] {
 }
 
 export const quickActions: QuickAction[] = [
-  { label: "Add New Customer", description: "Register a new client", icon: UserPlus, href: "/customers/new" },
-  { label: "New Appointment", description: "Book an appointment", icon: CalendarPlus, href: "/appointments/new" },
-  { label: "New Walk-in", description: "Add a walk-in customer", icon: Users, href: "/walk-in" },
+  { label: "New Walk-in", description: "Check in & bill a walk-in", icon: Users, href: "/walk-in", primary: true },
+  { label: "New Appointment", description: "Book a future slot", icon: CalendarPlus, href: "/appointments/new" },
+  { label: "Add Customer", description: "Register a new client", icon: UserPlus, href: "/customers/new" },
+  { label: "View Schedule", description: "Today's appointments", icon: Calendar, href: "/appointments" },
 ];

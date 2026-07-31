@@ -8,7 +8,7 @@ import {
   type CreateCouponPayload,
 } from "../../api/coupons";
 import { getApiErrorMessage } from "../../lib/api";
-import { toast } from "sonner";
+import { toast } from "../components/ui/hot-toast";
 
 export type CouponType = "percentage" | "flat";
 export type CouponStatus = "active" | "expired" | "disabled";

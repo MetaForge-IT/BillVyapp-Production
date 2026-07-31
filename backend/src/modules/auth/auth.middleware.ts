@@ -33,7 +33,8 @@ export const authenticate: RequestHandler = asyncHandler(
 
     (req as AuthenticatedRequest).auth = {
       userId: user.id,
-      salonId: user.salonId,
+      salonId: user.salonId ?? "",
+      franchiseId: user.franchiseId,
       role: user.role,
     };
 

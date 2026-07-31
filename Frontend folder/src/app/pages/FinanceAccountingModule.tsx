@@ -4,7 +4,7 @@ import {
   Smartphone, ArrowLeftRight, AlertTriangle, Lock, BarChart3, PiggyBank, FileText,
   Plus, Trash2, Receipt, ShoppingCart, Users, Zap, ChevronRight,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "../components/ui/hot-toast";
 import { SegmentedPillNav } from "../components/layout/SegmentedPillNav";
 import { Pagination } from "../components/shared/Pagination";
 import { useTablePagination } from "../hooks/useTablePagination";

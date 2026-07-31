@@ -573,8 +573,8 @@ export class DashboardRepository {
           accent: "#D4AF37",
         },
         {
-          label: "Appointments Today",
-          value: String(todayAppointments),
+          label: "Today's Walk-ins",
+          value: String(walkInsToday),
           change: appointmentChange.text,
           changePositive: appointmentChange.positive,
           comparison: `${checkedInToday} checked in · ${noShowsToday} no-shows`,

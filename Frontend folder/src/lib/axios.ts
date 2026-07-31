@@ -8,7 +8,6 @@ import {
   clearAccessToken,
   getAccessToken,
   saveAccessToken,
-  useAuthStore,
 } from "../stores/authStore";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "/api";
@@ -104,7 +103,6 @@ apiClient.interceptors.response.use(
       originalRequest &&
       !originalRequest._retry &&
       !shouldSkipRefreshRetry(originalRequest.url) &&
-      useAuthStore.getState().isAuthenticated &&
       getAccessToken()
     ) {
       if (isRefreshing) {

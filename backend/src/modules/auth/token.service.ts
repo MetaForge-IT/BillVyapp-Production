@@ -26,7 +26,8 @@ type TokenServiceConfig = Pick<
 
 export interface AccessTokenClaims {
   sub: string;
-  salonId: string;
+  salonId: string | null;
+  franchiseId: string | null;
   role: string;
 }
 
@@ -48,6 +49,7 @@ export class TokenService {
     const payload = {
       sub: claims.sub,
       salonId: claims.salonId,
+      franchiseId: claims.franchiseId,
       role: claims.role,
       ver: JWT_PAYLOAD_VERSION,
     };
@@ -73,6 +75,7 @@ export class TokenService {
     try {
       const decoded = jwt.verify(token, this.config.jwtAccessSecret) as JsonWebTokenPayload & {
         salonId?: unknown;
+        franchiseId?: unknown;
         role?: unknown;
         ver?: unknown;
       };
@@ -211,6 +214,7 @@ export class TokenService {
 
   private toJwtPayload(decoded: JsonWebTokenPayload & {
     salonId?: unknown;
+    franchiseId?: unknown;
     role?: unknown;
     ver?: unknown;
   }): JwtPayload {
@@ -220,7 +224,32 @@ export class TokenService {
       });
     }
 
-    if (typeof decoded.salonId !== "string") {
+    const salonId =
+      decoded.salonId === null || decoded.salonId === undefined
+        ? null
+        : typeof decoded.salonId === "string"
+          ? decoded.salonId
+          : null;
+
+    // Reject non-string non-null salonId values (malformed tokens)
+    if (decoded.salonId !== null && decoded.salonId !== undefined && typeof decoded.salonId !== "string") {
+      throw new AppError(401, "Invalid access token", {
+        code: AUTH_ERROR_CODES.TOKEN_INVALID,
+      });
+    }
+
+    const franchiseId =
+      decoded.franchiseId === null || decoded.franchiseId === undefined
+        ? null
+        : typeof decoded.franchiseId === "string"
+          ? decoded.franchiseId
+          : null;
+
+    if (
+      decoded.franchiseId !== null &&
+      decoded.franchiseId !== undefined &&
+      typeof decoded.franchiseId !== "string"
+    ) {
       throw new AppError(401, "Invalid access token", {
         code: AUTH_ERROR_CODES.TOKEN_INVALID,
       });
@@ -240,7 +269,8 @@ export class TokenService {
 
     return {
       sub: decoded.sub,
-      salonId: decoded.salonId,
+      salonId,
+      franchiseId,
       role: decoded.role,
       ver: decoded.ver,
       iat: decoded.iat,

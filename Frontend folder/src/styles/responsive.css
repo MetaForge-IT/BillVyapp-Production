@@ -49,13 +49,39 @@ body {
   overflow-x: hidden !important;
 }
 
-/* Full-screen dialogs on phones */
+/*
+ * Full-screen dialogs. Radix centres its content with `top/left: 50%` and
+ * Tailwind's translate utilities, which in v4 write the `translate` property
+ * from --tw-translate-*. Zeroing those variables is what actually undoes the
+ * centring: a plain `translate: none` gets folded into `transform` by the CSS
+ * minifier and silently stops working in production builds.
+ */
 @media (max-width: 639px) {
   .dialog-mobile-sheet {
     top: 0 !important;
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
+    --tw-translate-x: 0 !important;
+    --tw-translate-y: 0 !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+  }
+}
+
+/* Work surfaces (checkout) take the whole screen on phones and tablets */
+@media (max-width: 1023.98px) {
+  .dialog-tablet-sheet {
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    --tw-translate-x: 0 !important;
+    --tw-translate-y: 0 !important;
     transform: none !important;
     width: 100% !important;
     max-width: 100% !important;
@@ -173,6 +199,22 @@ body {
 
 @media (min-width: 1024px) {
   .responsive-panel {
+    flex: 1 1 0%;
+    min-height: 0;
+    overflow: hidden;
+  }
+}
+
+/*
+ * Step-at-a-time variant for tablets and phones: the single visible panel owns
+ * the viewport and scrolls its own body, so the step nav stays put.
+ */
+@media (max-width: 1023.98px) {
+  .responsive-panels--wizard {
+    overflow: hidden;
+  }
+
+  .responsive-panels--wizard > .responsive-panel {
     flex: 1 1 0%;
     min-height: 0;
     overflow: hidden;

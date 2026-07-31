@@ -23,6 +23,8 @@ const billingBaseSchema = z
     discountAmount: z.number().min(0).optional().default(0),
     membershipDiscount: z.number().min(0).optional().default(0),
     couponDiscount: z.number().min(0).optional().default(0),
+    /** Code of the applied coupon — recorded as a redemption against the invoice */
+    couponCode: z.string().max(30).optional(),
     /** Staff-entered manual discount — requires a reason when > 0 */
     manualDiscountAmount: z.number().min(0).optional().default(0),
     manualDiscountReason: z.string().max(500).optional(),

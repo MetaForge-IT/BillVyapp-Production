@@ -1,8 +1,8 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --font-display: 'Manrope', system-ui, sans-serif;
-  --font-body: 'Inter', system-ui, sans-serif;
+  --font-display: Helvetica, Arial, sans-serif;
+  --font-body: 'Roboto', Helvetica, Arial, sans-serif;
   --font-size: 15px;
   --text-base: 14px;
   --background: #f4f2ed;

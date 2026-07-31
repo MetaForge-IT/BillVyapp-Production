@@ -21,6 +21,8 @@ export interface Customer {
   notes?: string;
   gstin?: string;
   status: "active" | "inactive";
+  /** Acquisition source: walk-in | online | unknown */
+  source?: "walk-in" | "online" | "unknown";
 }
 
 export interface CreateCustomerPayload {

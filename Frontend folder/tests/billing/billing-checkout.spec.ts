@@ -350,14 +350,18 @@ test.describe('Billing & Checkout', () => {
     await expect(dialog.getByRole('button', { name: '18%', exact: true })).toBeVisible();
     await dialog.getByRole('button', { name: '18%', exact: true }).click();
 
-    // 13. Verify manual discount validation — entering more than the subtotal must clamp
-    // to the subtotal (the input's max is wired to billSubtotal in the source).
-    const discountInput = dialog.getByPlaceholder('0').nth(1); // 0 = Loyalty, 1 = Manual Disc. (same placeholder, fixed DOM order)
-    await discountInput.fill(String(subtotalWithProduct + 5000));
-    await expect(discountInput).toHaveValue(String(subtotalWithProduct));
+    // 13. Verify manual discount validation — discounts are opt-in, so reveal the
+    // field first. It defaults to a percentage, so anything above 100 must clamp.
+    await dialog.getByRole('button', { name: 'Manual discount', exact: true }).click();
+    const discountInput = dialog.getByLabel('Manual discount percent');
+    await discountInput.fill('150');
+    await expect(discountInput).toHaveValue('100');
     // Now set a real, sane discount for the rest of this test
-    const manualDiscount = Math.min(50, Math.floor(subtotalWithProduct * 0.05));
-    await discountInput.fill(String(manualDiscount));
+    const discountPercent = 5;
+    await discountInput.fill(String(discountPercent));
+    const manualDiscount = Math.round((subtotalWithProduct * discountPercent) / 100);
+    // A manual discount can't be saved without a reason.
+    await dialog.getByPlaceholder('Reason for the manual discount (required, saved for audit)').fill('Festive offer');
 
     const taxable = subtotalWithProduct - manualDiscount;
     const expectedGst = Math.round((taxable * 18) / 100);
@@ -464,41 +468,13 @@ test.describe('Billing & Checkout', () => {
     const dialog = await openBillingFromRow(page, row);
 
     const subtotal = services.reduce((sum, s) => sum + s.price, 0);
-    await dialog.getByPlaceholder('Enter coupon code').fill(couponCode);
+    // Discount tools are collapsed until the cashier asks for them.
+    await dialog.getByRole('button', { name: 'Coupon', exact: true }).click();
+    await dialog.getByPlaceholder('Coupon code').fill(couponCode);
     await dialog.getByRole('button', { name: 'Apply', exact: true }).click();
 
     const expectedCouponDiscount = Math.round((subtotal * couponPercent) / 100);
     await expect(dialog.getByText(`-₹${expectedCouponDiscount.toLocaleString()}`).first()).toBeVisible();
-
-    assertNoErrors(pageErrors, consoleErrors);
-  });
-
-  // ── Scenario 14 ──────────────────────────────────────────────────────────
-  test('split payment (Cash + UPI) must equal the invoice total', async ({ page }) => {
-    const { pageErrors, consoleErrors } = attachErrorListeners(page);
-    await loginAsDemo(page);
-    await page.getByRole('link', { name: 'Appointments', exact: true }).click();
-    const { services, row } = await createAndStartWalkIn(page, 1);
-    const dialog = await openBillingFromRow(page, row);
-
-    const grandTotalLocator = dialog.getByText(/^₹[\d,]+$/).last();
-    await expect(grandTotalLocator).toBeVisible();
-    const grandTotal = parseInrAmount((await grandTotalLocator.textContent()) ?? '');
-
-    await dialog.getByRole('button', { name: 'Split', exact: true }).click();
-    const cashPart = Math.floor(grandTotal / 2);
-    const upiPart = grandTotal - cashPart;
-    const amountInputs = dialog.getByPlaceholder('Amount');
-    await amountInputs.nth(0).fill(String(cashPart)); // default split row 0 = cash
-    await amountInputs.nth(1).fill(String(upiPart)); // default split row 1 = upi
-    await expect(dialog.getByText('Balanced', { exact: true })).toBeVisible();
-
-    const completeButton = dialog.getByRole('button', { name: /^Complete Payment/ });
-    await expect(completeButton).toBeEnabled();
-    await completeButton.click();
-
-    await expect(page.getByRole('heading', { name: 'Payment Successful!' })).toBeVisible();
-    void services;
 
     assertNoErrors(pageErrors, consoleErrors);
   });

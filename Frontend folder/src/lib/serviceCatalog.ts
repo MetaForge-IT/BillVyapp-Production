@@ -63,6 +63,7 @@ export function mapToAppointmentService(service: CatalogService): AppointmentSer
     duration: service.duration ?? 30,
     category,
     tone: CATEGORY_TONES[category],
+    gender: service.gender,
   };
 }
 

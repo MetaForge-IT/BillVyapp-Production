@@ -135,7 +135,8 @@ export function LoginPage() {
 
       clearFormDraft(LOGIN_DRAFT_KEY);
       syncAuth();
-      navigate(from, { replace: true });
+      const role = !isLoginOtpChallenge(response.data) ? response.data?.user?.role : undefined;
+      navigate(role === "super_admin" ? "/super-admin" : from, { replace: true });
     } catch (err) {
       if (err instanceof ApiError && err.code === "EMAIL_NOT_VERIFIED") {
         setUnverifiedEmail(form.email.trim());
@@ -163,10 +164,13 @@ export function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      await authService.verifyLoginOtp(challengeId, otp);
+      const response = await authService.verifyLoginOtp(challengeId, otp);
       clearFormDraft(LOGIN_DRAFT_KEY);
       syncAuth();
-      navigate(from, { replace: true });
+      navigate(
+        response.data?.user?.role === "super_admin" ? "/super-admin" : from,
+        { replace: true },
+      );
       return true;
     } catch (err) {
       setError(getApiErrorMessage(err, "Invalid or expired OTP."));

@@ -21,7 +21,8 @@ import {
   type SalonPlan,
 } from "../../api/plans";
 import { getApiErrorMessage } from "../../lib/api";
-import { toast } from "sonner";
+import { useRole } from "../context/RoleContext";
+import { toast } from "../components/ui/hot-toast";
 
 interface Package {
   id: string;
@@ -94,6 +95,7 @@ const CATEGORY_STYLES: Record<string, { label: string; color: string }> = {
 };
 
 export function Packages() {
+  const { role } = useRole();
   const navigate = useNavigate();
   const [serviceCatalog, setServiceCatalog] = useState<CatalogService[]>([]);
   const [availableServices, setAvailableServices] = useState<string[]>([]);
@@ -347,12 +349,14 @@ export function Packages() {
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#D4AF37]">Bundles & Combos</p>
           <p className="text-[13px] text-[#9a9a9a]">Create and manage bundled service offerings</p>
         </div>
-        <Button
-          className="h-9 rounded-xl bg-[#111118] text-[#D4AF37] hover:bg-[#1a1a1a] shadow-sm"
-          onClick={() => setShowCreate(true)}
-        >
-          <Plus className="h-4 w-4 mr-2" /> Create Package
-        </Button>
+        {role !== "admin" && (
+          <Button
+            className="h-9 rounded-xl bg-[#111118] text-[#D4AF37] hover:bg-[#1a1a1a] shadow-sm"
+            onClick={() => setShowCreate(true)}
+          >
+            <Plus className="h-4 w-4 mr-2" /> Create Package
+          </Button>
+        )}
       </div>
 
       {/* KPIs */}
@@ -771,19 +775,21 @@ export function Packages() {
         ))}
 
         {/* Add Package Card */}
-        <button
-          type="button"
-          onClick={() => setShowCreate(true)}
-          className="flex min-h-[180px] flex-col items-center justify-center gap-2.5 rounded-xl border-2 border-dashed border-[#D4AF37]/25 bg-[#faf9f7]/50 p-4 text-center transition-all hover:border-[#D4AF37]/50 hover:bg-[#D4AF37]/5"
-        >
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#D4AF37]/20 bg-white">
-            <Plus className="h-5 w-5 text-[#D4AF37]" />
-          </div>
-          <div>
-            <p className="text-[13px] font-semibold text-[#111118]">Create New Package</p>
-            <p className="mt-0.5 text-[11px] text-[#9a9a9a]">Bundle services for better value</p>
-          </div>
-        </button>
+        {role !== "admin" && (
+          <button
+            type="button"
+            onClick={() => setShowCreate(true)}
+            className="flex min-h-[180px] flex-col items-center justify-center gap-2.5 rounded-xl border-2 border-dashed border-[#D4AF37]/25 bg-[#faf9f7]/50 p-4 text-center transition-all hover:border-[#D4AF37]/50 hover:bg-[#D4AF37]/5"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#D4AF37]/20 bg-white">
+              <Plus className="h-5 w-5 text-[#D4AF37]" />
+            </div>
+            <div>
+              <p className="text-[13px] font-semibold text-[#111118]">Create New Package</p>
+              <p className="mt-0.5 text-[11px] text-[#9a9a9a]">Bundle services for better value</p>
+            </div>
+          </button>
+        )}
       </div>
 
       {filtered.length > 0 && (

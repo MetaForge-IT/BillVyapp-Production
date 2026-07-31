@@ -29,7 +29,7 @@ import {
 } from "../../api/plans";
 import { fetchRefunds, approveRefund, rejectRefund, type RefundInvoice } from "../../api/billing";
 import { getApiErrorMessage } from "../../lib/api";
-import { toast } from "sonner";
+import { toast } from "../components/ui/hot-toast";
 import { BRAND } from "../config/brand";
 import { useSettings } from "../context/SettingsContext";
 import { useRole } from "../context/RoleContext";

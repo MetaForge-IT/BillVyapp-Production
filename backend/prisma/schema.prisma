@@ -24,25 +24,48 @@ enum ServiceGender {
 
 // ─── Core ────────────────────────────────────────────────────────────────────
 
-model Salon {
+/// Brand / franchise org (e.g. Starr Kuts, Lakme). Shops are Salon rows under a franchise.
+model Franchise {
   id        String   @id @default(uuid()) @db.Char(36)
   name      String   @db.VarChar(200)
-  tagline   String?  @db.VarChar(500)
-  address   String?  @db.Text
-  city      String?  @db.VarChar(100)
-  state     String?  @db.VarChar(100)
-  pincode   String?  @db.VarChar(20)
-  phone     String   @db.VarChar(20)
-  email     String   @unique @db.VarChar(255)
-  website   String?  @db.VarChar(255)
-  gstin     String?  @db.VarChar(15)
+  slug      String   @unique @db.VarChar(100)
   logoUrl   String?  @map("logo_url") @db.VarChar(500)
-  timezone  String   @default("Asia/Kolkata") @db.VarChar(50)
-  currency  String   @default("INR") @db.Char(3)
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
 
+  shops Salon[]
+  users User[]
+
+  @@map("franchises")
+}
+
+/// Physical shop / branch. Operational data (appointments, invoices, stock) is scoped here.
+model Salon {
+  id           String   @id @default(uuid()) @db.Char(36)
+  franchiseId  String?  @map("franchise_id") @db.Char(36)
+  name         String   @db.VarChar(200)
+  /// Short label for UI (e.g. "Main Branch", "MG Road").
+  displayName  String?  @map("display_name") @db.VarChar(100)
+  /// Optional shop code within the franchise (e.g. HYD-01).
+  code         String?  @db.VarChar(40)
+  tagline      String?  @db.VarChar(500)
+  address      String?  @db.Text
+  city         String?  @db.VarChar(100)
+  state        String?  @db.VarChar(100)
+  pincode      String?  @db.VarChar(20)
+  phone        String   @db.VarChar(20)
+  email        String   @unique @db.VarChar(255)
+  website      String?  @db.VarChar(255)
+  gstin        String?  @db.VarChar(15)
+  logoUrl      String?  @map("logo_url") @db.VarChar(500)
+  timezone     String   @default("Asia/Kolkata") @db.VarChar(50)
+  currency     String   @default("INR") @db.Char(3)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  franchise                Franchise? @relation(fields: [franchiseId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   businessHours            BusinessHour[]
   users                    User[]
   financialSettings        SalonFinancialSettings?
@@ -73,6 +96,7 @@ model Salon {
   budgetPeriods            BudgetPeriod[]
   dayCloses                DayClose[]
 
+  @@index([franchiseId])
   @@map("salons")
 }
 
@@ -96,10 +120,14 @@ model BusinessHour {
 
 model User {
   id              String    @id @default(uuid()) @db.Char(36)
-  salonId         String    @map("salon_id") @db.Char(36)
+  /// Null for platform super_admin. Required for shop/franchise staff.
+  salonId         String?   @map("salon_id") @db.Char(36)
+  /// Brand scope for franchise admins; null for super_admin and shop-only managers (derived via salon).
+  franchiseId     String?   @map("franchise_id") @db.Char(36)
   email           String    @db.VarChar(255)
   passwordHash    String    @map("password_hash") @db.VarChar(255)
   fullName        String    @map("full_name") @db.VarChar(200)
+  /// Roles: super_admin | admin | manager | receptionist | stylist | accountant | inventory
   role            String    @default("manager") @db.VarChar(20)
   /// Staff mobile number used for SMS login OTP (10-digit / E.164).
   phone           String?   @db.VarChar(20)
@@ -110,7 +138,8 @@ model User {
   createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
 
-  salon Salon @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  salon     Salon?     @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  franchise Franchise? @relation(fields: [franchiseId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   refreshTokens            RefreshToken[]
   passwordResetTokens      PasswordResetToken[]
@@ -142,6 +171,8 @@ model User {
   dayClosesClosed       DayClose[] @relation("DayCloseClosedBy")
 
   @@unique([salonId, email])
+  @@index([franchiseId])
+  @@index([email])
   @@map("users")
 }
 
@@ -276,6 +307,8 @@ model Customer {
   address          String?        @db.Text
   gstin            String?        @db.VarChar(15)
   status           String    @default("active") @db.VarChar(20)
+  /// Customer acquisition source: "walk-in" | "online" | "unknown".
+  source           String    @default("unknown") @db.VarChar(20)
   loyaltyPoints    Int            @default(0) @map("loyalty_points")
   totalVisits      Int            @default(0) @map("total_visits")
   totalSpend       Decimal        @default(0) @map("total_spend") @db.Decimal(12, 2)
@@ -309,6 +342,7 @@ model Customer {
 
   @@unique([salonId, phoneNormalized])
   @@index([salonId, status])
+  @@index([salonId, source])
   @@index([salonId, lastVisitAt])
   @@index([salonId, dateOfBirth])
   @@map("customers")

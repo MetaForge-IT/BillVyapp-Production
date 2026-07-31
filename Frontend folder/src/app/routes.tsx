@@ -24,6 +24,13 @@ import { MyProfile } from "./pages/MyProfile";
 import { HelpSupport } from "./pages/HelpSupport";
 import { Notifications } from "./pages/Notifications";
 import { NewCustomer } from "./pages/NewCustomer";
+import {
+  SuperAdminShell,
+  SuperAdminOverviewPage,
+} from "./pages/super-admin/SuperAdminShell";
+import { SuperAdminFranchisesPage } from "./pages/super-admin/SuperAdminFranchisesPage";
+import { SuperAdminFranchiseDetailPage } from "./pages/super-admin/SuperAdminFranchiseDetailPage";
+import { SuperAdminUsersPage } from "./pages/super-admin/SuperAdminUsersPage";
 // Coupons stays gated (redirects to Dashboard) — not restored, not deleted.
 // Employees, Reports/Analytics, Marketing, CEO Dashboard, AI Insights, and
 // Settings were permanently removed from this project (see routes below).
@@ -46,6 +53,16 @@ export const router = createBrowserRouter([
     element: <RequireAuth />,
     children: [
       {
+        path: "super-admin",
+        Component: SuperAdminShell,
+        children: [
+          { index: true, Component: SuperAdminOverviewPage },
+          { path: "franchises", Component: SuperAdminFranchisesPage },
+          { path: "franchises/:id", Component: SuperAdminFranchiseDetailPage },
+          { path: "users", Component: SuperAdminUsersPage },
+        ],
+      },
+      {
         Component: ProtectedAppShell,
         children: [
       // ── VERSION-1 CLIENT SCOPE ──────────────────────────────────────
@@ -55,9 +72,10 @@ export const router = createBrowserRouter([
       // gated, so the full app can be restored by reverting this file.
       // Public `/` is the landing page; app home lives at `/dashboard`.
       { path: "dashboard", Component: Dashboard },
-      { path: "appointments", Component: Appointments },
-      { path: "appointments/new", Component: NewAppointment },
-      { path: "walk-in", Component: WalkIn },
+      { path: "appointments", element: <RequireRole roles={["manager"]}><Appointments /></RequireRole> },
+      { path: "appointments/new", element: <RequireRole roles={["manager"]}><NewAppointment /></RequireRole> },
+      { path: "walk-in", element: <RequireRole roles={["manager"]}><WalkIn /></RequireRole> },
+      { path: "walk-in/bill", Component: () => <Navigate to="/appointments?type=walk-in" replace /> },
       { path: "walkins", Component: () => <Navigate to="/appointments?type=walk-in" replace /> },
       { path: "queue", Component: () => <Navigate to="/appointments" replace /> },
       { path: "customers", Component: Customers },

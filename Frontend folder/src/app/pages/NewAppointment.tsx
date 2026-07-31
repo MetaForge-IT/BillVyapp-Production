@@ -1,13 +1,13 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { toast } from "sonner";
+import { toast } from "../components/ui/hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, Plus, Check, Scissors,
   User, Calendar, ClipboardCheck, Clock,
   Sparkles, CalendarCheck2, Phone, Mail,
   UserPlus, Zap, StickyNote, Package, AlertTriangle, ChevronDown,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Receipt,
 } from "lucide-react";
 import { AppointmentStepper } from "./appointments/AppointmentStepper";
 import { bookingAppointmentSteps } from "./appointments/appointmentData";
@@ -23,8 +23,14 @@ import { fetchServiceCatalog } from "../../api/services";
 import { fetchSalonPlans } from "../../api/plans";
 import { getApiErrorMessage } from "../../lib/api";
 import { clearFormDraft, readFormDraft, writeFormDraft } from "../../lib/formDraft";
+import { useBreakpoint } from "../hooks/useBreakpoint";
 import { mapApiCatalog, mapToAppointmentService } from "../../lib/serviceCatalog";
 import { parseInr } from "../../lib/inventoryMappers";
+import {
+  APPOINTMENT_PAST_DAYS_LIMIT,
+  getAppointmentSlotMinDate,
+  isAppointmentSlotDateAllowed,
+} from "../../lib/appointmentSlotDate";
 import {
   serviceCategories,
   type AppointmentCustomer,
@@ -83,7 +89,7 @@ function createDefaultAppointmentDraft(mode: BookingMode = "appointment"): NewAp
     walkInName: "",
     walkInPhone: "",
     walkInGender: "",
-    walkInMode: "new",
+    walkInMode: "search",
     walkInSearch: "",
     apptNewMode: false,
     newCustName: "",
@@ -153,6 +159,8 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
   const [searchParams, setSearchParams] = useSearchParams();
   const { addAppointment } = useAppointments();
   const [saved, setSaved] = useState(false);
+  const [savedAppointmentId, setSavedAppointmentId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const isWalkInPage = mode === "walk-in";
   const draftKey = isWalkInPage ? NEW_WALK_IN_DRAFT_KEY : NEW_APPOINTMENT_DRAFT_KEY;
   const prefillsFromCrm = searchParams.has("customerId") || searchParams.has("name");
@@ -208,6 +216,11 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
             phone: c.phone,
             email: c.email,
             tier: mapCustomerTier(c.membershipTier),
+            gender:
+              c.gender === "male" ? "Male" as const
+              : c.gender === "female" ? "Female" as const
+              : c.gender === "other" ? "Other" as const
+              : undefined,
           })),
         ),
       )
@@ -285,6 +298,20 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
   const [time, setTime]                         = useState(draft.time);
   const [duration, setDuration]                 = useState(draft.duration);
   const [notes, setNotes]                       = useState(draft.notes);
+
+  /** Returning: past 7 days + future. New: today + future only. */
+  const isReturningCustomer =
+    visitType === "Walk-in"
+      ? walkInMode === "search"
+      : !apptNewMode;
+  const slotCustomerKind = isReturningCustomer ? "returning" : "new";
+  const slotMinDate = getAppointmentSlotMinDate(slotCustomerKind);
+
+  useEffect(() => {
+    if (date && !isAppointmentSlotDateAllowed(date, slotCustomerKind)) {
+      setDate(slotMinDate);
+    }
+  }, [slotCustomerKind, date, slotMinDate]);
 
   // Services state
   const [serviceListPage, setServiceListPage]   = useState(1);
@@ -487,11 +514,49 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
       c.phone.includes(customerSearch)
     ), [customerSearch]);
 
+  /** Customer gender used to restrict Male/Female/Others service tabs. */
+  const customerGenderForServices: "Male" | "Female" | "Other" | "" =
+    visitType === "Walk-in"
+      ? (walkInMode === "new" ? walkInGender : (selectedCustomer?.gender ?? ""))
+      : (apptNewMode ? newCustGender : (selectedCustomer?.gender ?? ""));
+
+  const visibleServiceTabs = useMemo((): ServiceTab[] => {
+    const extras: ServiceTab[] = ["Packages", "Products"];
+    if (customerGenderForServices === "Male") return ["Male", "Others", ...extras];
+    if (customerGenderForServices === "Female") return ["Female", "Others", ...extras];
+    if (customerGenderForServices === "Other") return ["Others", ...extras];
+    return ["Male", "Female", "Others", ...extras];
+  }, [customerGenderForServices]);
+
+  // Keep the active tab valid when gender filters hide Male/Female.
+  useEffect(() => {
+    if (!visibleServiceTabs.includes(serviceTab)) {
+      setServiceTab(visibleServiceTabs[0] ?? "Others");
+      setServiceListPage(1);
+    }
+  }, [visibleServiceTabs, serviceTab]);
+
+  // Drop cart lines that no longer match the selected gender.
+  useEffect(() => {
+    if (!customerGenderForServices) return;
+    setSelectedServices((prev) =>
+      prev.filter((s) => {
+        if (customerGenderForServices === "Male") return s.category === "Male" || s.category === "Others";
+        if (customerGenderForServices === "Female") return s.category === "Female" || s.category === "Others";
+        if (customerGenderForServices === "Other") return s.category === "Others";
+        return true;
+      }),
+    );
+  }, [customerGenderForServices]);
+
   const filteredServices = useMemo(() => {
     const q = serviceSearch.toLowerCase().trim();
     if (serviceTab === "Packages" || serviceTab === "Products") return [];
     return catalogServices.filter((s) => {
       if (s.category !== serviceTab) return false;
+      if (customerGenderForServices === "Male" && s.category === "Female") return false;
+      if (customerGenderForServices === "Female" && s.category === "Male") return false;
+      if (customerGenderForServices === "Other" && s.category !== "Others") return false;
       if (!q) return true;
       return (
         s.name.toLowerCase().includes(q) ||
@@ -500,7 +565,7 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
         (s.categoryLabel ?? "").toLowerCase().includes(q)
       );
     });
-  }, [serviceTab, serviceSearch, catalogServices]);
+  }, [serviceTab, serviceSearch, catalogServices, customerGenderForServices]);
 
   /** Category → Group → services for accordion listing (when not searching). */
   const groupedServices = useMemo(() => {
@@ -536,8 +601,13 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
   const filteredPackages = useMemo(() => {
     const q = serviceSearch.toLowerCase();
     if (serviceTab !== "Packages") return [];
-    return loadedPackages.filter(p => q === "" || p.name.toLowerCase().includes(q) || p.includes.some(i => i.toLowerCase().includes(q)));
-  }, [serviceTab, serviceSearch, loadedPackages]);
+    return loadedPackages.filter((p) => {
+      if (customerGenderForServices === "Male" && p.gender === "Female") return false;
+      if (customerGenderForServices === "Female" && p.gender === "Male") return false;
+      if (customerGenderForServices === "Other" && p.gender !== "All") return false;
+      return q === "" || p.name.toLowerCase().includes(q) || p.includes.some((i) => i.toLowerCase().includes(q));
+    });
+  }, [serviceTab, serviceSearch, loadedPackages, customerGenderForServices]);
 
   const filteredProducts = useMemo(() => {
     const q = serviceSearch.toLowerCase();
@@ -631,6 +701,19 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
   const stepValid = [customerValid, servicesValid, canSave];
   const currentStep = !customerValid ? 0 : !servicesValid ? 1 : 2;
 
+  // Tablet/phone show one step at a time — three columns don't fit, and the shop
+  // runs on tablets. Desktop keeps all three side by side.
+  const { isDesktop } = useBreakpoint();
+  const [wizardStep, setWizardStep] = useState(0);
+  // Never sit on a step whose prerequisites are no longer met.
+  const furthestStep = !customerValid ? 0 : !servicesValid ? 1 : 2;
+  const activeStep = Math.min(wizardStep, furthestStep);
+  const showStep = (index: number) => isDesktop || activeStep === index;
+
+  useEffect(() => {
+    setWizardStep((prev) => Math.min(prev, furthestStep));
+  }, [furthestStep]);
+
   // Walk-in search results
   const filteredWalkIn = useMemo(() =>
     walkInSearch.trim().length > 0
@@ -639,18 +722,22 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
           c.phone.includes(walkInSearch))
       : [], [walkInSearch]);
 
-  async function handleSave() {
+  async function persistBooking(): Promise<{ id: string; customerId?: string } | null> {
     if (!canSave || selectedServices.length === 0) {
       if (selectedServices.length === 0) {
         toast.error("Select at least one service from the catalog");
       }
-      return;
+      return null;
     }
-    const serviceNames = [
-      ...selectedServices.map(s => s.name),
-      ...selectedPackages.map(p => p.name),
-      ...selectedProducts.map(p => p.name),
-    ];
+    if (!date || !isAppointmentSlotDateAllowed(date, slotCustomerKind)) {
+      toast.error(
+        slotCustomerKind === "new"
+          ? "New customers can only book today or upcoming dates"
+          : `Scheduled date must be within the last ${APPOINTMENT_PAST_DAYS_LIMIT} days or any future day`,
+      );
+      setDate(slotMinDate);
+      return null;
+    }
     const servicePayload = selectedServices.map((s) => ({
       serviceId: s.id,
       itemName: s.name,
@@ -663,19 +750,32 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
       ...selectedProducts.map((p) => `Product: ${p.name}`),
     ].filter(Boolean).join("; ");
 
+    const created = await addAppointment({
+      customerId: slotCustomerKind === "returning" ? selectedCustomer?.id : undefined,
+      customerName: displayName,
+      customerPhone: displayPhone || "0000000000",
+      appointmentType: visitType === "Walk-in" ? "walk-in" : "appointment",
+      scheduledDate: date,
+      scheduledTime: time.length === 5 ? `${time}:00` : time,
+      durationMinutes: estimatedDuration || 90,
+      notes: extraNotes || undefined,
+      services: servicePayload,
+    });
+    clearFormDraft(draftKey);
+    setSavedAppointmentId(created.id);
+    return { id: created.id, customerId: created.customerId };
+  }
+
+  function goToAppointmentBill(appointmentId: string) {
+    navigate(`/appointments?type=walk-in&bill=${appointmentId}`);
+  }
+
+  async function handleSave() {
+    if (saving) return;
+    setSaving(true);
     try {
-      await addAppointment({
-        customerId: selectedCustomer?.id,
-        customerName: displayName,
-        customerPhone: displayPhone || "0000000000",
-        appointmentType: visitType === "Walk-in" ? "walk-in" : "appointment",
-        scheduledDate: date,
-        scheduledTime: time.length === 5 ? `${time}:00` : time,
-        durationMinutes: estimatedDuration || 90,
-        notes: extraNotes || undefined,
-        services: servicePayload,
-      });
-      clearFormDraft(draftKey);
+      const created = await persistBooking();
+      if (!created) return;
       setSaved(true);
       toast.success(isWalkInPage ? "Walk-in saved!" : "Appointment booked!", {
         description: isWalkInPage
@@ -684,6 +784,22 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
       });
     } catch (err) {
       toast.error(getApiErrorMessage(err, isWalkInPage ? "Failed to save walk-in" : "Failed to save appointment"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleBill() {
+    if (!isWalkInPage || saving) return;
+    setSaving(true);
+    try {
+      const created = await persistBooking();
+      if (!created) return;
+      goToAppointmentBill(created.id);
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Failed to open walk-in bill"));
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -733,20 +849,57 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
               ))}
             </div>
             <div className="grid grid-cols-2 gap-2.5">
-              <Button onClick={() => navigate(-1)} variant="outline"
-                className="rounded-xl h-11 border-black/[0.1] font-semibold text-[13px]">
-                Dashboard
-              </Button>
-              <Button
-                onClick={() => {
-                  setSaved(false);
-                  setSelectedCustomer(null); setSelectedServices([]);
-                  setWalkInName(""); setWalkInPhone("");
-                }}
-                className="rounded-xl h-11 bg-[#111118] text-[#D4AF37] font-semibold hover:bg-[#1e1e1e] text-[13px]"
-              >
-                + {isWalkInPage ? "New Walk-In" : "New Booking"}
-              </Button>
+              {isWalkInPage ? (
+                <>
+                  <Button
+                    onClick={() => navigate("/appointments?type=walk-in")}
+                    variant="outline"
+                    className="rounded-xl h-11 border-black/[0.1] font-semibold text-[13px]"
+                  >
+                    Appointments
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setSaved(false);
+                      setSavedAppointmentId(null);
+                      setSelectedCustomer(null);
+                      setSelectedServices([]);
+                      setSelectedPackages([]);
+                      setSelectedProducts([]);
+                      setWalkInName("");
+                      setWalkInPhone("");
+                      setWalkInGender("");
+                      setWalkInSearch("");
+                      setWalkInMode("search");
+                      navigate("/walk-in");
+                    }}
+                    className="rounded-xl h-11 bg-[#111118] text-[#D4AF37] font-semibold hover:bg-[#1e1e1e] text-[13px]"
+                  >
+                    + New Walk-In
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    onClick={() => navigate("/appointments")}
+                    variant="outline"
+                    className="rounded-xl h-11 border-black/[0.1] font-semibold text-[13px]"
+                  >
+                    Appointments
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setSaved(false);
+                      setSavedAppointmentId(null);
+                      setSelectedCustomer(null); setSelectedServices([]);
+                      setWalkInName(""); setWalkInPhone("");
+                    }}
+                    className="rounded-xl h-11 bg-[#111118] text-[#D4AF37] font-semibold hover:bg-[#1e1e1e] text-[13px]"
+                  >
+                    + New Booking
+                  </Button>
+                </>
+              )}
             </div>
           </motion.div>
       </div>
@@ -755,7 +908,16 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
 
   // ── MAIN ──────────────────────────────────────────────────────────────────
   return (
-    <div className="-mx-4 -my-4 flex min-h-[calc(100dvh-3.5rem)] flex-col overflow-hidden sm:-mx-6 sm:-my-5 lg:-mx-10 lg:-my-6">
+    <div
+      className={cn(
+        "-mx-4 -my-4 flex flex-col overflow-hidden sm:-mx-6 sm:-my-5 lg:-mx-10 lg:-my-6",
+        // In wizard mode the page must fit exactly — the 5rem app header plus the
+        // shell padding this page can't negate — so the step nav never scrolls away.
+        isDesktop
+          ? "min-h-[calc(100dvh-3.5rem)]"
+          : "h-[calc(100dvh-6rem)] sm:h-[calc(100dvh-5.5rem)]",
+      )}
+    >
 
       {/* Page header + progress stepper */}
       <div className="shrink-0 border-b border-black/[0.06] bg-white px-4 py-4 sm:px-6 lg:px-8">
@@ -777,16 +939,17 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
         </div>
         <AppointmentStepper
           steps={bookingAppointmentSteps}
-          currentStep={currentStep}
+          currentStep={isDesktop ? currentStep : activeStep}
           stepValid={stepValid}
-          onStepClick={() => {}}
+          onStepClick={(index) => { if (!isDesktop) setWizardStep(index); }}
         />
       </div>
 
-      {/* Responsive columns: stack on mobile/tablet, side-by-side on desktop */}
-      <div className="responsive-panels">
+      {/* One step at a time on tablet/phone, three columns on desktop */}
+      <div className={cn("responsive-panels", !isDesktop && "responsive-panels--wizard")}>
 
         {/* ── COL 1: CUSTOMER ── */}
+        {showStep(0) && (
         <div className="responsive-panel flex flex-col border-b lg:border-b-0 lg:border-r border-black/[0.08] bg-[#f4f2ed] overflow-hidden">
           <ColHeader num="01" icon={User} title="Customer" desc="Who's coming in?" />
 
@@ -837,7 +1000,11 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
                         <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9a9a9a] mb-1.5">Gender</p>
                         <div className="grid grid-cols-3 gap-1.5">
                           {(["Male", "Female", "Other"] as const).map(g => (
-                            <button key={g} type="button" onClick={() => setNewCustGender(g)}
+                            <button key={g} type="button" onClick={() => {
+                              setNewCustGender(g);
+                              setServiceTab(g === "Other" ? "Others" : g);
+                              setServiceListPage(1);
+                            }}
                               className={cn("py-2 rounded-xl text-[11px] font-semibold border transition-all",
                                 newCustGender === g ? "bg-[#111118] text-[#D4AF37] border-[#111118]" : "bg-white border-black/[0.08] text-[#9a9a9a] hover:border-[#D4AF37]/30")}>
                               {g}
@@ -877,7 +1044,13 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
                               </div>
                             ) : filteredCustomers.map(c => (
                               <button key={c.id} type="button"
-                                onClick={() => { setSelectedCustomer(c); setCustomerSearch(""); }}
+                                onClick={() => {
+                                  setSelectedCustomer(c);
+                                  setCustomerSearch("");
+                                  if (c.gender === "Male" || c.gender === "Female") setServiceTab(c.gender);
+                                  else if (c.gender === "Other") setServiceTab("Others");
+                                  setServiceListPage(1);
+                                }}
                                 className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[#f4f2ed] border-b border-black/[0.04] last:border-0">
                                 <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#D4AF37] to-[#C9A227] text-[#111118] text-[10px] font-bold flex items-center justify-center shrink-0">
                                   {initials(c.name)}
@@ -920,28 +1093,56 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
 
             ) : (
 
-              /* ── WALK-IN: new entry OR fetch existing ── */
+              /* ── WALK-IN: returning customer first, then new customer ── */
               <div>
-                {/* Mode toggle */}
-                <div className="flex items-center justify-between mb-3">
-                  <Label>{walkInMode === "new" ? "Walk-in Details" : "Find Existing Customer"}</Label>
-                  <button type="button"
-                    onClick={() => { setWalkInMode(m => m === "new" ? "search" : "new"); setSelectedCustomer(null); setWalkInSearch(""); setWalkInName(""); setWalkInPhone(""); setWalkInGender(""); }}
-                    className="flex items-center gap-1 text-[10px] font-semibold text-[#D4AF37] hover:text-[#C9A227] transition-colors">
-                    {walkInMode === "new"
-                      ? <><Search className="h-3 w-3" /> Returning customer?</>
-                      : <><UserPlus className="h-3 w-3" /> New walk-in</>}
-                  </button>
+                {/* Segmented mode toggle — Returning first (most common at desk) */}
+                <div className="mb-3">
+                  <Label>Customer</Label>
+                  <div className="inline-flex w-full items-center gap-0.5 rounded-xl border border-black/[0.08] bg-[#FAF8F2]/60 p-1" role="tablist" aria-label="Walk-in customer type">
+                    {(
+                      [
+                        { value: "search" as const, label: "Returning", icon: Search },
+                        { value: "new" as const, label: "New customer", icon: UserPlus },
+                      ] as const
+                    ).map(({ value, label, icon: Icon }) => {
+                      const isActive = walkInMode === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          role="tab"
+                          aria-selected={isActive}
+                          onClick={() => {
+                            setWalkInMode(value);
+                            setSelectedCustomer(null);
+                            setWalkInSearch("");
+                            setWalkInName("");
+                            setWalkInPhone("");
+                            setWalkInGender("");
+                          }}
+                          className={cn(
+                            "flex h-11 flex-1 items-center justify-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold transition-all",
+                            isActive
+                              ? "bg-[#D4AF37]/15 text-[#9a7d20] border border-[#D4AF37]/35"
+                              : "border border-transparent text-[#6b6b6b] hover:bg-black/[0.04]",
+                          )}
+                        >
+                          <Icon className="h-4 w-4" />
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <AnimatePresence mode="wait">
                   {walkInMode === "search" ? (
-                    /* Fetch existing */
+                    /* Returning customer search */
                     <motion.div key="walkin-search"
                       initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}>
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#9a9a9a]" />
-                        <Input placeholder="Name or phone…" value={walkInSearch}
+                        <Input placeholder="Search by name or phone…" value={walkInSearch}
                           onChange={e => { setWalkInSearch(e.target.value); setSelectedCustomer(null); }}
                           className="pl-9 h-10 rounded-xl bg-white border-black/[0.08] focus:border-[#D4AF37]/40 text-[12.5px]" />
                       </div>
@@ -951,16 +1152,22 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
                             className="mt-1 rounded-xl border border-black/[0.07] bg-white shadow-lg max-h-44 overflow-y-auto">
                             {filteredWalkIn.length === 0 ? (
                               <div className="px-4 py-4 text-center">
-                                <p className="text-[11.5px] text-[#9a9a9a] mb-2">No match — fill in manually</p>
+                                <p className="text-[11.5px] text-[#9a9a9a] mb-2">No match found</p>
                                 <button type="button"
                                   onClick={() => { setWalkInMode("new"); setWalkInName(walkInSearch); setWalkInSearch(""); }}
                                   className="flex items-center gap-1.5 mx-auto text-[11px] font-bold text-[#D4AF37] hover:text-[#C9A227] transition-colors">
-                                  <UserPlus className="h-3.5 w-3.5" /> Use &ldquo;{walkInSearch}&rdquo; as name
+                                  <UserPlus className="h-3.5 w-3.5" /> Add as new customer
                                 </button>
                               </div>
                             ) : filteredWalkIn.map(c => (
                               <button key={c.id} type="button"
-                                onClick={() => { setSelectedCustomer(c); setWalkInSearch(""); }}
+                                onClick={() => {
+                                  setSelectedCustomer(c);
+                                  setWalkInSearch("");
+                                  if (c.gender === "Male" || c.gender === "Female") setServiceTab(c.gender);
+                                  else if (c.gender === "Other") setServiceTab("Others");
+                                  setServiceListPage(1);
+                                }}
                                 className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[#f4f2ed] border-b border-black/[0.04] last:border-0">
                                 <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#D4AF37] to-[#C9A227] text-[#111118] text-[10px] font-bold flex items-center justify-center shrink-0">
                                   {initials(c.name)}
@@ -1011,7 +1218,11 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
                         <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9a9a9a] mb-1.5">Gender</p>
                         <div className="grid grid-cols-3 gap-1.5">
                           {(["Male", "Female", "Other"] as const).map(g => (
-                            <button key={g} type="button" onClick={() => setWalkInGender(g)}
+                            <button key={g} type="button" onClick={() => {
+                              setWalkInGender(g);
+                              setServiceTab(g === "Other" ? "Others" : g);
+                              setServiceListPage(1);
+                            }}
                               className={cn("py-2 rounded-xl text-[11px] font-semibold border transition-all",
                                 walkInGender === g ? "bg-[#111118] text-[#D4AF37] border-[#111118]" : "bg-white border-black/[0.08] text-[#9a9a9a] hover:border-[#D4AF37]/30")}>
                               {g}
@@ -1031,9 +1242,31 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
               <div className="space-y-2">
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#9a9a9a] pointer-events-none z-10" />
-                  <Input type="date" value={date} onChange={e => setDate(e.target.value)}
-                    className="pl-9 h-10 rounded-xl bg-white border-black/[0.08] focus:border-[#D4AF37]/40 text-[12.5px]" />
+                  <Input
+                    type="date"
+                    value={date}
+                    min={slotMinDate}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      if (next && !isAppointmentSlotDateAllowed(next, slotCustomerKind)) {
+                        toast.error(
+                          slotCustomerKind === "new"
+                            ? "New customers cannot book previous dates"
+                            : `Past dates limited to the last ${APPOINTMENT_PAST_DAYS_LIMIT} days`,
+                        );
+                        setDate(slotMinDate);
+                        return;
+                      }
+                      setDate(next);
+                    }}
+                    className="pl-9 h-10 rounded-xl bg-white border-black/[0.08] focus:border-[#D4AF37]/40 text-[12.5px]"
+                  />
                 </div>
+                <p className="text-[10px] text-[#9a9a9a]">
+                  {slotCustomerKind === "new"
+                    ? "Today and upcoming dates only — previous dates not allowed"
+                    : `Past dates: last ${APPOINTMENT_PAST_DAYS_LIMIT} days only · Future: any day`}
+                </p>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="relative">
                     <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#9a9a9a] pointer-events-none z-10" />
@@ -1064,8 +1297,10 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
             </div>
           </div>
         </div>
+        )}
 
         {/* ── COL 2: SERVICES / PACKAGES / PRODUCTS ── */}
+        {showStep(1) && (
         <div className={cn("responsive-panel flex flex-col border-b lg:border-b-0 lg:border-r border-black/[0.08] bg-[#f4f2ed] overflow-hidden relative transition-all duration-300", !customerValid && "pointer-events-none select-none")}>
           {/* Locked overlay */}
           {!customerValid && (
@@ -1080,10 +1315,10 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
 
           <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
 
-            {/* Tab bar: Male | Female | Others | Packages | Products */}
+            {/* Tab bar: Male | Female | Others | Packages | Products (gender tabs filtered by customer) */}
             <div className="tabs-scroll-x p-1 rounded-xl bg-white border border-black/[0.07]">
-              {(["Male", "Female", "Others", "Packages", "Products"] as ServiceTab[]).map(tab => (
-                <button key={tab} type="button" onClick={() => { setServiceTab(tab); setServiceSearch(""); setServiceSearchInput(""); }}
+              {visibleServiceTabs.map(tab => (
+                <button key={tab} type="button" onClick={() => { setServiceTab(tab); setServiceSearch(""); setServiceSearchInput(""); setServiceListPage(1); }}
                   className={cn(
                     "rounded-lg py-2 px-3 text-[10.5px] font-bold transition-all whitespace-nowrap",
                     serviceTab === tab
@@ -1560,8 +1795,10 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
             )}
           </div>
         </div>
+        )}
 
         {/* ── COL 3: CONFIRM ── */}
+        {showStep(2) && (
         <div className={cn("responsive-panel flex flex-col bg-[#f4f2ed] overflow-hidden relative transition-all duration-300", !customerValid && "pointer-events-none select-none")}>
           {!customerValid && (
             <div className="absolute inset-0 z-10 bg-[#f4f2ed]/70 backdrop-blur-[1px] flex flex-col items-center justify-center gap-3">
@@ -1679,17 +1916,37 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
             )}
 
 
-            {/* Save button */}
-            <Button
-              onClick={() => {
-                handleSave();
-              }}
-              disabled={!canSave}
-              className="w-full h-12 rounded-2xl bg-gradient-to-r from-[#D4AF37] to-[#C9A227] text-[#111118] font-bold text-[14px] gap-2 disabled:opacity-30 shadow-lg shadow-[#D4AF37]/20 hover:shadow-[#D4AF37]/30 transition-all"
-            >
-              <CalendarCheck2 className="h-4 w-4" />
-              {isWalkInPage ? "Save Walk-In" : "Create Appointment"}
-            </Button>
+            {/* Save / Bill */}
+            {isWalkInPage ? (
+              <div className="grid grid-cols-2 gap-2.5">
+                <Button
+                  onClick={() => { void handleSave(); }}
+                  disabled={!canSave || saving}
+                  variant="outline"
+                  className="h-12 rounded-2xl border-[#D4AF37]/45 text-[#111118] font-bold text-[13px] gap-2 disabled:opacity-30"
+                >
+                  <CalendarCheck2 className="h-4 w-4" />
+                  {saving ? "Saving…" : "Save Walk-In"}
+                </Button>
+                <Button
+                  onClick={() => { void handleBill(); }}
+                  disabled={!canSave || saving}
+                  className="h-12 rounded-2xl bg-gradient-to-r from-[#D4AF37] to-[#C9A227] text-[#111118] font-bold text-[13px] gap-2 disabled:opacity-30 shadow-lg shadow-[#D4AF37]/20"
+                >
+                  <Receipt className="h-4 w-4" />
+                  {saving ? "Opening…" : "Bill"}
+                </Button>
+              </div>
+            ) : (
+              <Button
+                onClick={() => { void handleSave(); }}
+                disabled={!canSave || saving}
+                className="w-full h-12 rounded-2xl bg-gradient-to-r from-[#D4AF37] to-[#C9A227] text-[#111118] font-bold text-[14px] gap-2 disabled:opacity-30 shadow-lg shadow-[#D4AF37]/20 hover:shadow-[#D4AF37]/30 transition-all"
+              >
+                <CalendarCheck2 className="h-4 w-4" />
+                {saving ? "Saving…" : "Create Appointment"}
+              </Button>
+            )}
 
             {!canSave && (
               <p className="text-center text-[11px] text-[#9a9a9a] -mt-2">
@@ -1706,8 +1963,38 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
             </Button>
           </div>
         </div>
+        )}
 
       </div>
+
+      {/* Step navigation — tablet/phone only */}
+      {!isDesktop && (
+        <div className="shrink-0 flex items-center gap-2 border-t border-black/[0.06] bg-white px-4 py-3">
+          <Button
+            variant="outline"
+            disabled={activeStep === 0}
+            onClick={() => setWizardStep(Math.max(0, activeStep - 1))}
+            className="h-12 rounded-2xl border-black/[0.1] px-4 text-[13px] font-semibold disabled:opacity-30"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Back
+          </Button>
+          {activeStep < 2 ? (
+            <Button
+              disabled={!stepValid[activeStep]}
+              onClick={() => setWizardStep(activeStep + 1)}
+              className="h-12 flex-1 gap-2 rounded-2xl bg-[#111118] text-[13px] font-bold text-[#D4AF37] shadow-lg hover:bg-[#1e1e1e] disabled:opacity-30"
+            >
+              {activeStep === 0 ? "Continue to services" : "Continue to confirm"}
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          ) : (
+            <p className="flex-1 text-center text-[11.5px] font-medium text-[#9a9a9a]">
+              Review the summary above, then save
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

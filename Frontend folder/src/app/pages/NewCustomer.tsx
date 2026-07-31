@@ -8,7 +8,7 @@ import {
 import { createCustomer } from "../../api/customers";
 import { getApiErrorMessage } from "../../lib/api";
 import { clearFormDraft, readFormDraft, writeFormDraft } from "../../lib/formDraft";
-import { toast } from "sonner";
+import { toast } from "../components/ui/hot-toast";
 
 const NEW_CUSTOMER_DRAFT_KEY = "new-customer";
 

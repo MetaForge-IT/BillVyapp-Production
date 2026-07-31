@@ -2,7 +2,7 @@ import { prisma } from "../../config/prisma";
 
 export interface RegistrationUserRecord {
   id: string;
-  salonId: string;
+  salonId: string | null;
   email: string;
   fullName: string;
   phone: string | null;

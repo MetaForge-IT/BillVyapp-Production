@@ -5,7 +5,8 @@ import { prisma } from "../../config/prisma";
 /** Internal user record including credential hash (login only). */
 export interface UserCredentialsRecord {
   id: string;
-  salonId: string;
+  salonId: string | null;
+  franchiseId: string | null;
   email: string;
   passwordHash: string;
   fullName: string;
@@ -18,7 +19,8 @@ export interface UserCredentialsRecord {
 /** Public-safe user record without password hash. */
 export interface UserRecord {
   id: string;
-  salonId: string;
+  salonId: string | null;
+  franchiseId: string | null;
   email: string;
   fullName: string;
   role: string;
@@ -86,7 +88,8 @@ export interface CreateLoginOtpChallengeData {
 
 function toUserCredentialsRecord(user: {
   id: string;
-  salonId: string;
+  salonId: string | null;
+  franchiseId: string | null;
   email: string;
   passwordHash: string;
   fullName: string;
@@ -98,6 +101,7 @@ function toUserCredentialsRecord(user: {
   return {
     id: user.id,
     salonId: user.salonId,
+    franchiseId: user.franchiseId,
     email: user.email,
     passwordHash: user.passwordHash,
     fullName: user.fullName,
@@ -110,7 +114,8 @@ function toUserCredentialsRecord(user: {
 
 function toUserRecord(user: {
   id: string;
-  salonId: string;
+  salonId: string | null;
+  franchiseId: string | null;
   email: string;
   fullName: string;
   role: string;
@@ -121,6 +126,7 @@ function toUserRecord(user: {
   return {
     id: user.id,
     salonId: user.salonId,
+    franchiseId: user.franchiseId,
     email: user.email,
     fullName: user.fullName,
     role: user.role,
@@ -211,6 +217,7 @@ export class AuthRepository {
       select: {
         id: true,
         salonId: true,
+        franchiseId: true,
         email: true,
         passwordHash: true,
         fullName: true,
@@ -245,6 +252,7 @@ export class AuthRepository {
       select: {
         id: true,
         salonId: true,
+        franchiseId: true,
         email: true,
         passwordHash: true,
         fullName: true,
@@ -263,6 +271,7 @@ export class AuthRepository {
       select: {
         id: true,
         salonId: true,
+        franchiseId: true,
         email: true,
         passwordHash: true,
         fullName: true,
@@ -288,6 +297,7 @@ export class AuthRepository {
       select: {
         id: true,
         salonId: true,
+        franchiseId: true,
         email: true,
         fullName: true,
         role: true,

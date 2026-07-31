@@ -3,9 +3,20 @@ export interface AuthUser {
   email: string;
   fullName: string;
   role: string;
-  salonId: string;
+  salonId: string | null;
+  franchiseId: string | null;
   phone: string | null;
   avatarUrl: string | null;
+  shop?: {
+    id: string;
+    name: string;
+    displayName: string | null;
+    city: string | null;
+    address?: string | null;
+    state?: string | null;
+    pincode?: string | null;
+    franchiseName: string | null;
+  } | null;
 }
 
 export interface RegisterPayload {

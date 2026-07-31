@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate, useLocation } from "react-router";
 import { useCoupons } from "../context/CouponsContext";
+import { useRole } from "../context/RoleContext";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
@@ -15,8 +16,9 @@ import {
   Users, User, Search, Plus, Star, Crown, Phone, Mail, Calendar, Heart,
   Gift, UserPlus, Cake, Award, Edit, MessageSquare, Send,
   CheckCircle, Sparkles, TrendingUp, ShieldCheck, X, Bell,
-  LayoutList, LayoutGrid, Filter, ArrowLeft, Clock, ThumbsUp, ThumbsDown, Minus, IndianRupee,
+  LayoutList, LayoutGrid, Filter, ArrowLeft, Clock, ThumbsUp, ThumbsDown, Minus, IndianRupee, ArrowRight,
 } from "lucide-react";
+import { formatDisplayPhone, phoneTelHref } from "../../lib/phone";
 import { Pagination } from "../components/shared/Pagination";
 import { PageStatCard } from "../components/shared/PageStatCard";
 import { useTablePagination } from "../hooks/useTablePagination";
@@ -40,7 +42,7 @@ import {
   MembershipPaymentConfirmDialog,
   type MembershipPaymentDetails,
 } from "./customers/MembershipPaymentConfirmDialog";
-import { toast } from "sonner";
+import { toast } from "../components/ui/hot-toast";
 import { SEGMENTED_PILL_LIST, SEGMENTED_PILL_TRIGGER } from "../components/layout/segmented-nav";
 import { TIER_GRID_4 } from "../config/responsive-classes";
 import { cn } from "../components/ui/utils";
@@ -153,6 +155,29 @@ const tierHeroGlow: Record<string, string> = {
   silver: "bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(18,18,18,0.06),transparent)]",
   basic: "bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(18,18,18,0.04),transparent)]",
 };
+
+/** Badge showing how the customer was acquired (walk-in vs online). */
+function SourceBadge({ source }: { source?: string }) {
+  if (source === "walk-in") {
+    return (
+      <Badge className="border text-xs bg-[#FAF8F2] text-[#6b6b6b] border-black/[0.08]">
+        🚶 Walk-in
+      </Badge>
+    );
+  }
+  if (source === "online") {
+    return (
+      <Badge className="border text-xs bg-[#D4AF37]/10 text-[#9a7d20] border-[#D4AF37]/25">
+        📅 Online
+      </Badge>
+    );
+  }
+  return (
+    <Badge className="border text-xs bg-gray-50 text-gray-500 border-gray-200">
+      Unknown
+    </Badge>
+  );
+}
 
 function DetailMetricChip({
   icon: Icon,
@@ -393,7 +418,7 @@ function CustomerDetailView({ customer, membershipBenefits, onBack, onEdit, onNo
               <p className={financePanelTitle}>Contact & profile</p>
             </div>
             <div className="grid gap-3 p-4 sm:grid-cols-2">
-              <InfoFieldCard icon={Phone} label="Phone" value={customer.phone} />
+              <InfoFieldCard icon={Phone} label="Phone" value={formatDisplayPhone(customer.phone)} />
               <InfoFieldCard icon={Mail} label="Email" value={customer.email} />
               <InfoFieldCard
                 icon={Cake}
@@ -493,13 +518,14 @@ function CustomerDetailView({ customer, membershipBenefits, onBack, onEdit, onNo
 }
 
 export function Customers() {
+  const { role } = useRole();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get("action") === "add") {
-      setAddOpen(true);
+      if (role !== "admin") setAddOpen(true);
       navigate("/customers", { replace: true });
     }
   }, [location.search]);
@@ -532,6 +558,7 @@ export function Customers() {
   const [filterBirthday, setFilterBirthday] = useState<"all" | "today" | "thismonth">("all");
   const [filterInactive, setFilterInactive] = useState<"all" | "7" | "30" | "60" | "90">("all");
   const [filterGender, setFilterGender] = useState<"all" | "male" | "female" | "other">("all");
+  const [filterSource, setFilterSource] = useState<"all" | "walk-in" | "online">("all");
   const [lastVisitFrom, setLastVisitFrom] = useState("");
   const [lastVisitTo, setLastVisitTo] = useState("");
   const [editMode, setEditMode] = useState(false);
@@ -580,16 +607,24 @@ export function Customers() {
       filterBirthday === "today" ? isBirthdayToday(c.birthday) :
       isBirthdayThisMonth(c.birthday);
     const matchG = filterGender === "all" || c.gender === filterGender;
+    const matchSrc = filterSource === "all" || (c.source ?? "unknown") === filterSource;
     const visitDate = c.lastVisitDate ? new Date(c.lastVisitDate) : null;
     const matchFrom = !lastVisitFrom ? true : (visitDate ? visitDate >= new Date(lastVisitFrom) : false);
     const matchTo = !lastVisitTo ? true : (visitDate ? visitDate <= new Date(lastVisitTo) : false);
     const days = getInactiveDays(c);
     const matchI = filterInactive === "all" ? true : days != null && days >= Number(filterInactive);
-    return matchQ && matchT && matchS && matchB && matchI && matchG && matchFrom && matchTo;
-  }), [customers, searchQuery, filterTier, filterStatus, filterBirthday, filterInactive, filterGender, lastVisitFrom, lastVisitTo]);
+    return matchQ && matchT && matchS && matchB && matchI && matchG && matchSrc && matchFrom && matchTo;
+  }), [customers, searchQuery, filterTier, filterStatus, filterBirthday, filterInactive, filterGender, filterSource, lastVisitFrom, lastVisitTo]);
+
+  // Live counts for the source segmented toggle (respects all filters except source itself).
+  const sourceCounts = useMemo(() => ({
+    all: customers.length,
+    "walk-in": customers.filter(c => (c.source ?? "unknown") === "walk-in").length,
+    online: customers.filter(c => (c.source ?? "unknown") === "online").length,
+  }), [customers]);
   const { page, setPage, pageSize, setPageSize, paginate } = useTablePagination(
     filtered.length,
-    [searchQuery, filterTier, filterStatus, filterBirthday, filterInactive, filterGender, lastVisitFrom, lastVisitTo],
+    [searchQuery, filterTier, filterStatus, filterBirthday, filterInactive, filterGender, filterSource, lastVisitFrom, lastVisitTo],
   );
   const paginatedCustomers = useMemo(() => paginate(filtered), [filtered, paginate]);
   const birthdayCustomers = useMemo(() => customers.filter(c => isBirthdayThisMonth(c.birthday)), [customers]);
@@ -1203,7 +1238,7 @@ export function Customers() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className="space-y-6"
+      className="flex h-[calc(100dvh-8rem)] min-h-0 flex-col gap-4 overflow-hidden"
     >
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1221,14 +1256,16 @@ export function Customers() {
           <Button variant="outline" size="sm" className="rounded-xl border-[#D4AF37]/40 text-[#9a7d20] hover:bg-[#D4AF37]/08 hover:border-[#D4AF37]/60" onClick={() => navigate('/feedback')}>
             <MessageSquare className="h-4 w-4 mr-1" />Customer Feedback
           </Button>
-          <button type="button" className={financeGoldBtn + " inline-flex items-center gap-2"} onClick={() => setAddOpen(true)}>
-            <UserPlus className="h-4 w-4" />Add Customer
-          </button>
+          {role !== "admin" && (
+            <button type="button" className={financeGoldBtn + " inline-flex items-center gap-2"} onClick={() => setAddOpen(true)}>
+              <UserPlus className="h-4 w-4" />Add Customer
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-3 md:grid-cols-4">
+      {/* Laptop/desktop only — tablets and phones prioritize list space. */}
+      <div className="hidden shrink-0 gap-3 lg:grid lg:grid-cols-4">
         <PageStatCard
           label="Total Customers"
           value={customers.length}
@@ -1264,7 +1301,7 @@ export function Customers() {
       </div>
 
       {/* Search + Filters */}
-      <div className="rounded-2xl border border-black/[0.07] bg-white shadow-sm px-4 py-3">
+      <div className="shrink-0 rounded-2xl border border-black/[0.07] bg-white shadow-sm px-4 py-3">
         <div className="flex items-center gap-2.5 flex-wrap">
 
           {/* Search */}
@@ -1273,7 +1310,7 @@ export function Customers() {
             <input
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search by name, phone, or email…"
+              placeholder="Search name or phone number"
               className="w-full h-10 pl-10 pr-9 rounded-xl border border-black/[0.08] text-[13px] text-[#111] placeholder:text-[#9a9a9a] outline-none focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/12 bg-[#FAF8F2]/60 transition-all"
             />
             {searchQuery && (
@@ -1282,6 +1319,37 @@ export function Customers() {
                 <X className="h-3 w-3 text-gray-500" />
               </button>
             )}
+          </div>
+
+          {/* Source — 1-click segmented toggle with live counts */}
+          <div className="inline-flex shrink-0 items-center gap-0.5 rounded-xl border border-black/[0.08] bg-[#FAF8F2]/60 p-1" role="tablist" aria-label="Filter by source">
+            {([
+              { value: "all", label: "All", icon: Users },
+              { value: "walk-in", label: "Walk-in", icon: ArrowRight },
+              { value: "online", label: "Online", icon: Calendar },
+            ] as const).map(({ value, label, icon: Icon }) => {
+              const isActive = filterSource === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setFilterSource(value)}
+                  className={`flex h-11 items-center gap-1.5 rounded-lg px-3.5 text-[13px] font-semibold transition-all ${
+                    isActive
+                      ? "bg-[#D4AF37]/15 text-[#9a7d20] border border-[#D4AF37]/35"
+                      : "text-[#6b6b6b] border border-transparent hover:bg-black/[0.04]"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? "bg-[#D4AF37]/25 text-[#9a7d20]" : "bg-black/[0.06] text-[#6b6b6b]"}`}>
+                    {sourceCounts[value]}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           {/* Tier */}
@@ -1333,8 +1401,8 @@ export function Customers() {
           </div>
 
           {/* Clear */}
-          {(searchQuery || filterTier !== "all" || filterStatus !== "all" || filterGender !== "all" || filterInactive !== "all" || lastVisitFrom || lastVisitTo) && (
-            <button onClick={() => { setSearchQuery(""); setFilterTier("all"); setFilterStatus("all"); setFilterGender("all"); setFilterInactive("all"); setLastVisitFrom(""); setLastVisitTo(""); }}
+          {(searchQuery || filterTier !== "all" || filterStatus !== "all" || filterGender !== "all" || filterSource !== "all" || filterInactive !== "all" || lastVisitFrom || lastVisitTo) && (
+            <button onClick={() => { setSearchQuery(""); setFilterTier("all"); setFilterStatus("all"); setFilterGender("all"); setFilterSource("all"); setFilterInactive("all"); setLastVisitFrom(""); setLastVisitTo(""); }}
               className="flex items-center gap-1.5 h-10 px-3 text-[12px] font-semibold text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl border border-black/[0.08] hover:border-red-200 transition-all shrink-0">
               <X className="h-3.5 w-3.5" /> Clear
             </button>
@@ -1370,17 +1438,170 @@ export function Customers() {
         </div>
       )}
 
-      <Card className={CARD_TABLE}>
-        <CardHeader className={financePanelHeader + " pb-2"}>
+      <Card className={cn(CARD_TABLE, "flex min-h-0 flex-1 flex-col")}>
+        <CardHeader className={financePanelHeader + " shrink-0 pb-2"}>
           <CardTitle className="flex items-center gap-2 text-[13px] font-semibold text-[#111118]">
             <Users className="h-4 w-4 text-[#D4AF37]" />Customer List
-            <Badge className={`ml-auto ${financeBadgeGold}`}>{filtered.length}</Badge>
+            <label className="ml-auto flex cursor-pointer items-center gap-2 text-[11px] font-semibold text-[#6b6b6b] lg:hidden">
+              <input
+                type="checkbox"
+                checked={allFilteredSelected}
+                onChange={toggleSelectAll}
+                className="h-4 w-4 rounded border-gray-300 accent-[#d4af37]"
+              />
+              Select all
+            </label>
+            <Badge className={financeBadgeGold}>{filtered.length}</Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent className="px-0 pb-0">
-          <div className="overflow-x-auto">
+        <CardContent className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-0 pb-0">
+          {/* Phone/tablet: complete customer cards with no horizontal scrolling. */}
+          <div className="divide-y divide-black/[0.06] lg:hidden">
+            {paginatedCustomers.map((customer, index) => {
+              const inactiveDays = getInactiveDays(customer);
+              const selected = selectedCustomerIds.has(customer.id);
+              const formattedPhone = formatDisplayPhone(customer.phone);
+              const telHref = phoneTelHref(customer.phone);
+
+              return (
+                <article
+                  key={customer.id}
+                  className={cn(
+                    "space-y-3 p-4 transition-colors sm:p-5",
+                    selected
+                      ? "bg-[#FFFBEB]/90"
+                      : index % 2 === 0
+                        ? "bg-white"
+                        : "bg-[#FAFAFA]",
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className="pt-2"
+                      onClick={(event) => event.stopPropagation()}
+                      onKeyDown={(event) => event.stopPropagation()}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => toggleSelectCustomer(customer.id)}
+                        aria-label={`Select ${customer.name}`}
+                        className="h-5 w-5 cursor-pointer rounded border-gray-300 accent-[#d4af37]"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSelectCustomer(customer)}
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                    >
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#1a1a1a] to-[#2d2d2d] text-[13px] font-bold text-white">
+                        {customer.name.split(" ").map((name) => name[0]).join("").slice(0, 2)}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="truncate text-[15px] font-bold text-[#111118]">{customer.name}</p>
+                          {isBirthdayToday(customer.birthday) && <span title="Birthday today">🎂</span>}
+                        </div>
+                        <p className="mt-0.5 truncate text-[11px] text-[#9a9a9a]">{customer.email || "No email"}</p>
+                      </div>
+                    </button>
+
+                    <Badge className={cn(
+                      "shrink-0 border text-[10px]",
+                      customer.status === "active"
+                        ? "border-[#D4AF37]/25 bg-[#D4AF37]/10 text-[#9a7d20]"
+                        : "border-red-200 bg-red-50 text-red-700",
+                    )}>
+                      {customer.status === "active" ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
+
+                  {telHref ? (
+                    <a
+                      href={telHref}
+                      onClick={(event) => event.stopPropagation()}
+                      className="ml-8 inline-flex items-center gap-2 whitespace-nowrap rounded-xl border border-[#D4AF37]/25 bg-[#FFFBEB] px-3.5 py-2 text-[15px] font-bold tabular-nums text-[#111118] transition-colors hover:bg-[#FFF4D6] active:scale-[0.98]"
+                      aria-label={`Call ${customer.name} at ${formattedPhone}`}
+                    >
+                      <Phone className="h-4 w-4 shrink-0 text-[#D4AF37]" />
+                      <span>{formattedPhone}</span>
+                    </a>
+                  ) : (
+                    <div className="ml-8 inline-flex items-center gap-2 whitespace-nowrap rounded-xl border border-[#D4AF37]/25 bg-[#FFFBEB] px-3.5 py-2 text-[15px] font-bold tabular-nums text-[#111118]">
+                      <Phone className="h-4 w-4 shrink-0 text-[#D4AF37]" />
+                      <span>{formattedPhone}</span>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-1.5 pl-8">
+                    <SourceBadge source={customer.source} />
+                    <Badge className={`${membershipColors[customer.membershipTier]} border text-[10px] capitalize`}>
+                      {customer.membershipTier}
+                    </Badge>
+                    <Badge className={`${getInactivityColor(inactiveDays)} border text-[10px]`}>
+                      <Clock className="mr-1 inline h-3 w-3" />
+                      {getInactivityLabel(inactiveDays)}
+                    </Badge>
+                    {customer.birthday && (
+                      <Badge className="border border-pink-200 bg-pink-50 text-[10px] text-pink-700">
+                        <Cake className="mr-1 h-3 w-3" />
+                        {new Date(customer.birthday).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pl-8">
+                    <div className="rounded-xl border border-black/[0.06] bg-white/80 px-3 py-2">
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Visits</p>
+                      <p className="mt-0.5 text-[15px] font-black text-[#111118]">{customer.totalVisits}</p>
+                    </div>
+                    <div className="rounded-xl border border-[#D4AF37]/20 bg-[#FFFBEB] px-3 py-2">
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a7d20]">Total spend</p>
+                      <p className="mt-0.5 text-[15px] font-black text-[#9a7d20]">₹{customer.totalSpend.toLocaleString()}</p>
+                    </div>
+                  </div>
+
+                  <div
+                    className="flex items-center justify-end gap-2 pl-8"
+                    onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => event.stopPropagation()}
+                  >
+                    {!someSelected && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-10 rounded-xl px-3 text-[12px]"
+                        onClick={() => openCoupon(customer)}
+                      >
+                        🎁 Coupon
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-10 rounded-xl px-3 text-[12px]"
+                      onClick={() => openNotify(customer)}
+                    >
+                      <Bell className="mr-1.5 h-3.5 w-3.5" />
+                      Notify
+                    </Button>
+                  </div>
+                </article>
+              );
+            })}
+            {filtered.length === 0 && (
+              <div className="py-10 text-center text-sm text-muted-foreground">
+                No customers match your search.
+              </div>
+            )}
+          </div>
+
+          {/* Laptop/desktop: retain the dense customer table. */}
+          <div className="hidden overflow-x-auto lg:block">
             <table className="w-full text-sm">
-              <thead>
+              <thead className="sticky top-0 z-10">
                 <tr className="border-b border-black/[0.06] bg-[#FAF8F2]">
                   <th className="px-4 py-3 w-10">
                     <input
@@ -1392,6 +1613,7 @@ export function Customers() {
                     />
                   </th>
                   <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Customer</th>
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Source</th>
                   <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Tier</th>
                   <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Status</th>
                   <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Inactivity</th>
@@ -1426,10 +1648,16 @@ export function Customers() {
                           </div>
                           <div>
                             <p className="font-semibold">{c.name}</p>
-                            <p className="text-xs text-muted-foreground">{c.email}</p>
+                            <p className="mt-0.5 text-[13px] font-semibold tabular-nums tracking-wide text-[#111118]">
+                              {formatDisplayPhone(c.phone)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">{c.email || "No email"}</p>
                           </div>
                           {isBirthdayToday(c.birthday) && <span title="Birthday Today">🎂</span>}
                         </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <SourceBadge source={c.source} />
                       </td>
                       <td className="px-4 py-3">
                         <Badge className={`${membershipColors[c.membershipTier]} border text-xs capitalize`}>{c.membershipTier}</Badge>
@@ -1477,6 +1705,7 @@ export function Customers() {
       </Card>
 
       {/* ── ADD CUSTOMER MODAL ── */}
+      {role !== "admin" && (
       <Dialog open={addOpen} onOpenChange={(open) => { setAddOpen(open); if (!open) setNewCustomer({ name: "", phone: "", email: "", gender: "", membershipTier: "basic", birthday: "", address: "", notes: "" }); }}>
         <DialogContent className="sm:max-w-xl p-0 gap-0 overflow-hidden rounded-2xl [&>button:last-of-type]:hidden">
           {/* Dark header */}
@@ -1629,6 +1858,7 @@ export function Customers() {
           </div>
         </DialogContent>
       </Dialog>
+      )}
 
       {/* ── LOYALTY PROGRAM MODAL ── */}
       <Dialog open={loyaltyOpen} onOpenChange={setLoyaltyOpen}>

@@ -14,7 +14,6 @@ import {
   TrendingUp,
   MapPin,
   Scissors,
-  UserPlus,
 } from "lucide-react";
 
 function isActive(pathname: string, search: string, href: string) {
@@ -24,39 +23,39 @@ function isActive(pathname: string, search: string, href: string) {
 export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigate?: () => void; collapsed?: boolean }) {
   const location = useLocation();
   const { data, loading } = useDashboard();
-  const { role } = useRole();
+  const { role, shopName, shopBranchLabel, shopAddress } = useRole();
   const kpis = data?.businessKpis;
 
   const quickStats = useMemo(() => {
     const revenue = kpis?.todayRevenue ?? 0;
     const appointments = kpis?.todayAppointments ?? 0;
-    const walkIns = kpis?.walkInCount ?? 0;
+    const topService = data?.topServices?.[0]?.name ?? "—";
     const placeholder = loading && !kpis ? "…" : null;
 
     return [
       {
-        label: "Revenue",
+        label: "Today's Revenue",
         value: placeholder ?? formatCompactInr(revenue),
         icon: TrendingUp,
         to: "/finance?tab=receipts&section=sales",
-        accent: "#00C896",
+        accent: "#D4AF37",
       },
       {
-        label: "Appointments",
+        label: "Today's Customers",
         value: placeholder ?? String(appointments),
         icon: Zap,
         to: "/appointments",
         accent: "#D4AF37",
       },
       {
-        label: "Walk-ins",
-        value: placeholder ?? String(walkIns),
-        icon: UserPlus,
-        to: "/appointments?type=walk-in",
-        accent: "#7C6FCD",
+        label: "Today's Top Service",
+        value: placeholder ?? topService,
+        icon: Scissors,
+        to: "/services",
+        accent: "#D4AF37",
       },
     ];
-  }, [kpis, loading]);
+  }, [kpis, data, loading]);
 
   const filteredNav = useMemo(
     () =>
@@ -139,13 +138,22 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
             className="relative z-10 shrink-0 mx-3 mb-2.5 overflow-hidden"
           >
             <div className="rounded-xl border border-[#D4AF37]/20 bg-gradient-to-r from-[#D4AF37]/[0.08] to-transparent px-3 py-2.5">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#D4AF37]/15 border border-[#D4AF37]/25">
+              <div className="flex items-start gap-2 min-w-0">
+                <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#D4AF37]/15 border border-[#D4AF37]/25">
                   <MapPin className="h-3 w-3 text-[#D4AF37]" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-semibold text-white/90 truncate">{BRAND.clientName}</p>
-                  <p className="text-[9px] text-white/40 truncate">Main Branch · Hyderabad</p>
+                  <p className="text-[11px] font-semibold text-white/90 truncate">
+                    {shopName || BRAND.clientName}
+                  </p>
+                  <p className="text-[10px] font-medium text-[#D4AF37]/90 truncate">
+                    {shopBranchLabel || "Shop"}
+                  </p>
+                  {shopAddress ? (
+                    <p className="mt-0.5 text-[9px] leading-snug text-white/40 line-clamp-2" title={shopAddress}>
+                      {shopAddress}
+                    </p>
+                  ) : null}
                 </div>
                 <span className="flex shrink-0 items-center gap-1 rounded-full border border-[#00C896]/25 bg-[#00C896]/10 px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[#00C896]">
                   <span className="h-1.5 w-1.5 rounded-full bg-[#00C896] shadow-[0_0_6px_#00C896] animate-pulse" />
@@ -188,7 +196,7 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
                     className="group flex h-full flex-col items-center justify-center gap-1 rounded-xl border border-white/[0.07] bg-white/[0.03] py-2.5 px-1 hover:border-[#D4AF37]/35 hover:bg-[#D4AF37]/[0.08] transition-all duration-200"
                   >
                     <s.icon className="h-3 w-3 transition-colors" style={{ color: s.accent }} />
-                    <span className="text-[12px] font-bold text-white tabular-nums leading-none">{s.value}</span>
+                    <span className="w-full truncate px-1 text-center text-[11px] font-bold text-white leading-none" title={s.value}>{s.value}</span>
                     <span className="px-0.5 text-center text-[8px] font-medium leading-tight text-white/50 line-clamp-2">{s.label}</span>
                   </Link>
                 </motion.div>
@@ -199,8 +207,8 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
       </AnimatePresence>
 
       {/* ── Navigation (pages only, no section headers) ── */}
-      <nav className="relative z-10 flex flex-1 flex-col min-h-0 overflow-hidden px-2.5 pb-2">
-        <ul className="space-y-0.5">
+      <nav className="relative z-10 flex flex-1 flex-col min-h-0 overflow-y-auto overflow-x-hidden px-2.5 pb-2">
+        <ul className="space-y-1">
           {flatNavItems.map((item, ii) => {
                 const Icon = item.icon;
                 const hasChildren = (item.children?.length ?? 0) > 0;
@@ -224,13 +232,13 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
                             onClick={onNavigate}
                             title={item.label}
                             className={cn(
-                              "group relative flex h-11 w-11 items-center justify-center rounded-xl mx-auto transition-all duration-200",
+                              "group relative flex h-12 w-12 items-center justify-center rounded-xl mx-auto transition-all duration-200",
                               parentActive
                                 ? "bg-gradient-to-r from-[#D4AF37]/18 to-[#D4AF37]/06 border border-[#D4AF37]/25"
-                                : "border border-transparent hover:bg-white/[0.05]",
+                                : "border border-transparent hover:bg-white/[0.08]",
                             )}
                           >
-                            <Icon className={cn("h-3.5 w-3.5", parentActive ? "text-[#D4AF37]" : "text-white/40")} />
+                            <Icon className={cn("h-5 w-5", parentActive ? "text-[#D4AF37]" : "text-white")} />
                           </Link>
                         ) : (
                           <>
@@ -240,10 +248,10 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
                               onMouseEnter={() => setHoveredItem(item.href)}
                               onMouseLeave={() => setHoveredItem(null)}
                               className={cn(
-                                "group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-200 overflow-hidden",
+                                "group relative flex w-full items-center gap-3.5 rounded-xl px-3.5 py-3 transition-all duration-200 overflow-hidden",
                                 parentActive
                                   ? "bg-gradient-to-r from-[#D4AF37]/20 to-[#D4AF37]/[0.04] border border-[#D4AF37]/30 shadow-[inset_0_1px_0_rgba(212,175,55,0.2),0_4px_16px_rgba(0,0,0,0.2)]"
-                                  : "border border-transparent hover:bg-white/[0.05] hover:border-white/[0.08]",
+                                  : "border border-transparent hover:bg-white/[0.08] hover:border-white/[0.12]",
                               )}
                             >
                               {parentActive && (
@@ -253,23 +261,23 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
                                 />
                               )}
                               <motion.div
-                                animate={parentActive ? { scale: 1.1 } : { scale: 1 }}
+                                animate={parentActive ? { scale: 1.05 } : { scale: 1 }}
                                 className={cn(
-                                  "relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-all duration-200",
-                                  parentActive ? "bg-[#D4AF37]/20" : "bg-white/[0.05] group-hover:bg-white/[0.08]",
+                                  "relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-200",
+                                  parentActive ? "bg-[#D4AF37]/20" : "bg-white/[0.08] group-hover:bg-white/[0.12]",
                                 )}
                               >
-                                <Icon className={cn("h-3.5 w-3.5", parentActive ? "text-[#D4AF37]" : "text-white/40 group-hover:text-white/70")} />
+                                <Icon className={cn("h-5 w-5", parentActive ? "text-[#D4AF37]" : "text-white group-hover:text-white")} />
                               </motion.div>
                               <span className={cn(
-                                "relative z-10 flex-1 truncate text-left text-[13px] font-medium tracking-[-0.01em] transition-all",
-                                parentActive ? "font-semibold text-[#D4AF37]" : "text-white/50 group-hover:text-white/80",
+                                "relative z-10 flex-1 truncate text-left text-[15px] tracking-[-0.01em] transition-all",
+                                parentActive ? "font-semibold text-[#D4AF37]" : "font-semibold text-white group-hover:text-white",
                               )}>
                                 {item.label}
                               </span>
                               <ChevronDown className={cn(
-                                "relative z-10 h-3.5 w-3.5 shrink-0 transition-transform duration-200",
-                                isExpanded ? "rotate-180 text-[#D4AF37]" : "text-white/30 group-hover:text-white/50",
+                                "relative z-10 h-4 w-4 shrink-0 transition-transform duration-200",
+                                isExpanded ? "rotate-180 text-[#D4AF37]" : "text-white/70 group-hover:text-white",
                               )} />
                             </button>
 
@@ -280,7 +288,7 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
                                   animate={{ height: "auto", opacity: 1 }}
                                   exit={{ height: 0, opacity: 0 }}
                                   transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                                  className="overflow-hidden ml-4 mt-0.5 space-y-0.5 border-l border-[#D4AF37]/15 pl-2"
+                                  className="overflow-hidden ml-4 mt-1 space-y-1 border-l border-[#D4AF37]/25 pl-2.5"
                                 >
                                   {item.children!.map(child => {
                                     const childActive = isActive(location.pathname, location.search, child.href);
@@ -290,15 +298,15 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
                                           to={child.href}
                                           onClick={onNavigate}
                                           className={cn(
-                                            "flex items-center gap-2 rounded-lg px-3 py-2 text-[12px] font-medium transition-all duration-200",
+                                            "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[14px] font-medium transition-all duration-200",
                                             childActive
                                               ? "bg-[#D4AF37]/12 text-[#D4AF37] border border-[#D4AF37]/20"
-                                              : "text-white/45 hover:bg-white/[0.04] hover:text-white/75 border border-transparent",
+                                              : "text-white hover:bg-white/[0.08] hover:text-white border border-transparent",
                                           )}
                                         >
                                           <span className={cn(
                                             "h-1.5 w-1.5 rounded-full shrink-0",
-                                            childActive ? "bg-[#D4AF37] shadow-[0_0_6px_rgba(212,175,55,0.8)]" : "bg-white/20",
+                                            childActive ? "bg-[#D4AF37] shadow-[0_0_6px_rgba(212,175,55,0.8)]" : "bg-white/50",
                                           )} />
                                           {child.label}
                                         </Link>
@@ -331,10 +339,10 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
                         onMouseLeave={() => setHoveredItem(null)}
                         className={cn(
                           "pressable group relative flex items-center rounded-xl transition-all duration-200 overflow-hidden",
-                          collapsed ? "justify-center h-11 w-11 mx-auto" : "gap-3 px-3 py-2.5",
+                          collapsed ? "justify-center h-12 w-12 mx-auto" : "gap-3.5 px-3.5 py-3",
                           active
                             ? "bg-gradient-to-r from-[#D4AF37]/20 to-[#D4AF37]/[0.04] border border-[#D4AF37]/30 shadow-[inset_0_1px_0_rgba(212,175,55,0.2),0_4px_16px_rgba(0,0,0,0.2)]"
-                            : "border border-transparent hover:bg-white/[0.05] hover:border-white/[0.08]"
+                            : "border border-transparent hover:bg-white/[0.08] hover:border-white/[0.12]"
                         )}
                       >
                         {/* Active gold left bar */}
@@ -349,7 +357,7 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
                         {hovered && !active && (
                           <motion.span
                             layoutId="hover-bg"
-                            className="absolute inset-0 bg-gradient-to-r from-white/[0.04] to-transparent rounded-xl"
+                            className="absolute inset-0 bg-gradient-to-r from-white/[0.06] to-transparent rounded-xl"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
@@ -359,18 +367,18 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
 
                         {/* Icon */}
                         <motion.div
-                          animate={active ? { scale: 1.1 } : { scale: 1 }}
+                          animate={active ? { scale: 1.05 } : { scale: 1 }}
                           transition={{ duration: 0.2 }}
                           className={cn(
-                            "relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-all duration-200",
+                            "relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-200",
                             active
                               ? "bg-[#D4AF37]/20 shadow-[0_0_12px_rgba(212,175,55,0.25)]"
-                              : "bg-white/[0.05] group-hover:bg-white/[0.08]"
+                              : "bg-white/[0.08] group-hover:bg-white/[0.12]"
                           )}
                         >
                           <Icon className={cn(
-                            "h-3.5 w-3.5 shrink-0 transition-all duration-200",
-                            active ? "text-[#D4AF37]" : "text-white/40 group-hover:text-white/70"
+                            "h-5 w-5 shrink-0 transition-all duration-200",
+                            active ? "text-[#D4AF37]" : "text-white group-hover:text-white"
                           )} />
                         </motion.div>
 
@@ -378,10 +386,10 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
                         {!collapsed && (
                           <div className="relative z-10 flex flex-1 items-center justify-between min-w-0">
                             <span className={cn(
-                              "truncate font-['Inter',system-ui] transition-all duration-200",
+                              "truncate font-['Roboto',Helvetica,Arial,sans-serif] transition-all duration-200 tracking-[-0.01em]",
                               active
-                                ? "text-[13px] font-semibold text-[#D4AF37] tracking-[-0.01em]"
-                                : "text-[13px] font-medium text-white/50 group-hover:text-white/80 tracking-[-0.01em]"
+                                ? "text-[15px] font-semibold text-[#D4AF37]"
+                                : "text-[15px] font-semibold text-white group-hover:text-white"
                             )}>
                               {item.label}
                             </span>
@@ -393,7 +401,7 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
                                 className="h-1.5 w-1.5 rounded-full bg-[#D4AF37] shadow-[0_0_8px_rgba(212,175,55,0.9)] shrink-0"
                               />
                             ) : (
-                              <ChevronRight className="h-3 w-3 text-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shrink-0" />
+                              <ChevronRight className="h-4 w-4 text-white/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shrink-0" />
                             )}
                           </div>
                         )}

@@ -4,7 +4,8 @@
 
 export interface JwtPayload {
   sub: string;
-  salonId: string;
+  salonId: string | null;
+  franchiseId: string | null;
   role: string;
   ver: number;
   iat?: number;
@@ -16,14 +17,28 @@ export interface AuthUser {
   email: string;
   fullName: string;
   role: string;
-  salonId: string;
+  salonId: string | null;
+  franchiseId: string | null;
   phone: string | null;
   avatarUrl: string | null;
+  /** Shop display info for sidebar (null for super_admin). */
+  shop?: {
+    id: string;
+    name: string;
+    displayName: string | null;
+    city: string | null;
+    address: string | null;
+    state: string | null;
+    pincode: string | null;
+    franchiseName: string | null;
+  } | null;
 }
 
 export interface AuthContext {
   userId: string;
+  /** Empty string for platform super_admin (no shop scope). */
   salonId: string;
+  franchiseId: string | null;
   role: string;
 }
 

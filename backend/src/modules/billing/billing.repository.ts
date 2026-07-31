@@ -650,6 +650,55 @@ async function computeTotalsFromLines(
   };
 }
 
+/**
+ * Records a coupon redemption against the invoice and bumps the coupon's used
+ * count, so the discount shown on the bill is traceable back to the coupon.
+ */
+async function recordCouponRedemption(
+  tx: Prisma.TransactionClient,
+  params: {
+    salonId: string;
+    couponCode?: string;
+    discountApplied: number;
+    invoiceId: bigint;
+    customerId: string;
+    redeemedAt: Date;
+  },
+) {
+  const code = params.couponCode?.trim().toUpperCase();
+  if (!code || params.discountApplied <= 0) return;
+
+  const coupon = await tx.coupon.findFirst({
+    where: { salonId: params.salonId, codeUpper: code, deletedAt: null },
+    select: { id: true, status: true, usageLimit: true, usedCount: true },
+  });
+
+  if (!coupon || coupon.status !== "active") {
+    throw new AppError(400, "Coupon is not valid or is no longer active", {
+      code: BILLING_ERROR_CODES.INVALID_COUPON,
+    });
+  }
+  if (coupon.usageLimit > 0 && coupon.usedCount >= coupon.usageLimit) {
+    throw new AppError(400, "Coupon has reached its usage limit", {
+      code: BILLING_ERROR_CODES.INVALID_COUPON,
+    });
+  }
+
+  await tx.couponRedemption.create({
+    data: {
+      couponId: coupon.id,
+      invoiceId: params.invoiceId,
+      customerId: params.customerId,
+      discountApplied: params.discountApplied,
+      redeemedAt: params.redeemedAt,
+    },
+  });
+  await tx.coupon.update({
+    where: { id: coupon.id },
+    data: { usedCount: { increment: 1 } },
+  });
+}
+
 export class BillingRepository {
   async confirmOnly(auth: AuthContext, input: ConfirmOnlyInput) {
     const appointmentId = await assertAppointmentCheckoutReady(
@@ -696,6 +745,15 @@ export class BillingRepository {
           },
         },
         include: { lineItems: true, payments: true, customer: { select: { fullName: true } } },
+      });
+
+      await recordCouponRedemption(tx, {
+        salonId: auth.salonId,
+        couponCode: input.couponCode,
+        discountApplied: totals.couponDiscount,
+        invoiceId: created.id,
+        customerId,
+        redeemedAt: now,
       });
 
       if (appointmentId) {
@@ -805,6 +863,15 @@ export class BillingRepository {
           },
         },
         include: { lineItems: true, payments: true, customer: { select: { fullName: true } } },
+      });
+
+      await recordCouponRedemption(tx, {
+        salonId: auth.salonId,
+        couponCode: input.couponCode,
+        discountApplied: totals.couponDiscount,
+        invoiceId: created.id,
+        customerId,
+        redeemedAt: now,
       });
 
       const walletDeductions: WalletDeductionResult[] = [];

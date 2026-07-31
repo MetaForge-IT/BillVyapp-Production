@@ -90,7 +90,7 @@ export function PageStatCard({
 /** Map dashboard / reports KPI labels to drill-down routes. */
 export const KPI_DRILL_ROUTES: Record<string, string> = {
   "Today's Revenue": "/finance?tab=receipts&section=sales",
-  "Appointments Today": "/appointments",
+  "Today's Walk-ins": "/appointments?type=walk-in",
   "New Customers": "/customers",
   "Pending Payments": "/finance?tab=receipts&section=pending",
   "Customer Satisfaction": "/feedback",

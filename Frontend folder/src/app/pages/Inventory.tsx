@@ -1,8 +1,10 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useProducts } from "../context/ProductsContext";
-import { toast } from "sonner";
+import { useRole } from "../context/RoleContext";
+import { toast } from "../components/ui/hot-toast";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { cn } from "../components/ui/utils";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Input } from "../components/ui/input";
@@ -77,6 +79,7 @@ const orderStatusConfig = {
 };
 
 export function Inventory() {
+  const { role } = useRole();
   const { products, setProducts, stockLog, setStockLog, loading: productsLoading, refresh: refreshProducts } = useProducts();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
@@ -561,51 +564,59 @@ export function Inventory() {
   };
 
   return (
-    <div className="space-y-6" key={refreshKey}>
+    <div className="min-w-0 space-y-4 sm:space-y-6" key={refreshKey}>
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#D4AF37]">Stock Control</p>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-[#1a1a1a] to-[#d4af37] bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-[#1a1a1a] to-[#d4af37] bg-clip-text text-transparent sm:text-3xl">
             Inventory Management
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">Track products, stock levels, purchase orders & vendors</p>
         </div>
-        <div className="flex gap-2 shrink-0 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setDirectBillOpen(true)}
-            className="flex items-center gap-2 h-9 px-4 rounded-xl border border-[#d4af37] text-[13px] font-semibold text-[#9a7a1e] bg-white hover:bg-[#d4af37]/10 transition-all"
-          >
-            <Receipt className="h-4 w-4" /> Direct Bill
-          </button>
-          <button
-            onClick={() => { resetCategoryForm(); setShowCategoryManager(true); }}
-            className="flex items-center gap-2 h-9 px-4 rounded-xl border border-black/[0.08] text-[13px] font-semibold text-[#6b6b6b] bg-[#FAF8F2] hover:border-[#D4AF37]/30 hover:text-[#111118] transition-all"
-          >
-            <Tag className="h-4 w-4" /> Categories
-          </button>
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:shrink-0 sm:flex-wrap">
+          {role !== "admin" && (
+            <button
+              type="button"
+              onClick={() => setDirectBillOpen(true)}
+              className="flex h-10 items-center justify-center gap-2 rounded-xl border border-[#d4af37] bg-white px-3 text-[12px] font-semibold text-[#9a7a1e] transition-all hover:bg-[#d4af37]/10 sm:h-9 sm:px-4 sm:text-[13px]"
+            >
+              <Receipt className="h-4 w-4" /> Direct Bill
+            </button>
+          )}
+          {role !== "admin" && role !== "manager" && (
+            <button
+              onClick={() => { resetCategoryForm(); setShowCategoryManager(true); }}
+              className="flex h-10 items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-[#FAF8F2] px-3 text-[12px] font-semibold text-[#6b6b6b] transition-all hover:border-[#D4AF37]/30 hover:text-[#111118] sm:h-9 sm:px-4 sm:text-[13px]"
+            >
+              <Tag className="h-4 w-4" /> Categories
+            </button>
+          )}
           <button
             onClick={() => void handleRefresh()}
-            className="flex items-center gap-2 h-9 px-4 rounded-xl border border-black/[0.08] text-[13px] font-semibold text-[#6b6b6b] bg-[#FAF8F2] hover:border-[#D4AF37]/30 hover:text-[#111118] transition-all"
+            className="flex h-10 items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-[#FAF8F2] px-3 text-[12px] font-semibold text-[#6b6b6b] transition-all hover:border-[#D4AF37]/30 hover:text-[#111118] sm:h-9 sm:px-4 sm:text-[13px]"
           >
             <RefreshCw className={`h-4 w-4 ${productsLoading || ordersLoading ? "animate-spin" : ""}`} /> Refresh
           </button>
-          <button
-            onClick={() => setShowBulkUpload(true)}
-            className="flex items-center gap-2 h-9 px-4 rounded-xl border border-black/[0.08] text-[13px] font-semibold text-[#6b6b6b] bg-[#FAF8F2] hover:border-[#D4AF37]/30 hover:text-[#111118] transition-all"
-          >
-            <Upload className="h-4 w-4" /> Bulk Upload
-          </button>
-          <button type="button" className={financeGoldBtn + " inline-flex items-center gap-2"} onClick={() => { resetProductForm(); setIsAddProductOpen(true); }}>
-            <Plus className="h-4 w-4" />
-            Add Product
-          </button>
+          {role !== "admin" && role !== "manager" && (
+            <button
+              onClick={() => setShowBulkUpload(true)}
+              className="flex h-10 items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-[#FAF8F2] px-3 text-[12px] font-semibold text-[#6b6b6b] transition-all hover:border-[#D4AF37]/30 hover:text-[#111118] sm:h-9 sm:px-4 sm:text-[13px]"
+            >
+              <Upload className="h-4 w-4" /> Bulk Upload
+            </button>
+          )}
+          {role !== "admin" && role !== "manager" && (
+            <button type="button" className={financeGoldBtn + " inline-flex items-center justify-center gap-2"} onClick={() => { resetProductForm(); setIsAddProductOpen(true); }}>
+              <Plus className="h-4 w-4" />
+              Add Product
+            </button>
+          )}
         </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="hidden gap-3 lg:grid lg:grid-cols-4">
         <PageStatCard label="Total Products" value={productsLoading ? "…" : String(products.length)} sub="Live from database" icon={Package} index={0} href="/inventory?tab=stock" />
         <PageStatCard label="Low / Out of Stock" value={String(lowStockCount)} sub="Needs immediate reorder" icon={AlertTriangle} index={1} onClick={openStockAlertModal} />
         <PageStatCard label="Total Stock Value" value={totalValue} sub="Across all categories" icon={TrendingUp} index={2} href="/inventory?tab=stock" />
@@ -621,7 +632,7 @@ export function Inventory() {
 
       {/* Alert Banner */}
       {lowStockCount > 0 && (
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-[#FFFBEB] border border-[#D4AF37]/25">
+        <div className="flex flex-col items-stretch gap-3 rounded-xl border border-[#D4AF37]/25 bg-[#FFFBEB] p-4 sm:flex-row sm:items-center">
           <div className={financeIconWrap}>
             <AlertTriangle className="h-4 w-4 text-[#D4AF37]" />
           </div>
@@ -629,7 +640,7 @@ export function Inventory() {
             <p className="font-semibold text-[#111118]">Stock Alert: {lowStockCount} products need attention</p>
             <p className="text-sm text-[#6b6b6b]">1 out of stock, 2 critical, 3 low stock items require immediate reorder</p>
           </div>
-          <button type="button" className={financeGoldBtn + " !h-8 !px-3 !text-[11px]"} onClick={openStockAlertModal}>Reorder Now</button>
+          <button type="button" className={financeGoldBtn + " !h-9 !px-3 !text-[11px] sm:!h-8"} onClick={openStockAlertModal}>Reorder Now</button>
         </div>
       )}
 
@@ -660,7 +671,7 @@ export function Inventory() {
 
         <TabsContent value="stock" className="space-y-4 mt-4">
           {/* Filter Bar */}
-          <div className="flex items-center gap-2.5 p-3 bg-white rounded-2xl border border-black/[0.07] shadow-sm">
+          <div className="flex flex-col gap-2.5 rounded-2xl border border-black/[0.07] bg-white p-3 shadow-sm sm:flex-row sm:flex-wrap sm:items-center">
             {/* Search */}
             <div className="relative flex-1 min-w-[180px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#d4af37]" />
@@ -672,17 +683,17 @@ export function Inventory() {
               />
             </div>
 
-            <div className="w-px h-6 bg-black/[0.06] shrink-0" />
+            <div className="hidden h-6 w-px shrink-0 bg-black/[0.06] sm:block" />
 
             {/* Category Dropdown */}
-            <div className="relative shrink-0">
+            <div className="relative min-w-0 flex-1 sm:flex-none">
               <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
                 <Package className="h-3.5 w-3.5 text-[#d4af37]" />
               </div>
               <select
                 value={category}
                 onChange={e => setCategory(e.target.value)}
-                className={`h-9 pl-8 pr-7 rounded-xl border text-[12px] font-medium outline-none appearance-none cursor-pointer transition-all ${
+                className={`h-9 w-full pl-8 pr-7 rounded-xl border text-[12px] font-medium outline-none appearance-none cursor-pointer transition-all sm:w-auto ${
                   category !== "All"
                     ? "border-[#D4AF37]/45 bg-[#FFFBEB] text-[#9a7d20] font-semibold"
                     : "border-black/[0.08] bg-[#FAF8F2]/60 text-[#6b6b6b] hover:border-black/[0.12]"
@@ -700,14 +711,14 @@ export function Inventory() {
             </div>
 
             {/* Stock Alert Dropdown */}
-            <div className="relative shrink-0">
+            <div className="relative min-w-0 flex-1 sm:flex-none">
               <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
                 <AlertTriangle className="h-3.5 w-3.5 text-[#d4af37]" />
               </div>
               <select
                 value={stockAlertFilter}
                 onChange={e => setStockAlertFilter(e.target.value)}
-                className={`h-9 pl-8 pr-7 rounded-xl border text-[12px] font-medium outline-none appearance-none cursor-pointer transition-all ${
+                className={`h-9 w-full pl-8 pr-7 rounded-xl border text-[12px] font-medium outline-none appearance-none cursor-pointer transition-all sm:w-auto ${
                   stockAlertFilter !== "all"
                     ? "border-[#D4AF37]/45 bg-[#FFFBEB] text-[#9a7d20] font-semibold"
                     : "border-black/[0.08] bg-[#FAF8F2]/60 text-[#6b6b6b] hover:border-black/[0.12]"
@@ -728,7 +739,73 @@ export function Inventory() {
 
           <Card className={CARD_TABLE}>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
+              {/* Phone/tablet cards avoid a seven-column horizontal table. */}
+              <div className="divide-y divide-black/[0.06] lg:hidden">
+                {productsLoading ? (
+                  <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin" /> Loading products…
+                  </div>
+                ) : paginatedProducts.map((product) => {
+                  const status = statusConfig[product.status as keyof typeof statusConfig];
+                  return (
+                    <article key={product.id} className="space-y-3 p-4 sm:p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-[15px] font-bold text-[#111118]">{product.name}</p>
+                          <p className="mt-0.5 truncate text-[11px] text-[#6b6b6b]">{product.brand} · {product.category}</p>
+                          <p className="mt-1 font-mono text-[11px] text-[#9a9a9a]">SKU {product.sku}</p>
+                        </div>
+                        <Badge className={status.className}>{status.label}</Badge>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="rounded-xl border border-black/[0.06] bg-[#FAF8F2] p-2.5">
+                          <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Stock</p>
+                          <p className={cn(
+                            "mt-1 text-[17px] font-black",
+                            product.stock === 0 ? "text-red-600" : product.stock < product.minStock ? "text-[#9a7d20]" : "text-[#111118]",
+                          )}>
+                            {product.stock}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-black/[0.06] bg-white p-2.5">
+                          <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Minimum</p>
+                          <p className="mt-1 text-[17px] font-black text-[#111118]">{product.minStock}</p>
+                        </div>
+                        <div className="rounded-xl border border-[#D4AF37]/20 bg-[#FFFBEB] p-2.5">
+                          <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a7d20]">Price</p>
+                          <p className="mt-1 truncate text-[14px] font-black text-[#9a7d20]">{product.price}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => openEditProduct(product)}>
+                          <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => openViewModal(product)}>
+                          <Eye className="mr-1.5 h-3.5 w-3.5" /> View
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-10 rounded-xl border-[#D4AF37]/30 text-[#9a7d20]" onClick={() => openAdjust(product)}>
+                          <SlidersHorizontal className="mr-1.5 h-3.5 w-3.5" /> Adjust
+                        </Button>
+                        {(product.status === "low" || product.status === "critical" || product.status === "out") && (
+                          <Button size="sm" className="h-10 rounded-xl bg-[#111118] text-[#D4AF37]" onClick={() => openOrderModal(product)}>
+                            <ShoppingCart className="mr-1.5 h-3.5 w-3.5" /> Reorder
+                          </Button>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
+                {!productsLoading && filtered.length === 0 && (
+                  <div className="flex flex-col items-center gap-3 px-4 py-12 text-center">
+                    <Package className="h-10 w-10 text-muted-foreground/40" />
+                    <p className="text-sm text-muted-foreground">No products match the current filters.</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="hidden overflow-x-auto lg:block">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-black/[0.06] bg-[#FAF8F2]">
@@ -805,10 +882,12 @@ export function Inventory() {
                           <div className="flex flex-col items-center justify-center text-center gap-3">
                             <Package className="h-10 w-10 text-muted-foreground/40" />
                             <p className="text-sm text-muted-foreground">No products found in <strong>{category}</strong>.</p>
-                            <Button size="sm" className="bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d]" onClick={() => { resetProductForm(); if (category !== "All") { const cat = productCategories.find((c) => c.name === category); if (cat) setNewProduct((f) => ({ ...f, categoryId: cat.id })); } setIsAddProductOpen(true); }}>
-                              <Plus className="h-4 w-4 mr-2" />
-                              Add Product for {category}
-                            </Button>
+                            {role !== "admin" && (
+                              <Button size="sm" className="bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d]" onClick={() => { resetProductForm(); if (category !== "All") { const cat = productCategories.find((c) => c.name === category); if (cat) setNewProduct((f) => ({ ...f, categoryId: cat.id })); } setIsAddProductOpen(true); }}>
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add Product for {category}
+                              </Button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -834,18 +913,60 @@ export function Inventory() {
         <TabsContent value="orders" className="mt-4">
           <Card className={CARD_TABLE}>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <ShoppingCart className="h-5 w-5 text-[#1a1a1a]" />
                   Purchase Orders
                 </CardTitle>
-                <Button size="sm" className="bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d]" onClick={() => { setPoForm({ vendorId: "", productId: "", quantity: "", unitCost: "", date: new Date().toISOString().slice(0, 10), notes: "" }); setFormErrors({}); setIsCreatePOOpen(true); }}>
-                  <Plus className="h-4 w-4 mr-1" /> Create PO
-                </Button>
+                {role !== "admin" && (
+                  <Button size="sm" className="bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d]" onClick={() => { setPoForm({ vendorId: "", productId: "", quantity: "", unitCost: "", date: new Date().toISOString().slice(0, 10), notes: "" }); setFormErrors({}); setIsCreatePOOpen(true); }}>
+                    <Plus className="h-4 w-4 mr-1" /> Create PO
+                  </Button>
+                )}
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
+            <CardContent className="px-0 sm:px-6">
+              <div className="divide-y divide-black/[0.06] lg:hidden">
+                {paginatedOrders.map((order) => {
+                  const status = orderStatusConfig[order.status as keyof typeof orderStatusConfig];
+                  return (
+                    <article key={order.id} className="space-y-3 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-mono text-[13px] font-bold text-[#111118]">{order.id}</p>
+                          <p className="mt-1 truncate text-[14px] font-semibold">{order.supplier}</p>
+                          <p className="mt-0.5 text-[11px] text-[#9a9a9a]">{order.date}</p>
+                        </div>
+                        <Badge className={status.className}>{status.label}</Badge>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="rounded-xl bg-[#FAF8F2] px-3 py-2.5">
+                          <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Items</p>
+                          <p className="mt-1 text-[15px] font-black">{order.items}</p>
+                        </div>
+                        <div className="rounded-xl border border-[#D4AF37]/20 bg-[#FFFBEB] px-3 py-2.5">
+                          <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a7d20]">Total</p>
+                          <p className="mt-1 text-[15px] font-black text-[#9a7d20]">{order.total}</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => openViewPOModal(order)}>View</Button>
+                        {order.status === "pending" && (
+                          <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => handlePOAction(order.id, "mark-shipped")}>Ship</Button>
+                        )}
+                        {order.status === "shipped" && (
+                          <Button variant="outline" size="sm" className="h-10 rounded-xl border-[#D4AF37]/35 text-[#9a7d20]" onClick={() => handlePOAction(order.id, "mark-delivered")}>Deliver</Button>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
+                {!ordersLoading && purchaseOrders.length === 0 && (
+                  <div className="py-12 text-center text-sm text-muted-foreground">No purchase orders yet.</div>
+                )}
+              </div>
+
+              <div className="hidden overflow-x-auto lg:block">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-black/[0.06] bg-[#FAF8F2]">
@@ -907,10 +1028,10 @@ export function Inventory() {
                 <CardTitle className="text-[15px] font-bold text-[#1a1a1a] flex items-center gap-2">
                   <History className="h-4 w-4 text-[#d4af37]" /> Stock Usage Log
                 </CardTitle>
-                <div className="flex items-center gap-2">
+                <div className="flex max-w-full items-center gap-2 overflow-x-auto pb-1">
                   {(["all", "Service Used", "Retail Sale", "Manual Adjustment"] as const).map(f => (
                     <button key={f} onClick={() => setLogFilter(f)}
-                      className={`h-7 px-3 rounded-full text-[11px] font-semibold transition-all ${logFilter === f ? "bg-[#121212] text-[#D4AF37]" : "bg-[#FAF8F2] text-[#6b6b6b] hover:bg-[#f4f2ed] border border-black/[0.06]"}`}>
+                      className={`h-7 shrink-0 whitespace-nowrap px-3 rounded-full text-[11px] font-semibold transition-all ${logFilter === f ? "bg-[#121212] text-[#D4AF37]" : "bg-[#FAF8F2] text-[#6b6b6b] hover:bg-[#f4f2ed] border border-black/[0.06]"}`}>
                       {f === "all" ? "All" : f}
                     </button>
                   ))}
@@ -925,7 +1046,51 @@ export function Inventory() {
                   <p className="text-[11px] text-gray-400">Movements appear here when appointments are completed, products are sold, or stock is adjusted manually.</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <>
+                <div className="divide-y divide-black/[0.06] lg:hidden">
+                  {paginatedLog.map((log) => (
+                    <article key={log.id} className="space-y-3 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-[14px] font-bold text-[#111118]">{log.productName}</p>
+                          <p className="mt-0.5 font-mono text-[10px] text-[#9a9a9a]">{log.sku}</p>
+                        </div>
+                        <span className={cn(
+                          "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-bold",
+                          log.type === "Service Used" ? "border-black/[0.08] bg-[#FAF8F2] text-[#111118]"
+                            : log.type === "Retail Sale" ? "border-[#D4AF37]/20 bg-[#FFFBEB] text-[#9a7d20]"
+                              : log.type === "Manual Adjustment" ? "border-[#D4AF37]/25 bg-[#D4AF37]/10 text-[#9a7d20]"
+                                : "border-black/[0.08] bg-[#f4f2ed] text-[#6b6b6b]",
+                        )}>
+                          {log.type}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="rounded-xl bg-[#FAF8F2] px-2.5 py-2">
+                          <p className="text-[9px] font-bold uppercase text-[#9a9a9a]">Date</p>
+                          <p className="mt-1 text-[11px] font-semibold">{log.date}</p>
+                          <p className="text-[10px] text-[#9a9a9a]">{log.time}</p>
+                        </div>
+                        <div className="rounded-xl bg-[#FAF8F2] px-2.5 py-2 text-center">
+                          <p className="text-[9px] font-bold uppercase text-[#9a9a9a]">Change</p>
+                          <p className={cn("mt-1 text-[16px] font-black", log.qtyChange < 0 ? "text-red-500" : "text-[#9a7d20]")}>
+                            {log.qtyChange > 0 ? "+" : ""}{log.qtyChange}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-[#D4AF37]/20 bg-[#FFFBEB] px-2.5 py-2 text-center">
+                          <p className="text-[9px] font-bold uppercase text-[#9a7d20]">After</p>
+                          <p className="mt-1 text-[16px] font-black text-[#111118]">{log.stockAfter}</p>
+                        </div>
+                      </div>
+                      {(log.ref || log.note) && (
+                        <p className="rounded-lg bg-gray-50 px-3 py-2 text-[11px] text-[#6b6b6b]">
+                          {log.ref || ""}{log.note ? (log.ref ? " · " : "") + log.note : ""}
+                        </p>
+                      )}
+                    </article>
+                  ))}
+                </div>
+                <div className="hidden overflow-x-auto lg:block">
                   <table className="w-full text-[12px]">
                     <thead className="bg-[#fafaf8] border-b border-gray-100">
                       <tr>
@@ -971,6 +1136,7 @@ export function Inventory() {
                     </tbody>
                   </table>
                 </div>
+                </>
               )}
               {filteredLog.length > 0 && (
                 <Pagination
@@ -1112,7 +1278,7 @@ export function Inventory() {
             {/* Section: Identity */}
             <div>
               <p className="text-[11px] font-bold uppercase tracking-widest text-[#d4af37] mb-3">Product Identity</p>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="col-span-2 space-y-1.5">
                   <label className="text-[12px] font-semibold text-[#333]">Product Name <span className="text-red-500">*</span></label>
                   <input value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })}
@@ -1142,7 +1308,7 @@ export function Inventory() {
             {/* Section: Classification */}
             <div>
               <p className="text-[11px] font-bold uppercase tracking-widest text-[#d4af37] mb-3">Classification</p>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <label className="text-[12px] font-semibold text-[#333]">Category <span className="text-red-500">*</span></label>
                   <Select value={newProduct.categoryId} onValueChange={v => setNewProduct({ ...newProduct, categoryId: v })}>
@@ -1175,7 +1341,7 @@ export function Inventory() {
             {/* Section: Stock */}
             <div>
               <p className="text-[11px] font-bold uppercase tracking-widest text-[#d4af37] mb-3">Stock Levels</p>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <label className="text-[12px] font-semibold text-[#333]">Current Stock {!editingProduct && <span className="text-red-500">*</span>}</label>
                   <div className="relative">
@@ -1207,7 +1373,7 @@ export function Inventory() {
             {/* Section: Pricing */}
             <div>
               <p className="text-[11px] font-bold uppercase tracking-widest text-[#d4af37] mb-3">Pricing</p>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <label className="text-[12px] font-semibold text-[#333]">Selling Price <span className="text-red-500">*</span></label>
                   <div className="relative">
@@ -1436,7 +1602,7 @@ export function Inventory() {
           </div>
 
           {selectedProduct && (
-            <div className="px-6 py-5 space-y-4 bg-[#faf8f2]">
+            <div className="max-h-[calc(100dvh-11rem)] space-y-4 overflow-y-auto bg-[#faf8f2] px-4 py-5 sm:px-6">
               {/* Hero card */}
               <div className="flex items-center gap-4 p-4 rounded-xl bg-white border border-gray-200">
                 <div className="h-12 w-12 rounded-xl bg-[#111118] flex items-center justify-center shrink-0">
@@ -1504,12 +1670,12 @@ export function Inventory() {
           )}
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-gray-100 bg-white flex items-center justify-between gap-2">
+          <div className="flex flex-col items-stretch gap-2 border-t border-gray-100 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <button onClick={() => selectedProduct && void handleDeleteProduct(selectedProduct)} disabled={saving}
               className="h-10 px-4 rounded-xl border border-red-200 text-red-600 text-[13px] font-semibold hover:bg-red-50 transition-all flex items-center gap-2">
               <Trash2 className="h-4 w-4" /> Delete
             </button>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
             <button onClick={() => setIsViewProductOpen(false)}
               className="h-10 px-5 rounded-xl border border-gray-200 bg-white text-[13px] font-semibold text-gray-600 hover:bg-gray-50 transition-all">
               Close
@@ -1576,7 +1742,7 @@ export function Inventory() {
               {formErrors.productId && <p className="text-[11px] text-red-500 mt-1">{formErrors.productId}</p>}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Quantity <span className="text-[#d4af37]">*</span></p>
                 <div className="relative">

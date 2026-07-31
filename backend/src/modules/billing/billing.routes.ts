@@ -39,7 +39,14 @@ billingRouter.use(authenticate);
 
 billingRouter.post("/confirm-only", validateRequest(confirmOnlySchema), billingController.confirmOnly);
 billingRouter.post("/checkout", validateRequest(checkoutSchema), billingController.checkout);
-billingRouter.get("/invoices", authorize("admin"), billingController.listInvoices);
+// Shop billing is operated by managers/receptionists and reviewed by accounts.
+// Restricting this to franchise admins made every checkout refresh fail with 403
+// for the manager who had just created the invoice.
+billingRouter.get(
+  "/invoices",
+  authorize("admin", "manager", "accountant", "receptionist"),
+  billingController.listInvoices,
+);
 billingRouter.get("/refunds", billingController.listRefunds);
 billingRouter.get("/pending", billingController.listPending);
 billingRouter.post("/:invoiceId/refund/request", validateRequest(requestRefundSchema), billingController.requestRefund);

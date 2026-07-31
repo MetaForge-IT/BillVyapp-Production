@@ -16,5 +16,5 @@ export function getDeviceClass(width: number): DeviceClass {
   return "wide";
 }
 
-/** Main app shell: sidebar visible from md (tablet landscape / iPad). */
-export const SIDEBAR_MIN_WIDTH = BREAKPOINTS.md;
+/** Main app shell: persistent sidebar from lg; phones and tablets use the drawer. */
+export const SIDEBAR_MIN_WIDTH = BREAKPOINTS.lg;

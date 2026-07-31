@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useLayoutEffect, startTransition } from "react";
 import { cn } from "../components/ui/utils";
 import { useAppointments } from "../context/AppointmentContext";
 import { useReceipts } from "../context/ReceiptsContext";
@@ -6,6 +6,7 @@ import { usePendingPayments } from "../context/PendingPaymentsContext";
 import { useAdvances } from "../context/AdvancesContext";
 import { useCoupons } from "../context/CouponsContext";
 import { confirmOnlyCheckout, completeCheckout } from "../../api/billing";
+import { createFeedback } from "../../api/feedback";
 import { fetchCustomers, type Customer } from "../../api/customers";
 import { authService } from "../../services/authService";
 import type { Appointment as ApiAppointment, ApptStatus } from "../../api/appointments";
@@ -13,7 +14,9 @@ import { fetchServiceCatalog } from "../../api/services";
 import { getApiErrorMessage } from "../../lib/api";
 import { useIncentives } from "../context/IncentivesContext";
 import { useProducts } from "../context/ProductsContext";
+import { useServiceProducts } from "../context/ServiceProductsContext";
 import { parseInr, formatInr } from "../../lib/inventoryMappers";
+import { formatDisplayPhone } from "../../lib/phone";
 import { ProductCorrectionModal } from "../components/shared/ProductCorrectionModal";
 import {
   findCatalogService,
@@ -30,7 +33,14 @@ import { Badge } from "../components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Input } from "../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "../components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
@@ -38,7 +48,7 @@ import {
   Calendar as CalendarIcon, Clock, User, Search, Plus, Filter,
   ChevronLeft, ChevronRight, LayoutGrid, List, MessageSquare,
   Phone, Edit, Trash2, CheckCircle, XCircle, UserPlus, ListOrdered,
-  CreditCard, Tag, Receipt, Bell, Send, X, Check, AlertCircle,
+  Tag, Receipt, Bell, Send, X, Check, AlertCircle,
   Timer, MoreVertical, ArrowRight, PlayCircle, Info, ArrowLeft,
   PlusCircle, Scissors, Wallet, CheckCircle2, Star,
 } from "lucide-react";
@@ -46,10 +56,11 @@ import { Pagination } from "../components/shared/Pagination";
 import { PageStatCard } from "../components/shared/PageStatCard";
 import { useTablePagination } from "../hooks/useTablePagination";
 import { SEGMENTED_PILL_LIST, SEGMENTED_PILL_TRIGGER } from "../components/layout/segmented-nav";
-import { toast } from "sonner";
+import { toast } from "../components/ui/hot-toast";
 import { BRAND, RECEIPT_FOOTER } from "../config/brand";
 import { SalonReceiptBrandHeader, SalonReceiptPaper } from "../components/shared/SalonReceiptBrand";
 import {
+  BILL_PAY_METHODS,
   PaymentMethodPicker,
   createPaymentMethodValue,
   paymentMethodLabel,
@@ -58,6 +69,18 @@ import {
   isPaymentMethodValid,
   type PaymentMethodValue,
 } from "../components/shared/PaymentMethodPicker";
+
+/** Counter staff settle almost every bill by QR, so checkout opens on UPI. */
+const createDefaultBillPayment = () => createPaymentMethodValue({ method: "upi" });
+
+/** Optional bill adjustments — each one is revealed by its own toggle. */
+type DiscountTool = "coupon" | "loyalty" | "manual" | "advance";
+const NO_DISCOUNT_TOOLS: Record<DiscountTool, boolean> = {
+  coupon: false,
+  loyalty: false,
+  manual: false,
+  advance: false,
+};
 
 const APPOINTMENTS: Appointment[] = [];
 const WALKINS: Walkin[] = [];
@@ -296,7 +319,11 @@ export function Appointments() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [filterType, setFilterType] = useState("all");
+  const [filterType, setFilterType] = useState(() => {
+    if (typeof window === "undefined") return "all";
+    const t = new URLSearchParams(window.location.search).get("type");
+    return t === "walk-in" || t === "appointment" ? t : "all";
+  });
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const {
     appointments: ctxAppointments,
@@ -310,6 +337,7 @@ export function Appointments() {
   const { addPendingPayment, refresh: refreshPending } = usePendingPayments();
   const { recordBillingIncentives } = useIncentives();
   const { deductBySku, products: retailProducts, refresh: refreshProducts } = useProducts();
+  const { getLinks: getServiceProductLinks } = useServiceProducts();
   const { getActiveAdvancesForPhone, deductAdvance } = useAdvances();
   const { coupons } = useCoupons();
   const [loyaltyAvailable, setLoyaltyAvailable] = useState(0);
@@ -405,6 +433,8 @@ export function Appointments() {
   const [notifyTarget, setNotifyTarget] = useState<{ name: string; phone: string } | null>(null);
   const [notifyMsg, setNotifyMsg] = useState("");
   const [billingOpen, setBillingOpen] = useState(false);
+  const billAutoOpenedRef = useRef<string | null>(null);
+  const billRefreshTriedRef = useRef(false);
   const [directBillCustomers, setDirectBillCustomers] = useState<Customer[]>([]);
   const [billingTarget, setBillingTarget] = useState<BillingTarget | null>(null);
   const [isDirectBill, setIsDirectBill] = useState(false);
@@ -435,20 +465,25 @@ export function Appointments() {
     serviceId?: string;
     productId?: string;
   }[]>([]);
-  const [discount, setDiscount] = useState(0);
+  const [discountPct, setDiscountPct] = useState(0);
+  const [discountFlat, setDiscountFlat] = useState(0);
+  const [discountMode, setDiscountMode] = useState<"pct" | "flat">("pct");
   const [discountReason, setDiscountReason] = useState("");
   const [advanceApplied, setAdvanceApplied] = useState(0);
-  const [payMethod, setPayMethod] = useState<PaymentMethodValue>(createPaymentMethodValue());
+  const [payMethod, setPayMethod] = useState<PaymentMethodValue>(createDefaultBillPayment());
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [receiptStep, setReceiptStep] = useState<"success" | "pending" | "receipt">("success");
   const [receiptData, setReceiptData] = useState<{
     invoiceNo: string; customer: string; date: string; items: { name: string; qty: number; rate: number; total: number }[];
     subtotal: number; gst: number; roundOff: number; grandTotal: number; paymentMethod: string; loyaltyEarned: number;
+    appointmentId?: string;
   } | null>(null);
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [feedbackHover, setFeedbackHover] = useState(0);
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
   const [billingMenuTab, setBillingMenuTab] = useState<"services" | "products" | "combos">("services");
   const [billingGenderTab, setBillingGenderTab] = useState<"all" | "male" | "female">("all");
   const [billingServiceSearch, setBillingServiceSearch] = useState("");
-  const [billingNotes, setBillingNotes] = useState("");
   const [billingReferral, setBillingReferral] = useState("");
   // â”€â”€ Billing extras â”€â”€
   const [gstEnabled, setGstEnabled] = useState(false);
@@ -457,9 +492,27 @@ export function Appointments() {
   const [customTaxInput, setCustomTaxInput] = useState("");
   const [couponInput, setCouponInput] = useState("");
   const [couponApplied, setCouponApplied] = useState<{ code: string; value: number; type: "%" | "₹" } | null>(null);
-  const [giftCardInput, setGiftCardInput] = useState("");
-  const [giftCardApplied, setGiftCardApplied] = useState<{ code: string; amount: number } | null>(null);
   const [loyaltyRedeem, setLoyaltyRedeem] = useState(0);
+  const [scanFocus, setScanFocus] = useState(false);
+  const [discountTools, setDiscountTools] = useState<Record<DiscountTool, boolean>>(NO_DISCOUNT_TOOLS);
+  const setDiscountToolEnabled = (tool: DiscountTool, enabled: boolean) => {
+    setDiscountTools((prev) => ({ ...prev, [tool]: enabled }));
+    if (enabled) return;
+
+    // Turning a switch off must also remove its value from the bill.
+    if (tool === "coupon") {
+      setCouponApplied(null);
+      setCouponInput("");
+    } else if (tool === "loyalty") {
+      setLoyaltyRedeem(0);
+    } else if (tool === "manual") {
+      setDiscountPct(0);
+      setDiscountFlat(0);
+      setDiscountReason("");
+    } else if (tool === "advance") {
+      setAdvanceApplied(0);
+    }
+  };
   const [billingAppointmentType, setBillingAppointmentType] = useState<"appointment" | "walk-in">("appointment");
   const [walkinSearch, setWalkinSearch] = useState("");
   const [walkinStatusFilter, setWalkinStatusFilter] = useState<"all" | WalkinStatus>("all");
@@ -476,6 +529,7 @@ export function Appointments() {
   const dateParam = searchParams.get("date");
   const typeParam = searchParams.get("type");
   const focusAppointmentId = searchParams.get("appointment");
+  const billAppointmentId = searchParams.get("bill");
   const activeTab = tabParam === "calendar" ? "calendar" : "timeline";
   const setActiveTab = (tab: string) => {
     setSearchParams((prev) => {
@@ -579,10 +633,18 @@ export function Appointments() {
 
   const formatDate = (d: Date) => d.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
+  const normalizedAppointmentSearch = searchQuery.trim().toLowerCase();
+  const appointmentSearchDigits = searchQuery.replace(/\D/g, "");
   const filteredAppts = sortAppointmentQueue(appointments.filter(a => {
     const isFocused = Boolean(focusAppointmentId && a.id === focusAppointmentId);
-    const matchSearch = isFocused || a.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.service.toLowerCase().includes(searchQuery.toLowerCase());
+    const normalizedPhone = a.phone.replace(/\D/g, "");
+    const matchSearch =
+      isFocused ||
+      normalizedAppointmentSearch.length === 0 ||
+      a.customer.toLowerCase().includes(normalizedAppointmentSearch) ||
+      a.service.toLowerCase().includes(normalizedAppointmentSearch) ||
+      a.phone.toLowerCase().includes(normalizedAppointmentSearch) ||
+      (appointmentSearchDigits.length > 0 && normalizedPhone.includes(appointmentSearchDigits));
     const matchStatus = isFocused || (
       filterStatus === "all"
         ? !["completed", "cancelled", "no-show"].includes(a.status)
@@ -600,7 +662,7 @@ export function Appointments() {
 
   // Jump to the focused appointment's page and scroll it into view
   useEffect(() => {
-    if (!focusAppointmentId) return;
+    if (!focusAppointmentId || billAppointmentId) return;
     const idx = filteredAppts.findIndex((a) => a.id === focusAppointmentId);
     if (idx < 0) return;
     const targetPage = Math.floor(idx / apptsPagination.pageSize) + 1;
@@ -609,13 +671,14 @@ export function Appointments() {
       return;
     }
     const timer = window.setTimeout(() => {
-      document.getElementById(`appt-row-${focusAppointmentId}`)?.scrollIntoView({
+      const layout = window.innerWidth < 1024 ? "card" : "row";
+      document.getElementById(`appt-${layout}-${focusAppointmentId}`)?.scrollIntoView({
         behavior: "smooth",
         block: "center",
       });
     }, 80);
     return () => window.clearTimeout(timer);
-  }, [focusAppointmentId, filteredAppts, apptsPagination.page, apptsPagination.pageSize, apptsPagination.setPage]);
+  }, [focusAppointmentId, billAppointmentId, filteredAppts, apptsPagination.page, apptsPagination.pageSize, apptsPagination.setPage]);
 
   const filteredWalkins = useMemo(() => sortWalkinQueue(walkins.filter(w => {
     const q = walkinSearch.toLowerCase();
@@ -683,21 +746,42 @@ export function Appointments() {
     void persistStatus(id, "no-show", { successMessage: "Marked as no-show" });
   };
 
-  const completeAppointment = async (id: string) => {
+  const deductAppointmentServiceProducts = async (id: string) => {
     const appt = appointments.find((a) => a.id === id);
-    try {
-      await apiUpdateStatus(id, "completed");
-      if (appt) {
-        const used = getProductsForService(appt.service);
-        await Promise.all(
-          used.map((p) =>
-            deductBySku(p.sku, p.qty, "Service Used", `APT-${id}`, `Used in: ${appt.service}`),
-          ),
-        );
+    if (!appt) return;
+
+    const serviceRefs = appt.serviceLines?.length
+      ? appt.serviceLines.map((line) => ({
+          id: line.serviceId,
+          name: line.itemName,
+        }))
+      : (appt.services?.length ? appt.services : [appt.service]).map((name) => ({
+          id: findCatalogService(serviceCatalog, name)?.id,
+          name,
+        }));
+
+    const usageBySku = new Map<string, { qty: number; services: Set<string> }>();
+    for (const service of serviceRefs) {
+      if (!service.id) continue;
+      for (const link of getServiceProductLinks(service.id)) {
+        const current = usageBySku.get(link.sku) ?? { qty: 0, services: new Set<string>() };
+        current.qty += link.defaultQty;
+        current.services.add(service.name);
+        usageBySku.set(link.sku, current);
       }
-    } catch (error) {
-      toast.error(getApiErrorMessage(error, "Failed to complete appointment"));
     }
+
+    await Promise.all(
+      Array.from(usageBySku.entries()).map(([sku, usage]) =>
+        deductBySku(
+          sku,
+          usage.qty,
+          "Service Used",
+          `APT-${id}`,
+          `Used in: ${Array.from(usage.services).join(", ")}`,
+        ),
+      ),
+    );
   };
 
   const cancelAppointment = (id: string) => {
@@ -722,24 +806,43 @@ export function Appointments() {
   };
 
   const openBilling = (id: string, name: string, service: string) => {
-    const appt = appointments.find(a => a.id === id);
+    const local = appointments.find((a) => a.id === id);
+    const ctx = ctxAppointments.find((a) => a.id === id);
+    const status = local?.status || ctx?.status;
+    if (status === "completed") {
+      toast.info("This appointment has already been checked out.");
+      return;
+    }
+    if (status === "cancelled" || status === "no-show") {
+      toast.error("This appointment is not eligible for checkout.");
+      return;
+    }
+    const phone = local?.phone || ctx?.phone || "";
+    const type = (local?.type || ctx?.type || "appointment") === "walk-in" ? "walk-in" : "appointment";
+    const time = local?.time || ctx?.time;
+    const customerId = local?.customerId || ctx?.customerId;
+    const serviceLines = local?.serviceLines || ctx?.serviceLines;
+    const servicesList =
+      (local?.services && local.services.length > 0
+        ? local.services
+        : ctx?.services && ctx.services.length > 0
+          ? ctx.services
+          : null) ??
+      service.split(",").map((s: string) => s.trim()).filter(Boolean);
+    const extras = local?.extraServices || [];
+
     setBillingTarget({
       id,
       name,
-      phone: appt?.phone || "",
+      phone,
       service,
-      type: appt?.type || "appointment",
-      time: appt?.time,
-      customerId: appt?.customerId,
+      type,
+      time,
+      customerId,
       sourceKind: "appointment",
     });
-    setBillingAppointmentType(appt?.type === "walk-in" ? "walk-in" : "appointment");
+    setBillingAppointmentType(type);
 
-    const serviceNames: string[] = (appt as Appointment & { services?: string[] })?.services?.length
-      ? (appt as Appointment & { services?: string[] }).services!
-      : service.split(",").map((s: string) => s.trim()).filter(Boolean);
-
-    const serviceLines = (appt as ApiAppointment | undefined)?.serviceLines;
     const baseItems = serviceLines?.length
       ? serviceLines.map((line) => ({
           type: "service" as const,
@@ -748,7 +851,7 @@ export function Appointments() {
           qty: 1,
           serviceId: line.serviceId,
         }))
-      : serviceNames.map((svcName) => {
+      : servicesList.map((svcName) => {
           const match = findCatalogService(serviceCatalog, svcName);
           return {
             type: "service" as const,
@@ -759,14 +862,104 @@ export function Appointments() {
           };
         });
 
-    const extras = (appt?.extraServices || []).map(e => ({ type: "service" as const, name: e.name, price: e.price, qty: 1 }));
-    setBillingItems([...baseItems, ...extras]);
-    setDiscount(0);
+    setBillingItems([
+      ...baseItems,
+      ...extras.map((e) => ({ type: "service" as const, name: e.name, price: e.price, qty: 1 })),
+    ]);
+    setDiscountPct(0);
+    setDiscountFlat(0);
+    setDiscountTools(NO_DISCOUNT_TOOLS);
     setAdvanceApplied(0);
-    setPayMethod(createPaymentMethodValue());
+    setPayMethod(createDefaultBillPayment());
+    setScanFocus(false);
     setIsDirectBill(false);
-    void loadLoyaltyForPhone(appt?.phone || "");
+    // Defer loyalty fetch until the open animation has settled, otherwise the
+    // loyalty row pops in mid-transition and reads as a flicker.
+    startTransition(() => {
+      window.setTimeout(() => {
+        void loadLoyaltyForPhone(phone);
+      }, 400);
+    });
     setBillingOpen(true);
+  };
+
+  // Let the calm backdrop settle before the checkout animates in; opening both in
+  // the same frame reads as a flash even when nothing actually moves.
+  const [billBackdropSettled, setBillBackdropSettled] = useState(false);
+  useEffect(() => {
+    if (!billAppointmentId) {
+      setBillBackdropSettled(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setBillBackdropSettled(true), 260);
+    return () => window.clearTimeout(timer);
+  }, [billAppointmentId]);
+
+  // Walk-in Bill → open Appointment Checkout once the backdrop is in place.
+  useLayoutEffect(() => {
+    if (!billAppointmentId || billingOpen) return;
+    if (billAutoOpenedRef.current === billAppointmentId) return;
+
+    const fromCtx = ctxAppointments.find((a) => a.id === billAppointmentId);
+    const fromLocal = appointments.find((a) => a.id === billAppointmentId);
+    if (!fromCtx && !fromLocal) {
+      if (!apptLoading && !billRefreshTriedRef.current) {
+        billRefreshTriedRef.current = true;
+        void refreshAppointments();
+      }
+      return;
+    }
+    if (!billBackdropSettled) return;
+
+    const customer = fromLocal?.customer ?? fromCtx!.customer;
+    const service =
+      fromLocal?.service ??
+      (fromCtx!.services && fromCtx!.services.length > 0
+        ? fromCtx!.services.join(", ")
+        : fromCtx!.service);
+
+    billAutoOpenedRef.current = billAppointmentId;
+    openBilling(billAppointmentId, customer, service);
+  }, [
+    billAppointmentId,
+    billBackdropSettled,
+    appointments,
+    ctxAppointments,
+    billingOpen,
+    apptLoading,
+    refreshAppointments,
+  ]);
+
+  // Stays true for the whole Walk-in → Bill handoff so the backdrop never changes
+  // underneath the checkout dialog while it animates in.
+  const billHandoffActive = Boolean(billAppointmentId);
+  const billHandoffPending = billHandoffActive && !billingOpen;
+
+  // Never strand the user on the loader if the booking can't be resolved.
+  useEffect(() => {
+    if (!billHandoffPending) return;
+    const timer = window.setTimeout(() => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("bill");
+        return next;
+      }, { replace: true });
+      toast.error("Couldn't open checkout — please pick the booking from the list");
+    }, 6000);
+    return () => window.clearTimeout(timer);
+  }, [billHandoffPending, setSearchParams]);
+
+  const dismissBilling = () => {
+    setBillingOpen(false);
+    setScanFocus(false);
+
+    if (!billAppointmentId) return;
+
+    billAutoOpenedRef.current = null;
+    billRefreshTriedRef.current = false;
+    // The checkout was launched from the walk-in flow. Leave the handoff route
+    // immediately so its six-second recovery timer cannot fire after dismissal.
+    navigate("/walk-in", { replace: true });
   };
 
   const openWalkinBilling = (w: Walkin) => {
@@ -788,9 +981,12 @@ export function Appointments() {
       qty: 1,
       serviceId: findCatalogService(serviceCatalog, w.service)?.id,
     }]);
-    setDiscount(0);
+    setDiscountPct(0);
+    setDiscountFlat(0);
+    setDiscountTools(NO_DISCOUNT_TOOLS);
     setAdvanceApplied(0);
-    setPayMethod(createPaymentMethodValue());
+    setPayMethod(createDefaultBillPayment());
+    setScanFocus(false);
     setIsDirectBill(false);
     void loadLoyaltyForPhone(w.phone);
     setBillingOpen(true);
@@ -800,10 +996,6 @@ export function Appointments() {
     void persistStatus(id, "in-service", {
       successMessage: "Service started",
     });
-  };
-
-  const completeWalkin = async (id: string) => {
-    await persistStatus(id, "done");
   };
 
   const cancelWalkin = async (id: string) => {
@@ -817,12 +1009,16 @@ export function Appointments() {
   };
 
   const billSubtotal    = billingItems.reduce((s, i) => s + i.price * i.qty, 0);
+  // Manual discount is entered either as a percentage of the subtotal or as a
+  // flat rupee amount; the bill and the invoice always carry the rupee value.
+  const discount        = discountMode === "pct"
+    ? Math.round(billSubtotal * discountPct / 100)
+    : Math.min(Math.round(discountFlat), billSubtotal);
   const billCouponDisc  = couponApplied
     ? couponApplied.type === "%" ? Math.round(billSubtotal * couponApplied.value / 100) : couponApplied.value
     : 0;
-  const billGiftCard    = giftCardApplied ? Math.min(giftCardApplied.amount, billSubtotal - billCouponDisc) : 0;
-  const billLoyalty     = Math.min(loyaltyRedeem * 0.5, billSubtotal - billCouponDisc - billGiftCard);
-  const billAfterDiscs  = Math.max(0, billSubtotal - billCouponDisc - billGiftCard - billLoyalty - discount);
+  const billLoyalty     = Math.min(loyaltyRedeem * 0.5, billSubtotal - billCouponDisc);
+  const billAfterDiscs  = Math.max(0, billSubtotal - billCouponDisc - billLoyalty - discount);
   const billGst         = gstEnabled ? Math.round(billAfterDiscs * gstRate / 100) : 0;
   const billTotal       = billSubtotal; // kept for legacy refs
   const billFinal       = billAfterDiscs + billGst;
@@ -830,6 +1026,24 @@ export function Appointments() {
   const matchedAdvances  = billingTarget?.phone ? getActiveAdvancesForPhone(billingTarget.phone) : [];
   const advanceAvailable = matchedAdvances.reduce((s, a) => s + a.balance, 0);
   const billDue           = Math.max(0, billGrand - advanceApplied); // what still needs collecting via cash/card/upi/etc.
+  // Opt-in scan screen: hides the bill controls so the QR can fill the panel.
+  const scanToPayFocus    = payMethod.method === "upi" && scanFocus;
+
+  const applyCouponCode = () => {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    const match = coupons.find((c) => c.code.toUpperCase() === code && c.status === "active");
+    if (!match) {
+      toast.error("Coupon not found or inactive");
+      return;
+    }
+    setCouponApplied({
+      code: match.code,
+      value: match.value,
+      type: match.type === "percentage" ? "%" : "₹",
+    });
+    setCouponInput("");
+  };
 
   const addBillItem = (type: "service" | "product", name: string, price: number, serviceId?: string, productId?: string) => {
     setBillingItems(prev => {
@@ -898,21 +1112,22 @@ export function Appointments() {
 
   const resetBillingForm = () => {
     setCouponApplied(null);
-    setGiftCardApplied(null);
+    setCouponInput("");
     setLoyaltyRedeem(0);
-    setDiscount(0);
+    setDiscountPct(0);
+    setDiscountFlat(0);
+    setDiscountMode("pct");
+    setDiscountTools(NO_DISCOUNT_TOOLS);
     setDiscountReason("");
     setAdvanceApplied(0);
-    setPayMethod(createPaymentMethodValue());
-    setBillingNotes("");
+    setPayMethod(createDefaultBillPayment());
+    setScanFocus(false);
   };
 
   const finalizeAppointmentAfterCheckout = async () => {
     if (!billingTarget) return;
-    if (billingTarget.sourceKind === "walkin") {
-      await completeWalkin(billingTarget.id);
-    } else if (billingTarget.id) {
-      await completeAppointment(billingTarget.id);
+    if (billingTarget.id) {
+      await deductAppointmentServiceProducts(billingTarget.id);
     }
   };
 
@@ -935,14 +1150,14 @@ export function Appointments() {
       unitPrice: item.price,
     })),
     subtotal: billSubtotal,
-    discountAmount: billGiftCard + billLoyalty,
+    discountAmount: billLoyalty,
     couponDiscount: billCouponDisc,
+    couponCode: billCouponDisc > 0 ? couponApplied?.code : undefined,
     manualDiscountAmount: discount,
     manualDiscountReason: discount > 0 ? discountReason.trim() : undefined,
     gstRate: gstEnabled ? gstRate : 0,
     gstAmount: billGst,
     totalAmount: grand,
-    notes: billingNotes || undefined,
     dueDate: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
   });
 
@@ -952,6 +1167,7 @@ export function Appointments() {
     payLabel: string,
     roundOff: number,
     loyaltyEarned: number,
+    appointmentId?: string,
   ) => ({
     invoiceNo,
     customer: billingTarget?.name || "Walk-in Customer",
@@ -968,7 +1184,38 @@ export function Appointments() {
     grandTotal: grand,
     paymentMethod: payLabel,
     loyaltyEarned,
+    appointmentId: appointmentId || billingTarget?.id || undefined,
   });
+
+  const submitReceiptFeedbackAndGoDashboard = async () => {
+    if (!receiptData) return;
+    if (!feedbackRating || feedbackRating < 1 || feedbackRating > 5) {
+      toast.error("Please select a rating from 1 to 5 stars");
+      return;
+    }
+    if (!receiptData.appointmentId) {
+      toast.error("Unable to save feedback — appointment not found");
+      return;
+    }
+
+    setFeedbackSubmitting(true);
+    try {
+      await createFeedback({
+        appointmentId: receiptData.appointmentId,
+        rating: feedbackRating,
+        source: "app",
+      });
+      toast.success("Thanks for the feedback!");
+      setReceiptOpen(false);
+      setFeedbackRating(0);
+      setFeedbackHover(0);
+      navigate("/dashboard");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Failed to save feedback"));
+    } finally {
+      setFeedbackSubmitting(false);
+    }
+  };
 
   const handleConfirmOnly = async () => {
     if (!billingTarget || billingItems.length === 0) {
@@ -1080,9 +1327,12 @@ export function Appointments() {
         payLabel,
         roundOff,
         Math.floor(grand / 10),
+        invoice.appointmentId || billingTarget.id,
       ));
       setBillingOpen(false);
       resetBillingForm();
+      setFeedbackRating(0);
+      setFeedbackHover(0);
       setReceiptStep("success");
       triggerConfetti();
       setReceiptOpen(true);
@@ -1154,7 +1404,27 @@ export function Appointments() {
     : null;
 
   return (
-    <div className="space-y-6">
+    <>
+      {/* Walk-in → Bill: hold a still backdrop for the whole handoff so the
+          checkout dialog fades in over something that never moves. */}
+      {billHandoffActive && (
+        <div className="animate-in fade-in-0 slide-in-from-bottom-1 duration-300 ease-out flex min-h-[60vh] flex-col items-center justify-center gap-3">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[#D4AF37]/30 bg-[#D4AF37]/10">
+            <Receipt className={cn("h-6 w-6 text-[#D4AF37]", billHandoffPending && "animate-pulse")} />
+          </div>
+          <p className="text-[14px] font-bold text-[#111118]">Opening checkout…</p>
+          <p className="text-[12px] text-[#9a9a9a]">Preparing walk-in bill</p>
+        </div>
+      )}
+
+      <div
+        className={cn(
+          "flex h-[calc(100dvh-8rem)] min-h-0 flex-col gap-4 overflow-hidden transition-opacity duration-300 ease-out",
+          billHandoffActive
+            ? "h-0 overflow-hidden opacity-0 pointer-events-none"
+            : "opacity-100 delay-100",
+        )}
+      >
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
@@ -1170,8 +1440,8 @@ export function Appointments() {
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+      {/* Laptop/desktop only — tablets and phones prioritize working space. */}
+      <div className="hidden shrink-0 gap-3 lg:grid lg:grid-cols-3 2xl:grid-cols-6">
         <PageStatCard
           label="Today's Total"
           value={appointments.length}
@@ -1217,7 +1487,7 @@ export function Appointments() {
       </div>
 
       {/* Date nav + Search + Filters */}
-      <div className="rounded-2xl bg-white border border-[#D4AF37]/15 shadow-[0_2px_12px_rgba(212,175,55,0.06)] overflow-hidden">
+      <div className="shrink-0 rounded-2xl bg-white border border-[#D4AF37]/15 shadow-[0_2px_12px_rgba(212,175,55,0.06)] overflow-hidden">
         {/* Top row: date nav */}
         <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 sm:px-5 sm:py-3.5 border-b border-gray-100">
           <div className="flex flex-wrap items-center gap-2">
@@ -1267,7 +1537,7 @@ export function Appointments() {
           <div className="relative w-full sm:w-auto sm:flex-1 sm:max-w-xs">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
             <input
-              placeholder="Search appointments..."
+              placeholder="Search name or phone number"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="h-9 w-full pl-9 pr-4 rounded-xl border border-gray-200 text-[13px] bg-gray-50 focus:bg-white focus:outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/12 transition-all placeholder:text-gray-400"
@@ -1308,8 +1578,8 @@ export function Appointments() {
       </div>
 
       {/* Main Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className={SEGMENTED_PILL_LIST}>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="min-h-0 flex-1 gap-4 overflow-hidden">
+        <TabsList className={cn(SEGMENTED_PILL_LIST, "shrink-0")}>
           <TabsTrigger value="timeline" className={SEGMENTED_PILL_TRIGGER}>
             <List className="h-3.5 w-3.5" />
             Timeline
@@ -1321,14 +1591,165 @@ export function Appointments() {
         </TabsList>
 
         {/* â”€â”€ TIMELINE TAB â”€â”€ Default: Detailed Table */}
-        <TabsContent value="timeline" className="space-y-4">
+        <TabsContent value="timeline" className="min-h-0 space-y-4 overflow-y-auto overscroll-contain pr-1">
 
           {filteredAppts.length === 0 && (
             <Card><CardContent className="py-12 text-center text-muted-foreground">No appointments or walk-ins match your filters.</CardContent></Card>
           )}
           <Card className="shadow-lg">
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
+                {/* Tablet/phone: cards expose every field and action without a
+                    horizontally scrolling seven-column table. */}
+                <div className="divide-y divide-black/[0.06] lg:hidden">
+                  {paginatedAppts.map((appointment, index) => {
+                    const services = [
+                      appointment.service,
+                      ...((appointment.extraServices ?? []).map((extra) => extra.name)),
+                    ].filter(Boolean);
+                    const notStarted = ["pending", "confirmed", "checked-in"].includes(appointment.status);
+                    const inProgress = appointment.status === "in-progress";
+                    const isDone = ["completed", "cancelled", "no-show"].includes(appointment.status);
+
+                    return (
+                      <article
+                        id={`appt-card-${appointment.id}`}
+                        key={appointment.id}
+                        className={cn(
+                          "space-y-3 p-4 sm:p-5",
+                          focusAppointmentId === appointment.id
+                            ? "bg-[#FFFBEB] ring-2 ring-inset ring-[#D4AF37]/50"
+                            : index % 2 === 0
+                              ? "bg-white"
+                              : "bg-[#FAFAFA]",
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setCustomerInfoAppt(appointment)}
+                            className="group flex min-w-0 items-center gap-3 text-left"
+                          >
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#d4af37] to-[#c9a227] text-[12px] font-black text-[#111]">
+                              {appointment.customer.split(" ").map((name) => name[0]).join("").slice(0, 2)}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate text-[15px] font-bold text-[#1a1a1a] group-hover:text-[#b8962e]">
+                                {appointment.customer}
+                              </p>
+                              <p className="mt-0.5 flex items-center gap-1.5 text-[12px] text-[#6b6b6b]">
+                                <Phone className="h-3.5 w-3.5 text-[#D4AF37]" />
+                                {appointment.phone}
+                              </p>
+                            </div>
+                          </button>
+                          <div className="flex shrink-0 flex-col items-end gap-1.5">
+                            <span className="rounded-lg bg-[#111118] px-2.5 py-1 font-mono text-[12px] font-bold text-white">
+                              {appointment.time}
+                            </span>
+                            <span className={cn(
+                              "rounded-full border px-2 py-0.5 text-[10px] font-bold capitalize",
+                              appointment.type === "walk-in"
+                                ? "border-[#d4af37]/30 bg-[#f4f2ed] text-[#9a7a1e]"
+                                : "border-gray-200 bg-white text-[#6b6b6b]",
+                            )}>
+                              {appointment.type}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl border border-black/[0.06] bg-white/80 p-3">
+                          <div className="mb-2 flex items-center justify-between gap-3">
+                            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Services</span>
+                            <span className="flex items-center gap-1 text-[11px] font-semibold text-[#6b6b6b]">
+                              <Clock className="h-3.5 w-3.5 text-[#D4AF37]" />
+                              {appointment.duration} min
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {services.length > 0 ? services.map((service, serviceIndex) => (
+                              <span
+                                key={`${service}-${serviceIndex}`}
+                                className="rounded-lg border border-[#D4AF37]/20 bg-[#FFFBEB] px-2 py-1 text-[11px] font-semibold text-[#6f5815]"
+                              >
+                                {service}
+                              </span>
+                            )) : (
+                              <span className="text-[12px] text-[#9a9a9a]">No services</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          {notStarted && (
+                            <>
+                              <span className="mr-auto text-[12px] font-semibold text-[#9a9a9a]">Waiting</span>
+                              <button
+                                type="button"
+                                onClick={() => startAppointment(appointment.id)}
+                                className="flex h-10 items-center gap-1.5 rounded-xl bg-[#111] px-4 text-[12px] font-bold text-[#d4af37]"
+                              >
+                                <PlayCircle className="h-4 w-4" /> Start
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeleteConfirm(appointment.id)}
+                                className="flex h-10 items-center gap-1.5 rounded-xl border border-gray-200 px-3 text-[12px] font-semibold text-[#6b6b6b]"
+                              >
+                                <XCircle className="h-4 w-4" /> Cancel
+                              </button>
+                            </>
+                          )}
+                          {inProgress && (
+                            <>
+                              <span className="mr-auto flex items-center gap-1.5 text-[12px] font-bold text-[#b8962e]">
+                                <span className="h-2 w-2 animate-pulse rounded-full bg-[#d4af37]" />
+                                In Progress
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => openBilling(appointment.id, appointment.customer, appointment.service)}
+                                className="flex h-10 items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#c9a227] px-4 text-[12px] font-bold text-[#111]"
+                              >
+                                <Receipt className="h-4 w-4" /> Bill
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeleteConfirm(appointment.id)}
+                                className="flex h-10 items-center gap-1.5 rounded-xl border border-gray-200 px-3 text-[12px] font-semibold text-[#6b6b6b]"
+                              >
+                                <XCircle className="h-4 w-4" /> Cancel
+                              </button>
+                            </>
+                          )}
+                          {isDone && (
+                            <>
+                              <span className={cn(
+                                "mr-auto rounded-lg border px-3 py-1.5 text-[12px] font-bold capitalize",
+                                appointment.status === "completed"
+                                  ? "border-[#d4af37]/30 bg-[#f4f2ed] text-[#9a7a1e]"
+                                  : "border-gray-200 bg-gray-50 text-gray-400",
+                              )}>
+                                {appointment.status}
+                              </span>
+                              {appointment.status === "completed" && (
+                                <button
+                                  type="button"
+                                  onClick={() => setCorrectionAppt({ id: appointment.id, service: appointment.service })}
+                                  className="flex h-10 items-center gap-1 rounded-xl border border-[#d4af37]/30 px-3 text-[11px] font-bold text-[#b8962e]"
+                                >
+                                  ✂ Correct
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+
+                {/* Laptop/desktop: retain the dense operational table. */}
+                <div className="hidden overflow-x-auto lg:block">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-[#FAF8F2]">
@@ -1542,7 +1963,7 @@ export function Appointments() {
 
 
         {/* â”€â”€ QUEUE TAB â”€â”€ Tabular by default */}
-        <TabsContent value="queue" className="space-y-4">
+        <TabsContent value="queue" className="min-h-0 space-y-4 overflow-y-auto overscroll-contain pr-1">
           <div className="flex items-center gap-3">
             <Button variant="outline" size="sm" className="rounded-xl border-[#d4af37]/40 hover:bg-amber-50" onClick={() => { setActiveTab("timeline"); setFilterTypeAndUrl("walk-in"); }}>
               <ArrowLeft className="h-4 w-4 mr-1" /> Back
@@ -1633,7 +2054,7 @@ export function Appointments() {
         </TabsContent>
 
         {/* â”€â”€ CALENDAR TAB â”€â”€ */}
-        <TabsContent value="calendar" className="space-y-4">
+        <TabsContent value="calendar" className="min-h-0 space-y-4 overflow-y-auto overscroll-contain pr-1">
           {/* Section header */}
           <div className="relative overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-[0_2px_12px_rgba(17,17,24,0.04)]">
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#D4AF37]/60 to-transparent" />
@@ -1845,7 +2266,7 @@ export function Appointments() {
       {/* â”€â”€ NEW APPOINTMENT MODAL â”€â”€ */}
       {/* â”€â”€ EDIT WALK-IN MODAL â”€â”€ */}
       <Dialog open={!!editWalkin} onOpenChange={open => !open && setEditWalkin(null)}>
-        <DialogContent className="gap-0 overflow-hidden rounded-2xl border-black/[0.08] p-0 sm:max-w-lg">
+        <DialogContent aria-describedby={undefined} className="gap-0 overflow-hidden rounded-2xl border-black/[0.08] p-0 sm:max-w-lg">
           <div className="relative border-b border-black/[0.06] bg-[#111118] px-6 py-5">
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#D4AF37]/70 to-transparent" />
             <DialogHeader className="space-y-1 text-left">
@@ -1996,7 +2417,7 @@ export function Appointments() {
 
       {/* â”€â”€ WALK-IN CUSTOMER INFO â”€â”€ */}
       <Dialog open={!!customerInfoWalkin} onOpenChange={() => setCustomerInfoWalkin(null)}>
-        <DialogContent className="sm:max-w-sm p-0 rounded-2xl overflow-hidden border-0 shadow-2xl [&>button:last-of-type]:hidden">
+        <DialogContent aria-describedby={undefined} className="sm:max-w-sm p-0 rounded-2xl overflow-hidden border-0 shadow-2xl [&>button:last-of-type]:hidden">
           {customerInfoWalkin && (
             <div className="flex flex-col">
               <div className="bg-[#111] px-6 pt-6 pb-8 relative">
@@ -2066,7 +2487,7 @@ export function Appointments() {
 
       {/* â”€â”€ WALK-IN DELETE CONFIRM â”€â”€ */}
       <Dialog open={walkinDeleteConfirm !== null} onOpenChange={open => !open && setWalkinDeleteConfirm(null)}>
-        <DialogContent className="sm:max-w-sm rounded-2xl">
+        <DialogContent aria-describedby={undefined} className="sm:max-w-sm rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-[#111118]">Remove walk-in?</DialogTitle>
           </DialogHeader>
@@ -2082,7 +2503,7 @@ export function Appointments() {
 
       {/* â”€â”€ NOTIFY / SMS+WHATSAPP MODAL â”€â”€ */}
       <Dialog open={notifyOpen} onOpenChange={setNotifyOpen}>
-        <DialogContent className="gap-0 overflow-hidden rounded-2xl border-black/[0.08] p-0 sm:max-w-md">
+        <DialogContent aria-describedby={undefined} className="gap-0 overflow-hidden rounded-2xl border-black/[0.08] p-0 sm:max-w-md">
           <div className="relative border-b border-black/[0.06] bg-[#111118] px-6 py-5">
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#D4AF37]/70 to-transparent" />
             <DialogHeader className="space-y-1 text-left">
@@ -2223,7 +2644,7 @@ export function Appointments() {
 
       {/* â”€â”€ EDIT APPOINTMENT MODAL â”€â”€ */}
       <Dialog open={!!editAppt} onOpenChange={open => !open && setEditAppt(null)}>
-        <DialogContent className="gap-0 overflow-hidden rounded-2xl border-black/[0.08] p-0 sm:max-w-lg [&>button:last-of-type]:absolute [&>button:last-of-type]:right-4 [&>button:last-of-type]:top-4 [&>button:last-of-type]:text-white/50 [&>button:last-of-type]:hover:text-white">
+        <DialogContent aria-describedby={undefined} className="gap-0 overflow-hidden rounded-2xl border-black/[0.08] p-0 sm:max-w-lg [&>button:last-of-type]:absolute [&>button:last-of-type]:right-4 [&>button:last-of-type]:top-4 [&>button:last-of-type]:text-white/50 [&>button:last-of-type]:hover:text-white">
           <div className="relative border-b border-black/[0.06] bg-[#111118] px-6 py-5">
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#D4AF37]/70 to-transparent" />
             <DialogHeader className="space-y-1 text-left">
@@ -2446,7 +2867,7 @@ export function Appointments() {
 
       {/* â”€â”€ CUSTOMER INFO MODAL â”€â”€ */}
       <Dialog open={!!customerInfoAppt} onOpenChange={() => setCustomerInfoAppt(null)}>
-        <DialogContent className="sm:max-w-sm p-0 rounded-2xl overflow-hidden border-0 shadow-2xl [&>button:last-of-type]:hidden">
+        <DialogContent aria-describedby={undefined} className="sm:max-w-sm p-0 rounded-2xl overflow-hidden border-0 shadow-2xl [&>button:last-of-type]:hidden">
           {customerInfoAppt && (
             <div className="flex flex-col">
               {/* Header */}
@@ -2522,8 +2943,24 @@ export function Appointments() {
       </Dialog>
 
       {/* â”€â”€ BILLING MODAL (3-Panel Salon Booking System) â”€â”€ */}
-      <Dialog open={billingOpen} onOpenChange={setBillingOpen}>
-        <DialogContent className="max-sm:dialog-mobile-sheet flex flex-col sm:max-w-7xl sm:h-[min(92dvh,860px)] max-h-[95dvh] overflow-hidden p-0 rounded-2xl shadow-2xl border-0 [&>button:last-of-type]:hidden">
+      <Dialog
+        open={billingOpen}
+        onOpenChange={(open) => {
+          if (open) setBillingOpen(true);
+          else dismissBilling();
+        }}
+      >
+        <DialogContent className="dialog-tablet-sheet flex flex-col lg:max-w-7xl lg:h-[min(92dvh,860px)] lg:max-h-[95dvh] overflow-hidden p-0 rounded-2xl shadow-2xl border-0 [&>button:last-of-type]:hidden data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100 data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:duration-300 data-[state=closed]:duration-200 ease-out">
+          <DialogTitle className="sr-only">
+            {isDirectBill
+              ? "Direct billing checkout"
+              : billingTarget?.sourceKind === "walkin"
+                ? "Walk-in checkout"
+                : "Appointment checkout"}
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Review bill items, apply adjustments, select a payment method, and complete checkout.
+          </DialogDescription>
           <div className="flex min-h-0 flex-1 flex-col bg-[#f4f2ed]">
 
             {/* â”€â”€ HEADER â”€â”€ */}
@@ -2547,7 +2984,9 @@ export function Appointments() {
                 </div>
               </div>
               <button
-                onClick={() => setBillingOpen(false)}
+                type="button"
+                onClick={dismissBilling}
+                aria-label="Close checkout"
                 className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 text-white/40 transition-all hover:border-white/20 hover:bg-white/5 hover:text-white"
               >
                 <X className="h-4 w-4" />
@@ -2560,7 +2999,10 @@ export function Appointments() {
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
 
               {/* LEFT — Order / Service Items */}
-              <div className="flex w-full min-h-0 flex-col overflow-hidden border-b border-black/[0.06] lg:w-[380px] lg:shrink-0 lg:border-b-0 lg:border-r max-h-[42dvh] lg:max-h-none">
+              <div className={cn(
+                "flex w-full min-h-0 flex-col overflow-hidden border-b border-black/[0.06] lg:w-[380px] lg:shrink-0 lg:border-b-0 lg:border-r max-h-[42dvh] lg:max-h-none",
+                scanToPayFocus && "hidden",
+              )}>
 
                 {/* Customer identity bar */}
                 {isDirectBill ? (
@@ -2701,9 +3143,13 @@ export function Appointments() {
                                     </Badge>
                                   )}
                                 </div>
-                                <p className="mt-0.5 truncate text-[10.5px] text-[#9a9a9a]">
-                                  {billingTarget.phone}
-                                  {c ? ` · ${c.favoriteService} · Last: ${c.lastVisit}` : ""}
+                                <p className="mt-0.5 truncate text-[12.5px] font-semibold tabular-nums tracking-wide text-[#3d3d3d]">
+                                  {formatDisplayPhone(billingTarget.phone)}
+                                  {c ? (
+                                    <span className="font-medium text-[#9a9a9a]">
+                                      {` · ${c.favoriteService} · Last: ${c.lastVisit}`}
+                                    </span>
+                                  ) : null}
                                 </p>
                               </div>
                               <button
@@ -2761,16 +3207,17 @@ export function Appointments() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[15px] font-bold text-white">{billingTarget?.name || "Unknown"}</p>
-                      <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-white/50">
-                        <span className="inline-flex items-center gap-1">
-                          <Phone className="h-3 w-3 text-[#D4AF37]/80" />
-                          {billingTarget?.phone}
+                      <p className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                        <span className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-0.5 text-[13px] font-semibold tabular-nums tracking-wide text-white">
+                          <Phone className="h-3.5 w-3.5 shrink-0 text-[#D4AF37]" />
+                          {formatDisplayPhone(billingTarget?.phone)}
                         </span>
-                        <span className="text-white/25">·</span>
-                        <span className="inline-flex items-center gap-1">
-                          <Clock className="h-3 w-3 text-[#D4AF37]/80" />
-                          {billingTarget?.time}
-                        </span>
+                        {billingTarget?.time && (
+                          <span className="inline-flex items-center gap-1 text-[12px] font-medium text-white/70">
+                            <Clock className="h-3.5 w-3.5 shrink-0 text-[#D4AF37]/80" />
+                            {billingTarget.time}
+                          </span>
+                        )}
                       </p>
                       {billingTarget?.service && (
                         <p className="mt-1 truncate text-[10px] font-medium text-[#D4AF37]/70">
@@ -2938,14 +3385,42 @@ export function Appointments() {
                   )}
                 </div>
 
-                {/* Subtotal bar */}
-                <div className="flex items-center gap-3 border-t border-[#D4AF37]/15 bg-[#111118] px-5 py-3.5">
-                  <span className="text-[11px] font-medium text-white/45">
-                    {billingItems.length === 0 ? "No items" : `${billingItems.reduce((s, i) => s + i.qty, 0)} item${billingItems.reduce((s, i) => s + i.qty, 0) !== 1 ? "s" : ""}`}
-                  </span>
-                  <span className="text-white/20">·</span>
-                  <span className="text-[11px] font-medium text-white/45">Subtotal</span>
-                  <span className="text-[18px] font-black tabular-nums text-[#D4AF37]">&#x20b9;{billSubtotal.toLocaleString()}</span>
+                {/* Totals bar — the only running summary of the bill */}
+                <div className="border-t border-[#D4AF37]/15 bg-[#111118] px-5 py-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] font-medium text-white/45">
+                      {billingItems.length === 0 ? "No items" : `${billingItems.reduce((s, i) => s + i.qty, 0)} item${billingItems.reduce((s, i) => s + i.qty, 0) !== 1 ? "s" : ""}`}
+                    </span>
+                    <span className="text-white/20">·</span>
+                    <span className="text-[11px] font-medium text-white/45">Subtotal</span>
+                    <span className="text-[15px] font-bold tabular-nums text-white/80">&#x20b9;{billSubtotal.toLocaleString()}</span>
+                  </div>
+                  {(billCouponDisc + billLoyalty + discount) > 0 && (
+                    <div className="mt-1.5 flex items-center justify-between text-[11.5px]">
+                      <span className="font-medium text-white/45">Discounts</span>
+                      <span className="font-bold tabular-nums text-[#D4AF37]/80">
+                        - &#x20b9;{Math.round(billCouponDisc + billLoyalty + discount).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                  {gstEnabled && billGst > 0 && (
+                    <div className="mt-1.5 flex items-center justify-between text-[11.5px]">
+                      <span className="font-medium text-white/45">GST ({gstRate}%)</span>
+                      <span className="font-bold tabular-nums text-white/80">+ &#x20b9;{billGst.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {advanceApplied > 0 && (
+                    <div className="mt-1.5 flex items-center justify-between text-[11.5px]">
+                      <span className="font-medium text-white/45">Advance applied</span>
+                      <span className="font-bold tabular-nums text-[#D4AF37]/80">- &#x20b9;{advanceApplied.toLocaleString()}</span>
+                    </div>
+                  )}
+                  <div className="mt-2 flex items-baseline justify-between border-t border-white/[0.08] pt-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-white/45">
+                      {advanceApplied > 0 ? "Due now" : "Grand total"}
+                    </span>
+                    <span className="text-[22px] font-black tabular-nums text-[#D4AF37]">&#x20b9;{billDue.toLocaleString()}</span>
+                  </div>
                 </div>
               </div>
 
@@ -2955,325 +3430,333 @@ export function Appointments() {
                   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
               <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-white">
 
-                {/* Scrollable billing area */}
-                <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5 space-y-4">
+                {/* Billing area — phones scroll; tablet and up lay out as a column
+                    so the QR can claim whatever height the bill controls leave. */}
+                <div
+                  className={cn(
+                    "min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-4 sm:px-5 md:flex md:flex-col md:gap-3 md:space-y-0",
+                    scanToPayFocus ? "md:overflow-hidden" : "md:overflow-y-auto",
+                  )}
+                >
 
-                  {/* â”€â”€ GST â”€â”€ */}
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-500">Tax</h4>
-                      <button onClick={() => setGstEnabled(v => !v)}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full border font-bold text-[11px] transition-all ${gstEnabled ? "bg-[#d4af37]/10 border-[#d4af37]/40 text-[#9a7a1e]" : "bg-white border-gray-200 text-gray-400"}`}>
-                        <div className={`w-7 h-3.5 rounded-full relative transition-colors ${gstEnabled ? "bg-[#d4af37]" : "bg-gray-300"}`}>
-                          <div className={`w-3 h-3 rounded-full bg-white absolute top-0.25 shadow transition-all ${gstEnabled ? "right-0.5" : "left-0.5"}`} />
-                        </div>
-                        GST {gstEnabled ? "Enabled" : "Disabled"}
+                  {/* While the customer scans, the QR owns the panel — the bill is already set up by then. */}
+                  {scanToPayFocus ? (
+                    <div className="flex shrink-0 items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setScanFocus(false)}
+                        className="flex h-9 items-center gap-1.5 rounded-lg border border-black/[0.08] bg-white px-3 text-[12px] font-bold text-[#111118] transition-colors hover:border-[#D4AF37]/40 hover:bg-[#FFFBEB]"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                        Back to bill
                       </button>
+                      <span className="text-[11px] font-semibold text-[#9a9a9a]">
+                        Grand total <span className="font-black text-[#111118] tabular-nums">&#x20b9;{billGrand.toLocaleString()}</span>
+                      </span>
                     </div>
-                    {gstEnabled && (
-                      <div className="space-y-2">
-                        <div className="flex gap-2">
-                          {[5, 12, 18].map(r => (
-                            <button key={r} onClick={() => { setGstRate(r); setCustomTaxMode(false); setCustomTaxInput(""); }}
-                              className={`flex-1 py-2.5 rounded-xl text-[12px] font-bold border-2 transition-all ${!customTaxMode && gstRate === r ? "bg-[#111] text-[#d4af37] border-[#111] shadow-sm" : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"}`}>
-                              {r}%
-                            </button>
-                          ))}
-                          <button onClick={() => { setCustomTaxMode(true); setCustomTaxInput(String(gstRate)); }}
-                            className={`flex-1 py-2.5 rounded-xl text-[12px] font-bold border-2 transition-all ${customTaxMode ? "bg-[#111] text-[#d4af37] border-[#111] shadow-sm" : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"}`}>
-                            Custom
-                          </button>
-                        </div>
-                        {customTaxMode && (
-                          <div className="relative">
-                            <input
-                              type="number"
-                              min={0}
-                              max={100}
-                              value={customTaxInput}
-                              onChange={e => {
-                                const v = e.target.value;
-                                setCustomTaxInput(v);
-                                const n = parseFloat(v);
-                                if (!isNaN(n) && n >= 0 && n <= 100) setGstRate(n);
-                              }}
-                              placeholder="Enter tax %"
-                              className="w-full h-10 pl-4 pr-10 rounded-xl border-2 border-[#d4af37] text-[13px] font-bold text-[#111] outline-none bg-amber-50/50 placeholder:text-gray-400 placeholder:font-normal"
-                              autoFocus
-                            />
-                            <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[13px] font-bold text-gray-400">%</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="h-px bg-gray-200" />
+                  ) : (
+                  <>
 
                   {/* â”€â”€ Discounts â”€â”€ */}
-                  <div>
-                    <h4 className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-500 mb-3">Discounts & Offers</h4>
-                    <div className="space-y-3">
+                  <div className="md:shrink-0">
+                    <h4 className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-500 mb-2">Discounts & Offers</h4>
 
-                      {/* Coupon */}
-                      <div className="bg-white rounded-xl border border-gray-200 p-4">
-                        <div className="flex items-center gap-2 mb-2.5">
-                          <Tag className="h-3.5 w-3.5 text-[#d4af37] shrink-0" />
-                          <span className="text-[12px] font-semibold text-[#111]">Coupon Code</span>
-                          {couponApplied && <span className="ml-auto text-[10px] font-black text-[#9a7a1e] bg-[#d4af37]/10 px-2 py-0.5 rounded-full">-&#x20b9;{billCouponDisc.toLocaleString()}</span>}
-                        </div>
-                        {couponApplied ? (
-                          <div className="flex items-center justify-between bg-[#d4af37]/06 border border-[#d4af37]/20 rounded-lg px-3 py-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[13px] font-black text-[#9a7a1e] tracking-wider">{couponApplied.code}</span>
-                              <span className="text-[10px] text-gray-400">applied</span>
-                            </div>
-                            <button onClick={() => setCouponApplied(null)} className="text-gray-400 hover:text-gray-700 transition-colors">
-                              <X className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex gap-2">
-                            <input value={couponInput} onChange={e => setCouponInput(e.target.value.toUpperCase())}
-                              placeholder="Enter coupon code"
-                              className="flex-1 h-9 px-3 rounded-lg border border-gray-200 text-[12px] font-medium outline-none focus:border-[#d4af37] uppercase placeholder:normal-case placeholder:text-gray-400 placeholder:font-normal bg-white transition-colors" />
-                            <button onClick={() => {
-                              const code = couponInput.trim().toUpperCase();
-                              const match = coupons.find((c) => c.code.toUpperCase() === code && c.status === "active");
-                              if (match) {
-                                setCouponApplied({
-                                  code: match.code,
-                                  value: match.value,
-                                  type: match.type === "percentage" ? "%" : "₹",
-                                });
-                                setCouponInput("");
-                              } else {
-                                toast.error("Coupon not found or inactive");
-                              }
-                            }}
-                              className="px-4 h-9 rounded-lg bg-[#111] text-[#d4af37] text-[11px] font-bold hover:bg-[#2a2a2a] transition-colors shrink-0">
-                              Apply
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Gift Card */}
-                      <div className="bg-white rounded-xl border border-gray-200 p-4">
-                        <div className="flex items-center gap-2 mb-2.5">
-                          <CreditCard className="h-3.5 w-3.5 text-[#d4af37] shrink-0" />
-                          <span className="text-[12px] font-semibold text-[#111]">Gift Card</span>
-                          {giftCardApplied && <span className="ml-auto text-[10px] font-black text-[#9a7a1e] bg-[#d4af37]/10 px-2 py-0.5 rounded-full">-&#x20b9;{billGiftCard.toLocaleString()}</span>}
-                        </div>
-                        {giftCardApplied ? (
-                          <div className="flex items-center justify-between bg-[#d4af37]/06 border border-[#d4af37]/20 rounded-lg px-3 py-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[13px] font-black text-[#9a7a1e] tracking-wider">{giftCardApplied.code}</span>
-                              <span className="text-[10px] text-gray-400">applied</span>
-                            </div>
-                            <button onClick={() => setGiftCardApplied(null)} className="text-gray-400 hover:text-gray-700 transition-colors">
-                              <X className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex gap-2">
-                            <input value={giftCardInput} onChange={e => setGiftCardInput(e.target.value.toUpperCase())}
-                              placeholder="GC-XXXX-XXXX"
-                              className="flex-1 h-9 px-3 rounded-lg border border-gray-200 text-[12px] font-medium outline-none focus:border-[#d4af37] uppercase placeholder:normal-case placeholder:text-gray-400 placeholder:font-normal bg-white transition-colors" />
-                            <button onClick={() => toast.info("Gift cards are not configured yet")}
-                              className="px-4 h-9 rounded-lg bg-[#111] text-[#d4af37] text-[11px] font-bold hover:bg-[#2a2a2a] transition-colors shrink-0">
-                              Redeem
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Advance Payment — only shown if this customer has an active advance balance */}
-                      {advanceAvailable > 0 && (
-                        <div className="bg-white rounded-xl border border-[#d4af37]/30 p-4">
-                          <div className="flex items-center gap-2 mb-2.5">
-                            <Wallet className="h-3.5 w-3.5 text-[#d4af37] shrink-0" />
-                            <span className="text-[12px] font-semibold text-[#111]">Advance Payment</span>
-                            <span className="ml-auto text-[10px] font-black text-[#9a7a1e] bg-[#d4af37]/10 px-2 py-0.5 rounded-full">
-                              ₹{advanceAvailable.toLocaleString()} available
+                    {/* Each tool stays out of the way until the manager asks for it */}
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                      {([
+                        { id: "coupon" as const, label: "Coupon", show: true },
+                        { id: "loyalty" as const, label: "Loyalty", show: true },
+                        { id: "advance" as const, label: "Advance", show: advanceAvailable > 0 },
+                        { id: "manual" as const, label: "Manual discount", show: true },
+                      ]).filter(t => t.show).map(tool => {
+                        const enabled = discountTools[tool.id];
+                        return (
+                          <button
+                            key={tool.id}
+                            type="button"
+                            onClick={() => setDiscountToolEnabled(tool.id, !enabled)}
+                            aria-pressed={enabled}
+                            className={cn(
+                              "flex h-9 items-center gap-2 rounded-full border px-3.5 text-[12px] font-bold transition-all",
+                              enabled
+                                ? "border-[#d4af37] bg-[#111] text-[#d4af37]"
+                                : "border-gray-200 bg-white text-gray-500 hover:border-[#d4af37]/40 hover:text-[#111]",
+                            )}
+                          >
+                            <span className={cn(
+                              "relative h-3.5 w-7 rounded-full transition-colors",
+                              enabled ? "bg-[#d4af37]" : "bg-gray-300",
+                            )}>
+                              <span className={cn(
+                                "absolute top-0.5 h-2.5 w-2.5 rounded-full bg-white shadow transition-all",
+                                enabled ? "right-0.5" : "left-0.5",
+                              )} />
                             </span>
-                          </div>
-                          {advanceApplied > 0 ? (
-                            <div className="flex items-center justify-between bg-[#d4af37]/06 border border-[#d4af37]/20 rounded-lg px-3 py-2">
-                              <div className="flex items-center gap-2">
-                                <span className="text-[13px] font-black text-[#9a7a1e]">₹{advanceApplied.toLocaleString()} applied</span>
-                              </div>
-                              <button onClick={() => setAdvanceApplied(0)} className="text-gray-400 hover:text-gray-700 transition-colors">
-                                <X className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex gap-2">
+                            {tool.label}
+                          </button>
+                        );
+                      })}
+                      <button
+                        type="button"
+                        onClick={() => setGstEnabled((enabled) => !enabled)}
+                        aria-pressed={gstEnabled}
+                        className={cn(
+                          "flex h-9 items-center gap-2 rounded-full border px-3.5 text-[12px] font-bold transition-all",
+                          gstEnabled
+                            ? "border-[#d4af37] bg-[#111] text-[#d4af37]"
+                            : "border-gray-200 bg-white text-gray-500 hover:border-[#d4af37]/40 hover:text-[#111]",
+                        )}
+                      >
+                        <span className={cn(
+                          "relative h-3.5 w-7 rounded-full transition-colors",
+                          gstEnabled ? "bg-[#d4af37]" : "bg-gray-300",
+                        )}>
+                          <span className={cn(
+                            "absolute top-0.5 h-2.5 w-2.5 rounded-full bg-white shadow transition-all",
+                            gstEnabled ? "right-0.5" : "left-0.5",
+                          )} />
+                        </span>
+                        GST
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {gstEnabled && (
+                        <div className="space-y-2 rounded-xl border border-[#d4af37]/25 bg-[#FFFBEB] p-2">
+                          <div className="flex gap-1.5">
+                            {[5, 12, 18].map((rate) => (
                               <button
-                                onClick={() => setAdvanceApplied(Math.min(advanceAvailable, billGrand))}
-                                className="flex-1 h-9 rounded-lg bg-[#111] text-[#d4af37] text-[11px] font-bold hover:bg-[#2a2a2a] transition-colors">
-                                Apply full advance (₹{Math.min(advanceAvailable, billGrand).toLocaleString()})
+                                key={rate}
+                                type="button"
+                                onClick={() => {
+                                  setGstRate(rate);
+                                  setCustomTaxMode(false);
+                                  setCustomTaxInput("");
+                                }}
+                                className={cn(
+                                  "h-9 flex-1 rounded-lg border text-[12px] font-bold transition-all",
+                                  !customTaxMode && gstRate === rate
+                                    ? "border-[#111] bg-[#111] text-[#d4af37]"
+                                    : "border-gray-200 bg-white text-gray-500 hover:border-gray-300",
+                                )}
+                              >
+                                {rate}%
                               </button>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCustomTaxMode(true);
+                                setCustomTaxInput(String(gstRate));
+                              }}
+                              className={cn(
+                                "h-9 flex-1 rounded-lg border text-[12px] font-bold transition-all",
+                                customTaxMode
+                                  ? "border-[#111] bg-[#111] text-[#d4af37]"
+                                  : "border-gray-200 bg-white text-gray-500 hover:border-gray-300",
+                              )}
+                            >
+                              Custom
+                            </button>
+                          </div>
+                          {customTaxMode && (
+                            <div className="relative">
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                value={customTaxInput}
+                                onChange={(event) => {
+                                  const value = event.target.value;
+                                  setCustomTaxInput(value);
+                                  const rate = parseFloat(value);
+                                  if (!Number.isNaN(rate) && rate >= 0 && rate <= 100) setGstRate(rate);
+                                }}
+                                placeholder="Enter tax %"
+                                className="h-9 w-full rounded-lg border border-[#d4af37] bg-white pl-3 pr-8 text-[13px] font-bold text-[#111] outline-none"
+                                autoFocus
+                              />
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] font-bold text-gray-400">%</span>
                             </div>
                           )}
-                          <p className="mt-2 text-[10.5px] text-gray-400">
-                            Deposit collected earlier for {matchedAdvances[0]?.service ?? "a prior booking"} — applying it reduces what's due now, and deducts it from their advance balance permanently.
-                          </p>
                         </div>
                       )}
 
-                      {/* Loyalty + Discount side by side */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-white rounded-xl border border-gray-200 p-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-1.5">
-                              <Bell className="h-3.5 w-3.5 text-[#d4af37]" />
-                              <span className="text-[12px] font-semibold text-[#111]">Loyalty</span>
+                      {/* Coupon code — single row */}
+                      {couponApplied ? (
+                        <div className="flex h-10 items-center justify-between gap-2 rounded-xl border border-[#d4af37]/30 bg-[#FFFBEB] px-3">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <Tag className="h-3.5 w-3.5 shrink-0 text-[#d4af37]" />
+                            <span className="truncate text-[12px] font-black tracking-wider text-[#9a7a1e]">{couponApplied.code}</span>
+                            <span className="shrink-0 text-[10px] text-gray-400">applied</span>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <span className="text-[11px] font-black text-[#9a7a1e] tabular-nums">-&#x20b9;{billCouponDisc.toLocaleString()}</span>
+                            <button onClick={() => setCouponApplied(null)} className="text-gray-400 transition-colors hover:text-gray-700">
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : discountTools.coupon && (
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <Tag className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#d4af37]" />
+                            <input value={couponInput}
+                              onChange={e => setCouponInput(e.target.value.toUpperCase())}
+                              onKeyDown={e => { if (e.key === "Enter") applyCouponCode(); }}
+                              placeholder="Coupon code"
+                              autoFocus
+                              className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-9 pr-3 text-[12px] font-medium uppercase outline-none transition-colors focus:border-[#d4af37] placeholder:font-normal placeholder:normal-case placeholder:text-gray-400" />
+                          </div>
+                          <button onClick={applyCouponCode}
+                            className="h-10 shrink-0 rounded-xl bg-[#111] px-4 text-[11px] font-bold text-[#d4af37] transition-colors hover:bg-[#2a2a2a]">
+                            Apply
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Advance Payment — only shown if this customer has an active advance balance */}
+                      {advanceAvailable > 0 && (discountTools.advance || advanceApplied > 0) && (
+                        advanceApplied > 0 ? (
+                          <div className="flex h-10 items-center justify-between gap-2 rounded-xl border border-[#d4af37]/30 bg-[#FFFBEB] px-3">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <Wallet className="h-3.5 w-3.5 shrink-0 text-[#d4af37]" />
+                              <span className="truncate text-[12px] font-black text-[#9a7a1e]">₹{advanceApplied.toLocaleString()} advance applied</span>
                             </div>
-                            <span className="text-[10px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded-md">{loyaltyAvailable} pts</span>
+                            <button onClick={() => setAdvanceApplied(0)} className="shrink-0 text-gray-400 transition-colors hover:text-gray-700">
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setAdvanceApplied(Math.min(advanceAvailable, billGrand))}
+                            title={`Deposit collected earlier for ${matchedAdvances[0]?.service ?? "a prior booking"} — applying it deducts from their advance balance permanently.`}
+                            className="flex h-10 w-full items-center justify-between gap-2 rounded-xl border border-[#d4af37]/30 bg-white px-3 transition-colors hover:bg-[#FFFBEB]">
+                            <span className="flex items-center gap-2 text-[12px] font-semibold text-[#111]">
+                              <Wallet className="h-3.5 w-3.5 text-[#d4af37]" />
+                              Use advance
+                            </span>
+                            <span className="text-[11px] font-black text-[#9a7a1e] tabular-nums">₹{Math.min(advanceAvailable, billGrand).toLocaleString()}</span>
+                          </button>
+                        )
+                      )}
+
+                      {/* Loyalty + Manual discount side by side */}
+                      {(discountTools.loyalty || loyaltyRedeem > 0 || discountTools.manual || discount > 0) && (
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {(discountTools.loyalty || loyaltyRedeem > 0) && (
+                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                          <div className="mb-1 flex items-center justify-between gap-1">
+                            <span className="flex items-center gap-1.5 text-[11px] font-semibold text-[#111]">
+                              <Bell className="h-3 w-3 text-[#d4af37]" />
+                              Loyalty
+                            </span>
+                            <span className="shrink-0 text-[10px] text-gray-400">{loyaltyAvailable} pts</span>
                           </div>
                           <input type="number" min={0} max={Math.min(loyaltyAvailable, Math.floor(billAfterDiscs / 0.5))}
                             value={loyaltyRedeem || ""}
                             onChange={e => setLoyaltyRedeem(Math.min(Math.min(loyaltyAvailable, Math.floor(billAfterDiscs / 0.5)), Math.max(0, Number(e.target.value))))}
                             placeholder="0"
-                            className="w-full h-9 px-3 rounded-lg border border-gray-200 text-[12px] font-medium outline-none focus:border-[#d4af37] bg-white transition-colors text-right tabular-nums" />
+                            aria-label="Loyalty points to redeem"
+                            className="h-9 w-full rounded-lg border border-gray-200 px-2.5 text-right text-[13px] font-medium tabular-nums outline-none transition-colors focus:border-[#d4af37]" />
                           {loyaltyRedeem > 0 && (
-                            <p className="mt-1.5 text-right text-[10px] font-semibold text-[#9a7a1e]">= &#x20b9;{Math.round(loyaltyRedeem * 0.5).toLocaleString()} off</p>
+                            <p className="mt-1 text-right text-[10px] font-semibold text-[#9a7a1e]">= &#x20b9;{Math.round(loyaltyRedeem * 0.5).toLocaleString()} off</p>
                           )}
                         </div>
-                        <div className="bg-white rounded-xl border border-gray-200 p-4">
-                          <div className="flex items-center gap-1.5 mb-2">
-                            <span className="text-[12px] font-semibold text-[#111]">Manual Disc.</span>
-                            <span className="text-[10px] text-gray-400">(₹)</span>
+                        )}
+                        {(discountTools.manual || discount > 0) && (
+                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                          <div className="mb-1 flex items-center justify-between gap-1">
+                            <span className="text-[11px] font-semibold text-[#111]">Manual discount</span>
+                            {/* Percent or flat rupees — whichever the manager was quoted */}
+                            <div className="flex shrink-0 overflow-hidden rounded-md border border-gray-200">
+                              {(["pct", "flat"] as const).map(mode => (
+                                <button
+                                  key={mode}
+                                  type="button"
+                                  onClick={() => setDiscountMode(mode)}
+                                  className={cn(
+                                    "h-6 w-7 text-[11px] font-bold transition-colors",
+                                    discountMode === mode ? "bg-[#111] text-[#d4af37]" : "bg-white text-gray-400 hover:text-[#111]",
+                                  )}
+                                >
+                                  {mode === "pct" ? "%" : "₹"}
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                          <input type="number" min={0} max={billSubtotal} value={discount || ""}
-                            onChange={e => {
-                              const next = Math.min(Number(e.target.value) || 0, billSubtotal);
-                              setDiscount(next);
-                              if (next <= 0) setDiscountReason("");
-                            }}
-                            placeholder="0"
-                            className="w-full h-9 px-3 rounded-lg border border-gray-200 text-[12px] font-medium outline-none focus:border-[#d4af37] bg-white transition-colors text-right tabular-nums" />
+                          <div className="relative">
+                            {discountMode === "pct" ? (
+                              <input type="number" min={0} max={100} step={0.5} value={discountPct || ""}
+                                onChange={e => {
+                                  const next = Math.min(100, Math.max(0, Number(e.target.value) || 0));
+                                  setDiscountPct(next);
+                                  if (next <= 0) setDiscountReason("");
+                                }}
+                                placeholder="0"
+                                aria-label="Manual discount percent"
+                                className="h-9 w-full rounded-lg border border-gray-200 pl-2.5 pr-7 text-right text-[13px] font-medium tabular-nums outline-none transition-colors focus:border-[#d4af37]" />
+                            ) : (
+                              <input type="number" min={0} max={billSubtotal} step={10} value={discountFlat || ""}
+                                onChange={e => {
+                                  const next = Math.min(billSubtotal, Math.max(0, Number(e.target.value) || 0));
+                                  setDiscountFlat(next);
+                                  if (next <= 0) setDiscountReason("");
+                                }}
+                                placeholder="0"
+                                aria-label="Manual discount amount"
+                                className="h-9 w-full rounded-lg border border-gray-200 pl-2.5 pr-7 text-right text-[13px] font-medium tabular-nums outline-none transition-colors focus:border-[#d4af37]" />
+                            )}
+                            <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-gray-400">
+                              {discountMode === "pct" ? "%" : "₹"}
+                            </span>
+                          </div>
                           {discount > 0 && (
-                            <p className="text-[10px] text-[#9a7a1e] font-semibold mt-1.5 text-right">-&#x20b9;{discount.toLocaleString()}</p>
+                            <p className="mt-1 text-right text-[10px] font-semibold text-[#9a7a1e]">
+                              -&#x20b9;{discount.toLocaleString()}
+                              {discountMode === "flat" && billSubtotal > 0
+                                ? ` (${Math.round((discount / billSubtotal) * 100)}%)`
+                                : ""}
+                            </p>
                           )}
                         </div>
+                        )}
                       </div>
+                      )}
 
                       {discount > 0 && (
-                        <div className="rounded-xl border border-[#d4af37]/35 bg-[#FFFBEB] p-4">
-                          <div className="mb-2 flex items-center gap-2">
-                            <Tag className="h-3.5 w-3.5 shrink-0 text-[#d4af37]" />
-                            <span className="text-[12px] font-semibold text-[#111]">
-                              Manual discount reason <span className="text-red-500">*</span>
-                            </span>
-                          </div>
-                          <textarea
-                            value={discountReason}
-                            onChange={e => setDiscountReason(e.target.value)}
-                            placeholder="Why is this discount being given? (required)"
-                            rows={2}
-                            className="w-full resize-none rounded-lg border border-[#d4af37]/30 bg-white px-3 py-2 text-[12px] outline-none placeholder:text-gray-400 focus:border-[#d4af37]"
-                          />
-                          <p className="mt-1.5 text-[10px] text-[#9a7a1e]">
-                            Saved with this bill against the customer for audit.
-                          </p>
-                        </div>
+                        <input
+                          value={discountReason}
+                          onChange={e => setDiscountReason(e.target.value)}
+                          placeholder="Reason for the manual discount (required, saved for audit)"
+                          className="h-10 w-full rounded-xl border border-[#d4af37]/40 bg-[#FFFBEB] px-3 text-[12px] outline-none transition-colors placeholder:text-gray-400 focus:border-[#d4af37]"
+                        />
                       )}
                     </div>
                   </div>
 
-                  <div className="h-px bg-gray-200" />
+                  <div className="h-px shrink-0 bg-gray-200" />
 
-                  {/* â”€â”€ Bill Summary â”€â”€ */}
-                  <div>
-                    <h4 className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a9a9a]">Bill Summary</h4>
-                    <div className="overflow-hidden rounded-xl border border-black/[0.08] bg-white shadow-sm">
-                      <div className="space-y-2.5 px-5 py-4">
-                        <div className="flex justify-between items-center text-[13px]">
-                          <span className="text-gray-500">Subtotal</span>
-                          <span className="font-semibold text-[#111] tabular-nums">&#x20b9;{billSubtotal.toLocaleString()}</span>
-                        </div>
-                        {billCouponDisc > 0 && (
-                          <div className="flex justify-between items-center text-[13px]">
-                            <span className="text-gray-500">Coupon <span className="text-[11px] font-medium text-[#9a7a1e]">({couponApplied?.code})</span></span>
-                            <span className="font-semibold text-[#9a7a1e] tabular-nums">- {formatInr(billCouponDisc)}</span>
-                          </div>
-                        )}
-                        {billGiftCard > 0 && (
-                          <div className="flex justify-between items-center text-[13px]">
-                            <span className="text-gray-500">Gift Card</span>
-                            <span className="font-semibold text-[#9a7a1e] tabular-nums">- {formatInr(billGiftCard)}</span>
-                          </div>
-                        )}
-                        {billLoyalty > 0 && (
-                          <div className="flex justify-between items-center text-[13px]">
-                            <span className="text-gray-500">Loyalty <span className="text-[11px] font-medium text-[#9a7a1e]">({loyaltyRedeem} pts)</span></span>
-                            <span className="font-semibold text-[#9a7a1e] tabular-nums">- {formatInr(billLoyalty)}</span>
-                          </div>
-                        )}
-                        {discount > 0 && (
-                          <div className="flex justify-between items-center text-[13px]">
-                            <span className="text-gray-500">
-                              Manual Discount
-                              {discountReason.trim() ? (
-                                <span className="mt-0.5 block text-[10px] font-medium text-[#9a7a1e]">{discountReason.trim()}</span>
-                              ) : null}
-                            </span>
-                            <span className="font-semibold text-[#9a7a1e] tabular-nums">- {formatInr(discount)}</span>
-                          </div>
-                        )}
-                        {gstEnabled && billGst > 0 && (
-                          <div className="flex justify-between items-center text-[13px]">
-                            <span className="text-gray-500">GST ({gstRate}%)</span>
-                            <span className="font-semibold text-[#111] tabular-nums">+ &#x20b9;{billGst.toLocaleString()}</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center justify-between bg-[#111118] px-5 py-4">
-                        <span className="text-[12px] font-bold uppercase tracking-wider text-white/50">Grand Total</span>
-                        <span className="text-[24px] font-black tabular-nums text-[#D4AF37]">&#x20b9;{billGrand.toLocaleString()}</span>
-                      </div>
-                      {advanceApplied > 0 && (
-                        <>
-                          <div className="flex justify-between items-center text-[13px] px-5 pt-3">
-                            <span className="text-gray-500">Advance Applied</span>
-                            <span className="font-semibold text-[#9a7a1e] tabular-nums">- {formatInr(advanceApplied)}</span>
-                          </div>
-                          <div className="flex items-center justify-between bg-[#0d0d14] px-5 py-3.5 mt-1">
-                            <span className="text-[11px] font-bold uppercase tracking-wider text-[#D4AF37]/70">Balance Due Now</span>
-                            <span className="text-[20px] font-black tabular-nums text-white">&#x20b9;{billDue.toLocaleString()}</span>
-                          </div>
-                        </>
-                      )}
-                      {(billCouponDisc + billGiftCard + billLoyalty + discount) > 0 && (
-                        <div className="border-t border-[#D4AF37]/15 bg-[#FFFBEB] px-5 py-2.5 text-center">
-                          <span className="text-[11px] font-bold text-[#9a7a1e]">
-                            You saved &#x20b9;{Math.round(billCouponDisc + billGiftCard + billLoyalty + discount).toLocaleString()} on this bill
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  </>
+                  )}
 
-                  <div className="h-px bg-gray-200" />
-
-                  {/* Payment Method (under Bill Summary) */}
+                  {/* Payment Method */}
                   <PaymentMethodPicker
                     amountDue={billDue}
                     value={payMethod}
-                    onChange={setPayMethod}
+                    onChange={(next) => {
+                      if (next.method !== payMethod.method) setScanFocus(false);
+                      setPayMethod(next);
+                    }}
+                    methods={BILL_PAY_METHODS}
+                    showHeader={!scanToPayFocus}
+                    hideMethodTabs={scanToPayFocus}
+                    qrOnly={scanToPayFocus}
+                    onOpenQr={() => setScanFocus(true)}
+                    fluid={scanToPayFocus}
+                    className="md:min-h-0 md:flex-1"
                     upiNote={`${BRAND.appName} bill${billingTarget?.name ? ` — ${billingTarget.name}` : ""}`}
                   />
-
-                  {/* Notes — compact */}
-                  <div>
-                    <h4 className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a9a9a]">Notes</h4>
-                    <textarea
-                      placeholder="Add a note for this transaction…"
-                      value={billingNotes} onChange={e => setBillingNotes(e.target.value)}
-                      className="h-12 w-full resize-none rounded-xl border border-black/[0.08] bg-[#faf9f7] px-3 py-2 text-[12px] text-[#111118] outline-none transition-colors placeholder:text-[#9a9a9a] focus:border-[#D4AF37]/40" />
-                  </div>
                 </div>
 
                 {/* Checkout actions */}
@@ -3313,6 +3796,18 @@ export function Appointments() {
       {/* __ RECEIPT MODAL __ */}
       <Dialog open={receiptOpen} onOpenChange={v => { if (!v) setReceiptOpen(false); }}>
         <DialogContent className="sm:max-w-[400px] p-0 border-0 shadow-2xl overflow-hidden rounded-2xl bg-white">
+          <DialogTitle className="sr-only">
+            {receiptStep === "pending"
+              ? "Appointment confirmed"
+              : receiptStep === "receipt"
+                ? "Payment receipt"
+                : "Payment successful"}
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            {receiptStep === "pending"
+              ? "The invoice was created with an outstanding balance."
+              : "Checkout completed and the invoice receipt is ready."}
+          </DialogDescription>
           <AnimatePresence mode="wait">
 
             {receiptStep === "pending" && receiptData && (
@@ -3467,6 +3962,54 @@ export function Appointments() {
                   </p>
                 </motion.div>
 
+                {/* Customer feedback */}
+                <motion.div
+                  className="w-full rounded-xl border border-[#D4AF37]/25 bg-[#fffdf7] px-4 py-4 relative z-10"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, delay: 0.84 }}
+                >
+                  <p className="text-center text-[11px] font-bold uppercase tracking-widest text-gray-400">
+                    How was the experience?
+                  </p>
+                  <p className="mt-1 text-center text-[13px] font-semibold text-[#111118]">
+                    Rate this visit for {receiptData?.customer}
+                  </p>
+                  <div
+                    className="mt-3 flex items-center justify-center gap-2"
+                    onMouseLeave={() => setFeedbackHover(0)}
+                  >
+                    {[1, 2, 3, 4, 5].map((star) => {
+                      const active = star <= (feedbackHover || feedbackRating);
+                      return (
+                        <button
+                          key={star}
+                          type="button"
+                          aria-label={`${star} star${star === 1 ? "" : "s"}`}
+                          disabled={feedbackSubmitting}
+                          onMouseEnter={() => setFeedbackHover(star)}
+                          onClick={() => setFeedbackRating(star)}
+                          className="rounded-lg p-1 transition-transform hover:scale-110 disabled:opacity-60"
+                        >
+                          <Star
+                            className={cn(
+                              "h-8 w-8 transition-colors",
+                              active
+                                ? "fill-[#D4AF37] text-[#D4AF37]"
+                                : "fill-none text-gray-300",
+                            )}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {feedbackRating > 0 && (
+                    <p className="mt-2 text-center text-[12px] font-medium text-[#9a7d20]">
+                      {feedbackRating} / 5 selected
+                    </p>
+                  )}
+                </motion.div>
+
                 {/* Action buttons */}
                 <motion.div className="w-full space-y-2.5 relative z-10"
                   initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
@@ -3493,11 +4036,15 @@ export function Appointments() {
                     </motion.button>
                   </div>
 
-                  {/* Done */}
-                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                    onClick={() => setReceiptOpen(false)}
-                    className="w-full flex items-center justify-center gap-2 h-11 rounded-xl bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d] text-[13px] font-bold text-white hover:shadow-xl transition-all">
-                    Done
+                  {/* Submit feedback → Dashboard */}
+                  <motion.button
+                    whileHover={{ scale: feedbackSubmitting ? 1 : 1.02 }}
+                    whileTap={{ scale: feedbackSubmitting ? 1 : 0.97 }}
+                    disabled={feedbackSubmitting}
+                    onClick={() => void submitReceiptFeedbackAndGoDashboard()}
+                    className="w-full flex items-center justify-center gap-2 h-11 rounded-xl bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d] text-[13px] font-bold text-white hover:shadow-xl transition-all disabled:opacity-60"
+                  >
+                    {feedbackSubmitting ? "Saving feedback…" : "Done"}
                   </motion.button>
                 </motion.div>
               </motion.div>
@@ -3581,7 +4128,7 @@ export function Appointments() {
       {/* â”€â”€ DELETE CONFIRM â”€â”€ */}
 
       <Dialog open={deleteConfirm !== null} onOpenChange={open => !open && setDeleteConfirm(null)}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent aria-describedby={undefined} className="sm:max-w-sm">
           <DialogHeader><DialogTitle className="flex items-center gap-2 text-red-600"><AlertCircle className="h-5 w-5" />Cancel Appointment?</DialogTitle></DialogHeader>
           <p className="text-sm text-muted-foreground">This will mark the appointment as cancelled. The customer will not be notified automatically.</p>
           <DialogFooter>
@@ -3593,7 +4140,7 @@ export function Appointments() {
 
       {/* â”€â”€ APPOINTMENT DETAIL MODAL â”€â”€ */}
       <Dialog open={!!detailAppt} onOpenChange={open => !open && setDetailAppt(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent aria-describedby={undefined} className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Info className="h-5 w-5 text-[#d4af37]" />Appointment Details
@@ -3650,7 +4197,7 @@ export function Appointments() {
 
       {/* â”€â”€ EXTRA SERVICES MODAL (for in-progress) â”€â”€ */}
       <Dialog open={extraServicesOpen} onOpenChange={open => { if (!open) setExtraServicesOpen(false); }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent aria-describedby={undefined} className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Scissors className="h-5 w-5 text-[#d4af37]" />Add Extra Services
@@ -3716,6 +4263,7 @@ export function Appointments() {
           serviceName={correctionAppt.service}
         />
       )}
-    </div>
+      </div>
+    </>
   );
 }

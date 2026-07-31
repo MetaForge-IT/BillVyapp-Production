@@ -20,6 +20,7 @@ export interface AppointmentService {
   duration: number;
   category: ServiceCategory;
   tone: string;
+  gender?: "MALE" | "FEMALE" | "UNISEX";
   productsUsed?: ServiceProductUsage[];
 }
 
@@ -29,6 +30,7 @@ export interface AppointmentCustomer {
   phone: string;
   email: string;
   tier: "VIP" | "Gold" | "Silver" | "Regular";
+  gender?: "Male" | "Female" | "Other";
 }
 
 export interface AppointmentStaff {

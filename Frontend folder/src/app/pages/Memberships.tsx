@@ -15,7 +15,7 @@ import { fetchCustomers } from "../../api/customers";
 import { fetchMembershipTiers, type MembershipTier } from "../../api/membership-tiers";
 import { fetchPlanEnrollments, fetchSalonPlans, type SalonPlan } from "../../api/plans";
 import { getApiErrorMessage } from "../../lib/api";
-import { toast } from "sonner";
+import { toast } from "../components/ui/hot-toast";
 
 const TIER_META: Record<string, {
   label: string;

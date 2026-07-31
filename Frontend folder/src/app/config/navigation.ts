@@ -54,8 +54,8 @@ export const enterpriseNavigation: NavSection[] = [
     title: "Operations",
     items: [
       { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-      { label: "Walk-In", href: "/walk-in", icon: UserPlus },
-      { label: "Appointments", href: "/appointments", icon: CalendarDays },
+      { label: "Billing", href: "/walk-in", icon: UserPlus, roles: ["manager"] },
+      { label: "Appointments", href: "/appointments", icon: CalendarDays, roles: ["manager"] },
     ],
   },
   {

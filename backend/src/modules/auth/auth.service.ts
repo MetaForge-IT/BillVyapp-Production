@@ -12,6 +12,7 @@ import type { AuthUser, LoginRequest, SessionMetadata } from "./auth.types";
 import { emailService, type EmailService } from "../email/email.service";
 import { emailConfig } from "../../config/email.config";
 import { authConfig } from "../../config/auth.config";
+import { prisma } from "../../config/prisma";
 import { AppError, NotFoundError } from "../../utils/errors";
 import { compareTokenHash } from "../../utils/crypto";
 import { logger } from "../../utils/logger";
@@ -306,6 +307,7 @@ export class AuthService {
       {
         id: user.id,
         salonId: user.salonId,
+        franchiseId: user.franchiseId,
         role: user.role,
       },
       false,
@@ -427,13 +429,14 @@ export class AuthService {
   }
 
   private async issueRefreshSession(
-    user: Pick<UserCredentialsRecord, "id" | "salonId" | "role">,
+    user: Pick<UserCredentialsRecord, "id" | "salonId" | "franchiseId" | "role">,
     rememberMe: boolean,
     session: SessionMetadata,
   ): Promise<{ accessToken: string; expiresIn: number; refreshToken: string }> {
     const { accessToken, expiresIn } = this.tokens.generateAccessToken({
       sub: user.id,
       salonId: user.salonId,
+      franchiseId: user.franchiseId,
       role: user.role,
     });
 
@@ -463,7 +466,51 @@ export class AuthService {
       throw new NotFoundError("User not found");
     }
 
-    return this.toAuthUser(user);
+    const authUser = this.toAuthUser(user);
+
+    if (user.salonId) {
+      const shop = await prisma.salon.findUnique({
+        where: { id: user.salonId },
+        select: {
+          id: true,
+          name: true,
+          displayName: true,
+          city: true,
+          address: true,
+          state: true,
+          pincode: true,
+          franchise: { select: { name: true } },
+        },
+      });
+      if (shop) {
+        authUser.shop = {
+          id: shop.id,
+          name: shop.name,
+          displayName: shop.displayName,
+          city: shop.city,
+          address: shop.address,
+          state: shop.state,
+          pincode: shop.pincode,
+          franchiseName: shop.franchise?.name ?? null,
+        };
+      }
+    }
+
+    return authUser;
+  }
+
+  private toAuthUser(user: UserRecord): AuthUser {
+    return {
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role,
+      salonId: user.salonId,
+      franchiseId: user.franchiseId,
+      phone: user.phone,
+      avatarUrl: user.avatarUrl,
+      shop: null,
+    };
   }
 
   private assertRefreshTokenIsValid(token: RefreshTokenRecord): void {
@@ -492,18 +539,6 @@ export class AuthService {
         code: AUTH_ERROR_CODES.RESET_TOKEN_INVALID,
       });
     }
-  }
-
-  private toAuthUser(user: UserRecord): AuthUser {
-    return {
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      role: user.role,
-      salonId: user.salonId,
-      phone: user.phone,
-      avatarUrl: user.avatarUrl,
-    };
   }
 
   private invalidCredentialsError(): AppError {

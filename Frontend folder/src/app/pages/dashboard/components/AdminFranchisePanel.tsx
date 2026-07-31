@@ -1,0 +1,482 @@
+import { useCallback, useEffect, useState } from "react";
+import { Building2, MapPin, Plus, RefreshCw, UserPlus } from "lucide-react";
+import {
+  createFranchiseManager,
+  createMyFranchiseShop,
+  fetchMyFranchise,
+  updateMyFranchiseShop,
+  type MyFranchiseDetail,
+} from "../../../../api/franchises";
+import { getApiErrorMessage } from "../../../../lib/api";
+import { toast } from "../../../components/ui/hot-toast";
+import { DashboardCard, DashboardCardHeader, SectionLabel } from "./DashboardCard";
+
+const emptyManagerForm = {
+  fullName: "",
+  email: "",
+  phone: "",
+  password: "",
+  salonId: "",
+};
+
+const emptyShopForm = {
+  name: "",
+  displayName: "",
+  code: "",
+  email: "",
+  phone: "",
+  address: "",
+  city: "",
+  state: "",
+  pincode: "",
+};
+
+export function AdminFranchisePanel() {
+  const [franchise, setFranchise] = useState<MyFranchiseDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [savingManager, setSavingManager] = useState(false);
+  const [creatingShop, setCreatingShop] = useState(false);
+  const [savingShopId, setSavingShopId] = useState<string | null>(null);
+  const [managerForm, setManagerForm] = useState(emptyManagerForm);
+  const [shopForm, setShopForm] = useState(emptyShopForm);
+  const [addressDrafts, setAddressDrafts] = useState<
+    Record<string, { address: string; city: string; state: string; pincode: string; phone: string }>
+  >({});
+
+  const reload = useCallback(async () => {
+    const data = await fetchMyFranchise();
+    setFranchise(data);
+    const drafts: typeof addressDrafts = {};
+    for (const shop of data.shops) {
+      drafts[shop.id] = {
+        address: shop.address ?? "",
+        city: shop.city ?? "",
+        state: shop.state ?? "",
+        pincode: shop.pincode ?? "",
+        phone: shop.phone ?? "",
+      };
+    }
+    setAddressDrafts(drafts);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    reload()
+      .catch((error) => toast.error(getApiErrorMessage(error, "Failed to load franchise")))
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [reload]);
+
+  const handleCreateManager = async () => {
+    if (!managerForm.fullName.trim() || !managerForm.email.trim() || !managerForm.password || !managerForm.salonId) {
+      toast.error("Fill name, email, password, and shop");
+      return;
+    }
+    setSavingManager(true);
+    try {
+      await createFranchiseManager({
+        fullName: managerForm.fullName.trim(),
+        email: managerForm.email.trim(),
+        phone: managerForm.phone.trim() || undefined,
+        password: managerForm.password,
+        salonId: managerForm.salonId,
+      });
+      setManagerForm({ ...emptyManagerForm, salonId: managerForm.salonId });
+      await reload();
+      toast.success("Manager added to your franchise");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Failed to add manager"));
+    } finally {
+      setSavingManager(false);
+    }
+  };
+
+  const handleCreateShop = async () => {
+    if (!shopForm.name.trim() || !shopForm.email.trim() || !shopForm.phone.trim()) {
+      toast.error("Shop name, email, and phone are required");
+      return;
+    }
+    setCreatingShop(true);
+    try {
+      const created = await createMyFranchiseShop({
+        name: shopForm.name.trim(),
+        displayName: shopForm.displayName.trim() || undefined,
+        code: shopForm.code.trim() || undefined,
+        email: shopForm.email.trim(),
+        phone: shopForm.phone.trim(),
+        address: shopForm.address.trim() || undefined,
+        city: shopForm.city.trim() || undefined,
+        state: shopForm.state.trim() || undefined,
+        pincode: shopForm.pincode.trim() || undefined,
+      });
+      setShopForm(emptyShopForm);
+      await reload();
+      setManagerForm((f) => ({ ...f, salonId: created.id }));
+      toast.success(
+        `Shop created${created.city ? ` in ${created.city}` : ""} — you can assign a manager to it now`,
+      );
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Failed to create shop"));
+    } finally {
+      setCreatingShop(false);
+    }
+  };
+
+  const handleSaveAddress = async (shopId: string) => {
+    const draft = addressDrafts[shopId];
+    if (!draft) return;
+    setSavingShopId(shopId);
+    try {
+      await updateMyFranchiseShop(shopId, {
+        address: draft.address.trim(),
+        city: draft.city.trim(),
+        state: draft.state.trim(),
+        pincode: draft.pincode.trim(),
+        phone: draft.phone.trim() || undefined,
+      });
+      await reload();
+      toast.success("Shop address saved");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Failed to save address"));
+    } finally {
+      setSavingShopId(null);
+    }
+  };
+
+  if (loading && !franchise) {
+    return (
+      <section aria-label="Franchise management">
+        <SectionLabel>Franchise Management</SectionLabel>
+        <DashboardCard>
+          <p className="px-4 py-8 text-center text-[13px] text-[#9a9a9a]">Loading franchise…</p>
+        </DashboardCard>
+      </section>
+    );
+  }
+
+  if (!franchise) {
+    return (
+      <section aria-label="Franchise management">
+        <SectionLabel>Franchise Management</SectionLabel>
+        <DashboardCard>
+          <p className="px-4 py-8 text-center text-[13px] text-[#9a9a9a]">
+            No franchise is linked to this admin account.
+          </p>
+        </DashboardCard>
+      </section>
+    );
+  }
+
+  return (
+    <section aria-label="Franchise management" className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <SectionLabel>Franchise Management</SectionLabel>
+        <button
+          type="button"
+          onClick={() => void reload()}
+          className="mb-2 inline-flex items-center gap-1.5 rounded-lg border border-black/[0.08] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#6b6b6b] hover:border-[#D4AF37]/30"
+        >
+          <RefreshCw className="h-3 w-3" /> Refresh
+        </button>
+      </div>
+
+      <div className="grid items-stretch gap-4 xl:grid-cols-2">
+        {/* Add manager */}
+        <DashboardCard>
+          <DashboardCardHeader
+            icon={UserPlus}
+            title="Add Manager"
+            badge={`${franchise.managers.length} managers`}
+          />
+          <div className="space-y-3 p-4">
+            <p className="text-[12px] text-[#6b6b6b]">
+              Create a shop manager for <span className="font-semibold text-[#111118]">{franchise.name}</span>.
+              Pick the correct branch (e.g. Hyderabad) — that shop is saved on their account and shown in their sidebar.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <input
+                placeholder="Full name *"
+                value={managerForm.fullName}
+                onChange={(e) => setManagerForm((f) => ({ ...f, fullName: e.target.value }))}
+                className="h-10 rounded-xl border border-black/[0.08] bg-[#fafaf8] px-3 text-[13px] outline-none focus:border-[#D4AF37]/50"
+              />
+              <input
+                placeholder="Email *"
+                type="email"
+                value={managerForm.email}
+                onChange={(e) => setManagerForm((f) => ({ ...f, email: e.target.value }))}
+                className="h-10 rounded-xl border border-black/[0.08] bg-[#fafaf8] px-3 text-[13px] outline-none focus:border-[#D4AF37]/50"
+              />
+              <input
+                placeholder="Phone"
+                value={managerForm.phone}
+                onChange={(e) => setManagerForm((f) => ({ ...f, phone: e.target.value }))}
+                className="h-10 rounded-xl border border-black/[0.08] bg-[#fafaf8] px-3 text-[13px] outline-none focus:border-[#D4AF37]/50"
+              />
+              <input
+                placeholder="Temp password *"
+                type="password"
+                value={managerForm.password}
+                onChange={(e) => setManagerForm((f) => ({ ...f, password: e.target.value }))}
+                className="h-10 rounded-xl border border-black/[0.08] bg-[#fafaf8] px-3 text-[13px] outline-none focus:border-[#D4AF37]/50"
+              />
+              <select
+                value={managerForm.salonId}
+                onChange={(e) => setManagerForm((f) => ({ ...f, salonId: e.target.value }))}
+                className="h-10 rounded-xl border border-black/[0.08] bg-[#fafaf8] px-3 text-[13px] outline-none focus:border-[#D4AF37]/50 sm:col-span-2"
+              >
+                <option value="">Select shop / branch *</option>
+                {franchise.shops.map((shop) => (
+                  <option key={shop.id} value={shop.id}>
+                    {(shop.displayName || shop.name)
+                      + (shop.city ? ` · ${shop.city}` : "")
+                      + (shop.address ? ` — ${shop.address}` : "")}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              disabled={savingManager}
+              onClick={() => void handleCreateManager()}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#111118] px-4 text-[12px] font-bold text-[#D4AF37] disabled:opacity-60"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {savingManager ? "Saving…" : "Add Manager"}
+            </button>
+
+            <div className="border-t border-black/[0.05] pt-3">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-[#9a9a9a]">
+                Current managers
+              </p>
+              {franchise.managers.length === 0 ? (
+                <p className="text-[12px] text-[#9a9a9a]">No managers yet</p>
+              ) : (
+                <div className="max-h-40 space-y-2 overflow-y-auto">
+                  {franchise.managers.map((m) => {
+                    const location = [m.shopLabel, m.shopCity].filter(Boolean).join(" · ");
+                    const addressLine = [m.shopAddress, m.shopState, m.shopPincode]
+                      .filter(Boolean)
+                      .join(", ");
+                    return (
+                      <div
+                        key={m.id}
+                        className="flex items-start justify-between gap-2 rounded-xl border border-black/[0.05] bg-[#f4f2ed]/70 px-3 py-2"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-[13px] font-semibold text-[#111118]">{m.fullName}</p>
+                          <p className="truncate text-[11px] text-[#9a9a9a]">{m.email}</p>
+                          {addressLine ? (
+                            <p className="mt-0.5 truncate text-[10px] text-[#6b6b6b]">{addressLine}</p>
+                          ) : null}
+                        </div>
+                        <span className="shrink-0 rounded-md border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-2 py-0.5 text-[10px] font-bold text-[#9a7d20]">
+                          {location || "—"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </DashboardCard>
+
+        {/* Shops — create + edit addresses */}
+        <DashboardCard>
+          <DashboardCardHeader
+            icon={MapPin}
+            title="Shops & Addresses"
+            badge={`${franchise.shops.length} shops`}
+          />
+          <div className="space-y-3 p-4">
+            <p className="text-[12px] text-[#6b6b6b]">
+              Add a new branch for <span className="font-semibold text-[#111118]">{franchise.name}</span>{" "}
+              or update an existing shop address. Everything is saved to the database.
+            </p>
+
+            {/* Create new shop */}
+            <div className="rounded-xl border border-[#D4AF37]/25 bg-[#FFFBEB]/60 p-3">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-[#9a7d20]">
+                Create new shop
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input
+                  placeholder="Shop / brand name *"
+                  value={shopForm.name}
+                  onChange={(e) => setShopForm((f) => ({ ...f, name: e.target.value }))}
+                  className="h-9 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[12px] outline-none focus:border-[#D4AF37]/50"
+                />
+                <input
+                  placeholder="Branch label (e.g. Main Branch)"
+                  value={shopForm.displayName}
+                  onChange={(e) => setShopForm((f) => ({ ...f, displayName: e.target.value }))}
+                  className="h-9 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[12px] outline-none focus:border-[#D4AF37]/50"
+                />
+                <input
+                  placeholder="Shop email *"
+                  type="email"
+                  value={shopForm.email}
+                  onChange={(e) => setShopForm((f) => ({ ...f, email: e.target.value }))}
+                  className="h-9 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[12px] outline-none focus:border-[#D4AF37]/50"
+                />
+                <input
+                  placeholder="Shop phone *"
+                  value={shopForm.phone}
+                  onChange={(e) => setShopForm((f) => ({ ...f, phone: e.target.value }))}
+                  className="h-9 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[12px] outline-none focus:border-[#D4AF37]/50"
+                />
+                <input
+                  placeholder="Street address"
+                  value={shopForm.address}
+                  onChange={(e) => setShopForm((f) => ({ ...f, address: e.target.value }))}
+                  className="h-9 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[12px] outline-none focus:border-[#D4AF37]/50 sm:col-span-2"
+                />
+                <input
+                  placeholder="City (e.g. Hyderabad)"
+                  value={shopForm.city}
+                  onChange={(e) => setShopForm((f) => ({ ...f, city: e.target.value }))}
+                  className="h-9 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[12px] outline-none focus:border-[#D4AF37]/50"
+                />
+                <input
+                  placeholder="State"
+                  value={shopForm.state}
+                  onChange={(e) => setShopForm((f) => ({ ...f, state: e.target.value }))}
+                  className="h-9 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[12px] outline-none focus:border-[#D4AF37]/50"
+                />
+                <input
+                  placeholder="Pincode"
+                  value={shopForm.pincode}
+                  onChange={(e) => setShopForm((f) => ({ ...f, pincode: e.target.value }))}
+                  className="h-9 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[12px] outline-none focus:border-[#D4AF37]/50"
+                />
+                <input
+                  placeholder="Code (e.g. HYD-02)"
+                  value={shopForm.code}
+                  onChange={(e) => setShopForm((f) => ({ ...f, code: e.target.value }))}
+                  className="h-9 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[12px] outline-none focus:border-[#D4AF37]/50"
+                />
+              </div>
+              <button
+                type="button"
+                disabled={creatingShop}
+                onClick={() => void handleCreateShop()}
+                className="mt-2 inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#111118] px-3 text-[11px] font-bold text-[#D4AF37] disabled:opacity-60"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                {creatingShop ? "Creating…" : "Create Shop"}
+              </button>
+            </div>
+
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#9a9a9a]">
+              Existing shops
+            </p>
+            {franchise.shops.length === 0 ? (
+              <p className="py-4 text-center text-[12px] text-[#9a9a9a]">No shops yet — create one above</p>
+            ) : (
+              <div className="max-h-[320px] space-y-3 overflow-y-auto pr-1">
+                {franchise.shops.map((shop) => {
+                  const draft = addressDrafts[shop.id] ?? {
+                    address: "",
+                    city: "",
+                    state: "",
+                    pincode: "",
+                    phone: "",
+                  };
+                  return (
+                    <div
+                      key={shop.id}
+                      className="rounded-xl border border-black/[0.06] bg-[#fafaf8] p-3"
+                    >
+                      <div className="mb-2 flex items-center gap-2">
+                        <Building2 className="h-3.5 w-3.5 text-[#D4AF37]" />
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-bold text-[#111118]">
+                            {shop.displayName || shop.name}
+                          </p>
+                          <p className="text-[10px] font-medium text-[#9a7d20]">
+                            {[shop.city, shop.state].filter(Boolean).join(", ") || "No city set"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <input
+                          placeholder="Street address"
+                          value={draft.address}
+                          onChange={(e) =>
+                            setAddressDrafts((prev) => ({
+                              ...prev,
+                              [shop.id]: { ...draft, address: e.target.value },
+                            }))
+                          }
+                          className="h-9 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[12px] outline-none focus:border-[#D4AF37]/50 sm:col-span-2"
+                        />
+                        <input
+                          placeholder="City"
+                          value={draft.city}
+                          onChange={(e) =>
+                            setAddressDrafts((prev) => ({
+                              ...prev,
+                              [shop.id]: { ...draft, city: e.target.value },
+                            }))
+                          }
+                          className="h-9 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[12px] outline-none focus:border-[#D4AF37]/50"
+                        />
+                        <input
+                          placeholder="State"
+                          value={draft.state}
+                          onChange={(e) =>
+                            setAddressDrafts((prev) => ({
+                              ...prev,
+                              [shop.id]: { ...draft, state: e.target.value },
+                            }))
+                          }
+                          className="h-9 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[12px] outline-none focus:border-[#D4AF37]/50"
+                        />
+                        <input
+                          placeholder="Pincode"
+                          value={draft.pincode}
+                          onChange={(e) =>
+                            setAddressDrafts((prev) => ({
+                              ...prev,
+                              [shop.id]: { ...draft, pincode: e.target.value },
+                            }))
+                          }
+                          className="h-9 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[12px] outline-none focus:border-[#D4AF37]/50"
+                        />
+                        <input
+                          placeholder="Shop phone"
+                          value={draft.phone}
+                          onChange={(e) =>
+                            setAddressDrafts((prev) => ({
+                              ...prev,
+                              [shop.id]: { ...draft, phone: e.target.value },
+                            }))
+                          }
+                          className="h-9 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[12px] outline-none focus:border-[#D4AF37]/50"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        disabled={savingShopId === shop.id}
+                        onClick={() => void handleSaveAddress(shop.id)}
+                        className="mt-2 inline-flex h-9 items-center rounded-lg bg-[#111118] px-3 text-[11px] font-bold text-[#D4AF37] disabled:opacity-60"
+                      >
+                        {savingShopId === shop.id ? "Saving…" : "Save Address"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </DashboardCard>
+      </div>
+    </section>
+  );
+}

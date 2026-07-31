@@ -28,12 +28,12 @@ export interface VerificationUserRecord {
   email: string;
   fullName: string;
   phone: string | null;
-  salonId: string;
+  salonId: string | null;
   emailVerifiedAt: Date | null;
   isActive: boolean;
   salon: {
     name: string;
-  };
+  } | null;
 }
 
 function toEmailVerificationTokenRecord(token: {

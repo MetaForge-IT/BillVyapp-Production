@@ -1,5 +1,5 @@
 import { Gift, MessageSquare, Phone, Send, Star, Crown, Tag, Users, AlertCircle } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "../../components/ui/hot-toast";
 import type { Coupon } from "../../context/CouponsContext";
 import type { Customer } from "../../../api/customers";
 import { Button } from "../../components/ui/button";

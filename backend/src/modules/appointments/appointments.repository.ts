@@ -136,7 +136,7 @@ async function resolveAppointmentServices(
 async function resolveCustomerId(
   salonId: string,
   userId: string,
-  input: { customerId?: string; customerName: string; customerPhone: string },
+  input: { customerId?: string; customerName: string; customerPhone: string; appointmentType?: string },
 ): Promise<string> {
   if (input.customerId) {
     const existing = await prisma.customer.findFirst({
@@ -164,6 +164,9 @@ async function resolveCustomerId(
       fullName: input.customerName,
       phone: input.customerPhone,
       phoneNormalized,
+      source: input.appointmentType === "walk-in" || input.appointmentType === "walk_in"
+        ? "walk-in"
+        : "online",
       joinedAt: new Date(),
       createdById: userId,
     },
