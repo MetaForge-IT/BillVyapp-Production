@@ -35,6 +35,7 @@ function validateRequest(schema: ZodType) {
 customersRouter.use(authenticate);
 
 customersRouter.get("/", customersController.list);
+customersRouter.get("/lookup", customersController.lookupByPhone);
 customersRouter.get("/:customerId/visits", customersController.getVisits);
 customersRouter.get("/:customerId/loyalty", customersController.getLoyalty);
 customersRouter.post(

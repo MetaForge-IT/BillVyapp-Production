@@ -22,6 +22,11 @@ type CatalogService = {
   durationMinutes: number;
 };
 
+/** Old catalog displayNames → new name, so reseed updates instead of duplicating. */
+const LEGACY_DISPLAY_NAMES: Record<string, string[]> = {
+  "Hair Cut Basic Women": ["Haircut Ladies Basic"],
+};
+
 type CatalogCategory = {
   category: string;
   description?: string;
@@ -162,6 +167,7 @@ async function seedServices(
         suffix: String(si + 1),
       });
 
+      const legacyNames = LEGACY_DISPLAY_NAMES[displayName] ?? [];
       const existing = await prisma.service.findFirst({
         where: {
           salonId,
@@ -170,6 +176,9 @@ async function seedServices(
             { serviceCode: baseCode },
             { displayName, gender, serviceGroup },
             { name: fullName },
+            ...(legacyNames.length
+              ? [{ displayName: { in: legacyNames } }]
+              : []),
           ],
         },
       });

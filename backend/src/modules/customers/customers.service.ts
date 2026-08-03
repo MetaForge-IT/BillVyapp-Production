@@ -15,6 +15,10 @@ export class CustomersService {
     return customersRepository.getById(auth.salonId, customerId);
   }
 
+  lookupByPhone(auth: AuthContext, phone: string) {
+    return customersRepository.lookupByPhone(auth.salonId, phone);
+  }
+
   create(auth: AuthContext, input: CreateCustomerInput) {
     return customersRepository.create(auth, input);
   }

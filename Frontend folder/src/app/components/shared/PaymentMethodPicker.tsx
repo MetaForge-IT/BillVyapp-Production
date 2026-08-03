@@ -303,14 +303,24 @@ export function PaymentMethodPicker({
               className={cn(
                 "flex flex-col items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-4",
                 fillsHeight && "md:min-h-0 md:flex-1",
+                qrOnly && "min-h-0 flex-1 justify-center",
               )}
             >
-              <div className={cn("flex items-center justify-center", fillsHeight && "md:min-h-0 md:flex-1")}>
+              <div
+                className={cn(
+                  "flex items-center justify-center",
+                  fillsHeight && "md:min-h-0 md:flex-1",
+                  qrOnly && "min-h-0 w-full flex-1",
+                )}
+              >
                 <div
                   className={cn(
-                    "flex items-center justify-center rounded-2xl border border-blue-200 bg-white p-3 shadow-sm",
-                    "h-56 w-56 sm:h-64 sm:w-64",
-                    fillsHeight && "md:aspect-square md:h-full md:max-h-[420px] md:min-h-[240px] md:w-auto md:max-w-full",
+                    "flex items-center justify-center rounded-2xl border border-blue-200 bg-white p-4 shadow-sm",
+                    qrOnly
+                      ? "h-[min(72vw,420px)] w-[min(72vw,420px)] sm:h-[min(70vh,480px)] sm:w-[min(70vh,480px)]"
+                      : "h-72 w-72 sm:h-80 sm:w-80",
+                    fillsHeight &&
+                      "md:aspect-square md:h-full md:max-h-[520px] md:min-h-[320px] md:w-auto md:max-w-full",
                   )}
                 >
                   <QRCodeSVG
@@ -318,7 +328,7 @@ export function PaymentMethodPicker({
                       amountDue,
                       upiNote ?? `${BRAND.appName} payment`,
                     )}
-                    size={320}
+                    size={480}
                     level="M"
                     includeMargin={false}
                     className="h-full w-full"

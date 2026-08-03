@@ -88,6 +88,35 @@ export class CustomersRepository {
     return mapCustomer(customer);
   }
 
+  /** Find by normalized phone — returns null when no match (no 404). */
+  async lookupByPhone(salonId: string, phone: string) {
+    const phoneNormalized = normalizePhone(phone);
+    if (phoneNormalized.replace(/\D/g, "").length < 10) return null;
+
+    const digits = phoneNormalized.replace(/\D/g, "");
+    const last10 = digits.slice(-10);
+    const variants = Array.from(
+      new Set([phoneNormalized, digits, last10, `91${last10}`, `+91${last10}`].filter(Boolean)),
+    );
+
+    const customer = await prisma.customer.findFirst({
+      where: {
+        salonId,
+        deletedAt: null,
+        OR: [
+          { phoneNormalized: { in: variants } },
+          { phone: { in: variants } },
+          { phoneNormalized: { endsWith: last10 } },
+        ],
+      },
+      include: {
+        currentTier: true,
+        preferences: { include: { favoriteService: { select: { name: true } } } },
+      },
+    });
+    return customer ? mapCustomer(customer) : null;
+  }
+
   async create(auth: AuthContext, input: CreateCustomerInput) {
     const phoneNormalized = normalizePhone(input.phone);
     const existing = await prisma.customer.findFirst({

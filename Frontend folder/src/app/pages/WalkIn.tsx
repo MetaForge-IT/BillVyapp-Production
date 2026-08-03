@@ -1,6 +1,6 @@
-import { NewAppointment } from "./NewAppointment";
+import { WalkInBilling } from "./walkInBilling";
 
-/** Dedicated walk-in check-in flow — main MSP entry, no appointment mode. */
+/** Dedicated walk-in billing flow — Services → Customer → Bill. */
 export function WalkIn() {
-  return <NewAppointment mode="walk-in" />;
+  return <WalkInBilling />;
 }

@@ -85,7 +85,7 @@ async function main() {
     {
       name: "Ladies Hair Cut + Blowdry Combo",
       price: 500,
-      serviceNames: ["Haircut Ladies Basic", "Blowdry Straight (Short)"],
+      serviceNames: ["Hair Cut Basic Women", "Blowdry Straight (Short)"],
       description: "Ladies cut with blowdry",
     },
   ];

@@ -153,7 +153,7 @@
       { "name": "Fringe", "price": 100, "memberPrice": 80, "durationMinutes": 10 },
       { "name": "Kids Cut Female Above 10 yrs", "price": 400, "memberPrice": 350, "durationMinutes": 30 },
       { "name": "Kids Cut Female upto 10 yrs", "price": 200, "memberPrice": 150, "durationMinutes": 30 },
-      { "name": "Haircut Ladies Basic", "price": 300, "memberPrice": 250, "durationMinutes": 20 },
+      { "name": "Hair Cut Basic Women", "price": 300, "memberPrice": 250, "durationMinutes": 20 },
       { "name": "Haircut Specialist", "price": 700, "memberPrice": 600, "durationMinutes": 60 },
       { "name": "Blowdry Straight (Short)", "price": 500, "memberPrice": 450, "durationMinutes": 35 },
       { "name": "Blowdry Straight (Medium)", "price": 600, "memberPrice": 550, "durationMinutes": 35 },
