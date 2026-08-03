@@ -56,6 +56,9 @@ export const appointmentSteps = ["Customer", "Services", "Billing", "Confirm"] a
 /** Booking-only flow (no billing step) */
 export const bookingAppointmentSteps = ["Customer", "Services", "Confirm"] as const;
 
+/** Walk-in Billing: services first, then customer, then inline checkout */
+export const walkInBillingSteps = ["Services", "Customer", "Bill"] as const;
+
 export interface AppointmentPackage {
   id: string;
   name: string;

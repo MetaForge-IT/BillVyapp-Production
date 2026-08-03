@@ -164,10 +164,11 @@ async function main() {
     }
   }
 
-  // Deactivate legacy seed accounts (Vikram / Durga) if they still exist.
+  // Deactivate legacy demo seed accounts if they still exist.
+  // Do not touch manager@starrkuts.com — that account is created/managed in production.
   await prisma.user.updateMany({
     where: {
-      email: { in: ["admin@starrkuts.com", "manager@starrkuts.com", "demo@starrkuts.com"] },
+      email: { in: ["admin@starrkuts.com", "demo@starrkuts.com"] },
     },
     data: { isActive: false },
   });

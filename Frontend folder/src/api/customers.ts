@@ -35,6 +35,7 @@ export interface CreateCustomerPayload {
   notes?: string;
   gstin?: string;
   status?: "active" | "inactive";
+  source?: "walk-in" | "online" | "unknown";
 }
 
 interface ApiEnvelope<T> {
@@ -45,6 +46,14 @@ interface ApiEnvelope<T> {
 
 export async function fetchCustomers(): Promise<Customer[]> {
   const { data } = await apiClient.get<ApiEnvelope<Customer[]>>("/customers");
+  return data.data;
+}
+
+/** Returns the matching salon customer, or null when the phone is new. */
+export async function lookupCustomerByPhone(phone: string): Promise<Customer | null> {
+  const { data } = await apiClient.get<ApiEnvelope<Customer | null>>("/customers/lookup", {
+    params: { phone },
+  });
   return data.data;
 }
 
