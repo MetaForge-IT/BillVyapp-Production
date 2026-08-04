@@ -7,7 +7,7 @@ export const createExpenseSchema = z.object({
   subCategory: z.string().trim().min(1).max(200),
   amount: z.number().min(0.01),
   source: z.enum(EXPENSE_SOURCES),
-  remarks: z.string().trim().max(500).optional().nullable(),
+  remarks: z.string().trim().min(1, "Note is required").max(500),
 });
 
 export const updateExpenseSchema = z.object({
@@ -16,7 +16,7 @@ export const updateExpenseSchema = z.object({
   subCategory: z.string().trim().min(1).max(200).optional(),
   amount: z.number().min(0.01).optional(),
   source: z.enum(EXPENSE_SOURCES).optional(),
-  remarks: z.string().trim().max(500).optional().nullable(),
+  remarks: z.string().trim().min(1, "Note is required").max(500).optional(),
 });
 
 export const upsertBudgetSchema = z.object({

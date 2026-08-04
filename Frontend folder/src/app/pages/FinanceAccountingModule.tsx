@@ -245,6 +245,11 @@ function ExpensesTab() {
 
   const addExpense = async () => {
     if (!form.sub || !form.amount || isClosed) return;
+    const note = form.remarks.trim();
+    if (!note) {
+      toast.error("Note is required");
+      return;
+    }
     setSaving(true);
     try {
       const created = await createExpense({
@@ -253,7 +258,7 @@ function ExpensesTab() {
         subCategory: form.sub,
         amount: Number(form.amount),
         source: form.source as "Cash" | "UPI" | "Card",
-        remarks: form.remarks || null,
+        remarks: note,
       });
       setExpenses((prev) => [created, ...prev]);
       setForm({ sub: "", amount: "", source: "Cash", remarks: "" });
@@ -350,15 +355,15 @@ function ExpensesTab() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Remarks</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Note *</p>
               <input value={form.remarks} onChange={(e) => setForm((f) => ({ ...f, remarks: e.target.value }))}
-                placeholder="Optional note..."
+                placeholder="Required note…"
                 className="w-full h-10 px-3.5 rounded-xl border border-gray-200 bg-white text-[13px] focus:outline-none focus:border-[#d4af37] focus:ring-2 focus:ring-[#d4af37]/12 transition-all placeholder:text-gray-300" />
             </div>
           </div>
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowForm(false)} className="h-9 px-4 rounded-xl border border-gray-200 text-[12px] font-semibold text-gray-600 hover:bg-gray-50 transition-all">Cancel</button>
-            <button onClick={() => void addExpense()} disabled={!form.sub || !form.amount || saving}
+            <button onClick={() => void addExpense()} disabled={!form.sub || !form.amount || !form.remarks.trim() || saving}
               className="h-9 px-5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b8962e] text-[12px] font-bold text-black disabled:opacity-40 transition-all">
               {saving ? "Saving…" : "Save Expense"}
             </button>

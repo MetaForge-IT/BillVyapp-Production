@@ -3,8 +3,10 @@ import { Link, NavLink, Outlet, Navigate } from "react-router";
 import { Building2, LayoutDashboard, LogOut, Store, Users } from "lucide-react";
 import { RoleProvider, useRole } from "../../context/RoleContext";
 import { authService } from "../../../services/authService";
+import { getAccessToken } from "../../../stores/authStore";
 import { BRAND } from "../../config/brand";
 import { cn } from "../../components/ui/utils";
+import { SuperAdminRevenuePanel } from "./SuperAdminRevenuePanel";
 
 const nav = [
   { to: "/super-admin", label: "Overview", icon: LayoutDashboard, end: true },
@@ -26,6 +28,7 @@ export function SuperAdminShell() {
 function SuperAdminShellInner() {
   const { role, isReady, firstName, fullName } = useRole();
   const [signingOut, setSigningOut] = useState(false);
+  const hasToken = Boolean(getAccessToken());
 
   if (!isReady) {
     return (
@@ -33,6 +36,10 @@ function SuperAdminShellInner() {
         Loading…
       </div>
     );
+  }
+
+  if (!hasToken || !authService.isAuthenticated()) {
+    return <Navigate to="/login" replace />;
   }
 
   if (role !== "super_admin") {
@@ -131,11 +138,11 @@ export function SuperAdminOverviewPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D4AF37]">Platform</p>
         <h1 className="text-2xl font-bold text-[#111118]">Overview</h1>
-        <p className="text-sm text-[#6b6b6b]">All franchises, shops, and staff across BillVyapp</p>
+        <p className="text-sm text-[#6b6b6b]">All franchises, shops, staff, and revenue across BillVyapp</p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((c) => (
@@ -152,6 +159,8 @@ export function SuperAdminOverviewPage() {
           </Link>
         ))}
       </div>
+
+      <SuperAdminRevenuePanel />
     </div>
   );
 }

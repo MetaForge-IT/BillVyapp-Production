@@ -14,6 +14,14 @@ export class FranchisesController {
     res.json({ success: true, message: "Overview", data });
   });
 
+  revenue = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const raw = String(req.query.range ?? "30d").toLowerCase();
+    const range =
+      raw === "today" || raw === "7d" || raw === "mtd" || raw === "30d" ? raw : "30d";
+    const data = await franchisesService.revenue(range);
+    res.json({ success: true, message: "Platform revenue", data });
+  });
+
   list = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
     const data = await franchisesService.listFranchises();
     res.json({ success: true, message: "Franchises", data });

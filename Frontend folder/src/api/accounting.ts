@@ -23,7 +23,8 @@ export interface CreateExpensePayload {
   subCategory: string;
   amount: number;
   source: ExpenseSource;
-  remarks?: string | null;
+  /** Compulsory note (validated on API + Joi form). */
+  remarks: string;
 }
 
 export interface BudgetLine {

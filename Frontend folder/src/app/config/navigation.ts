@@ -74,6 +74,7 @@ export const enterpriseNavigation: NavSection[] = [
     title: "Finance",
     items: [
       { label: "Revenue Report", href: "/finance?tab=receipts", icon: Wallet, roles: ["admin"] },
+      { label: "Expenses", href: "/expenses", icon: Receipt, roles: ["admin", "manager"] },
     ],
   },
   {

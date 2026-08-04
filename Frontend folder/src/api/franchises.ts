@@ -58,6 +58,40 @@ export interface PlatformOverview {
   superAdmins: number;
 }
 
+export type PlatformRevenueRange = "today" | "7d" | "30d" | "mtd";
+
+export interface PlatformRevenue {
+  range: PlatformRevenueRange;
+  from: string;
+  to: string;
+  totals: {
+    revenue: number;
+    billed: number;
+    invoiceCount: number;
+    shopCount: number;
+    franchiseCount: number;
+  };
+  byFranchise: Array<{
+    franchiseId: string;
+    franchiseName: string;
+    revenue: number;
+    billed: number;
+    invoiceCount: number;
+    shopCount: number;
+  }>;
+  byShop: Array<{
+    salonId: string;
+    shopName: string;
+    city: string | null;
+    franchiseId: string;
+    franchiseName: string;
+    revenue: number;
+    billed: number;
+    invoiceCount: number;
+  }>;
+  dailyTrend: Array<{ date: string; revenue: number }>;
+}
+
 export interface StaffRow {
   id: string;
   fullName: string;
@@ -73,6 +107,15 @@ export interface StaffRow {
 
 export async function fetchPlatformOverview(): Promise<PlatformOverview> {
   const { data } = await apiClient.get<ApiEnvelope<PlatformOverview>>("/franchises/overview");
+  return data.data;
+}
+
+export async function fetchPlatformRevenue(
+  range: PlatformRevenueRange = "30d",
+): Promise<PlatformRevenue> {
+  const { data } = await apiClient.get<ApiEnvelope<PlatformRevenue>>("/franchises/revenue", {
+    params: { range },
+  });
   return data.data;
 }
 

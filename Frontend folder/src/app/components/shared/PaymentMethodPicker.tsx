@@ -1,4 +1,5 @@
 import { QRCodeSVG } from "qrcode.react";
+import { useEffect, useRef } from "react";
 import {
   Banknote,
   CreditCard,
@@ -79,10 +80,20 @@ export function buildUpiUri(amount: number, note: string) {
   ].join("");
 }
 
+function formatCashDue(amountDue: number): string {
+  return Number.isInteger(amountDue) ? String(amountDue) : amountDue.toFixed(2);
+}
+
+/** Cash received amount — empty field means exact bill total (same as UPI: ready to pay). */
+export function resolvedCashReceived(value: PaymentMethodValue, amountDue: number): number {
+  if (value.cashReceived === "") return amountDue;
+  return parseFloat(value.cashReceived) || 0;
+}
+
 export function paymentMethodLabel(value: PaymentMethodValue, amountDue: number): string {
-  const { method, cashReceived, upiRefId, cardType, cardRefId, walletProvider, walletRefId, splitRows } = value;
+  const { method, upiRefId, cardType, cardRefId, walletProvider, walletRefId, splitRows } = value;
   if (method === "cash") {
-    const received = parseFloat(cashReceived) || 0;
+    const received = resolvedCashReceived(value, amountDue);
     return `Cash (Rcvd ₹${received}, Chg ₹${Math.max(0, received - amountDue)})`;
   }
   if (method === "upi") return `UPI${upiRefId ? ` · Ref: ${upiRefId}` : ""}`;
@@ -117,7 +128,8 @@ export function isPaymentMethodValid(value: PaymentMethodValue, amountDue: numbe
   if (amountDue < 0) return false;
   if (value.method === "cash") {
     if (amountDue === 0) return true;
-    return value.cashReceived !== "" && (parseFloat(value.cashReceived) || 0) >= amountDue;
+    // Empty = exact due (Pay works like UPI without forcing a typed amount)
+    return resolvedCashReceived(value, amountDue) >= amountDue;
   }
   if (value.method === "split") {
     const total = value.splitRows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
@@ -189,7 +201,36 @@ export function PaymentMethodPicker({
 
   const setSplitRows = (rows: SplitRow[]) => patch({ splitRows: rows });
 
-  const cashReceived = parseFloat(value.cashReceived) || 0;
+  const prevDueRef = useRef(amountDue);
+  const cashFocusedRef = useRef(false);
+
+  // Autofill bill total for cash, but never fight the manager while they edit tender
+  useEffect(() => {
+    const prevDue = prevDueRef.current;
+    prevDueRef.current = amountDue;
+
+    if (value.method !== "cash" || amountDue <= 0) return;
+    if (cashFocusedRef.current) return;
+
+    const dueStr = formatCashDue(amountDue);
+    const raw = value.cashReceived.trim();
+    const received = raw === "" ? null : parseFloat(raw);
+    const matchesPrevDue =
+      received !== null && Number.isFinite(received) && Math.abs(received - prevDue) < 0.005;
+
+    // Prefill empty, or bump when bill total changed and tender was still the old autofill total
+    if (raw === "" || matchesPrevDue) {
+      if (value.cashReceived !== dueStr) onChange({ ...value, cashReceived: dueStr });
+      return;
+    }
+
+    // Bill went up and custom tender is now short — lift to new due
+    if (received !== null && Number.isFinite(received) && received < amountDue) {
+      onChange({ ...value, cashReceived: dueStr });
+    }
+  }, [value.method, amountDue]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const cashReceived = resolvedCashReceived(value, amountDue);
   const cashChange = cashReceived - amountDue;
   const splitTotal = value.splitRows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
   const splitRemaining = amountDue - splitTotal;
@@ -223,7 +264,14 @@ export function PaymentMethodPicker({
               <button
                 key={id}
                 type="button"
-                onClick={() => patch({ method: id })}
+                onClick={() => {
+                  if (id === "cash") {
+                    // Fresh cash selection starts at bill total; manager can edit after
+                    patch({ method: id, cashReceived: formatCashDue(amountDue) });
+                    return;
+                  }
+                  patch({ method: id });
+                }}
                 className={cn(
                   "flex flex-col items-center gap-1 rounded-lg border py-2 transition-all",
                   value.method === id
@@ -247,7 +295,20 @@ export function PaymentMethodPicker({
                   <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[12px] font-bold text-[#9a9a9a]">₹</span>
                   <input
                     type="number"
+                    inputMode="decimal"
+                    min={0}
+                    step="any"
                     value={value.cashReceived}
+                    onFocus={() => {
+                      cashFocusedRef.current = true;
+                    }}
+                    onBlur={() => {
+                      cashFocusedRef.current = false;
+                      // If cleared, restore bill total so Pay stays ready
+                      if (value.cashReceived.trim() === "" && amountDue > 0) {
+                        patch({ cashReceived: formatCashDue(amountDue) });
+                      }
+                    }}
                     onChange={(e) => patch({ cashReceived: e.target.value })}
                     placeholder={amountDue.toLocaleString("en-IN")}
                     className="h-10 w-full rounded-lg border border-black/[0.08] bg-[#faf9f7] pl-7 pr-3 text-[13px] font-bold text-[#111118] outline-none focus:border-[#00C896]/50 focus:ring-1 focus:ring-[#00C896]/15"
@@ -259,14 +320,12 @@ export function PaymentMethodPicker({
                 <div
                   className={cn(
                     "flex h-10 items-center rounded-lg border px-3 text-[13px] font-black tabular-nums",
-                    !value.cashReceived
-                      ? "border-black/[0.08] bg-[#faf9f7] text-[#9a9a9a]"
-                      : cashChange >= 0
-                        ? "border-[#00C896]/35 bg-[#00C896]/5 text-[#00C896]"
-                        : "border-red-200 bg-red-50 text-red-600",
+                    cashChange >= 0
+                      ? "border-[#00C896]/35 bg-[#00C896]/5 text-[#00C896]"
+                      : "border-red-200 bg-red-50 text-red-600",
                   )}
                 >
-                  {!value.cashReceived ? "—" : cashChange >= 0 ? formatInr(cashChange) : "Insufficient"}
+                  {cashChange >= 0 ? formatInr(cashChange) : "Insufficient"}
                 </div>
               </div>
               <div>
