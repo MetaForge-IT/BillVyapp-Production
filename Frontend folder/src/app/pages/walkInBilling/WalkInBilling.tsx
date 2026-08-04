@@ -40,6 +40,7 @@ import {
   type LookupStatus,
   type SelectedService,
 } from "./types";
+import { validateIndianMobile } from "../../../lib/mobileNumber";
 import { last10, mapTier } from "./utils";
 
 export function WalkInBilling() {
@@ -130,9 +131,20 @@ export function WalkInBilling() {
     );
   };
 
+  const phoneValidation = useMemo(() => {
+    const digits = last10(phoneDigits);
+    if (digits.length < 10) {
+      return { ready: false as const, error: null as string | null, phone: digits };
+    }
+    const result = validateIndianMobile(digits);
+    if (!result.ok) {
+      return { ready: false as const, error: result.error, phone: digits };
+    }
+    return { ready: true as const, error: null as string | null, phone: result.phone };
+  }, [phoneDigits]);
+
   useEffect(() => {
-    const phone = last10(phoneDigits);
-    if (phone.length !== 10) {
+    if (!phoneValidation.ready) {
       setLookupStatus("idle");
       setCustomerId(undefined);
       setLoyaltyAvailable(0);
@@ -140,6 +152,7 @@ export function WalkInBilling() {
       return;
     }
 
+    const phone = phoneValidation.phone;
     let cancelled = false;
     setLookupStatus("loading");
     setCustomerId(undefined);
@@ -179,11 +192,11 @@ export function WalkInBilling() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [phoneDigits]);
+  }, [phoneValidation.ready, phoneValidation.phone]);
 
   const servicesValid = selectedServices.length > 0;
   const customerValid =
-    last10(phoneDigits).length === 10 &&
+    phoneValidation.ready &&
     customerName.trim().length > 0 &&
     (lookupStatus === "found" || lookupStatus === "new");
   const billValid = servicesValid && customerValid;
@@ -231,12 +244,16 @@ export function WalkInBilling() {
 
   async function ensureCustomerId(): Promise<string | undefined> {
     if (customerId) return customerId;
-    const phone = last10(phoneDigits);
+    const validated = validateIndianMobile(phoneDigits);
+    if (!validated.ok) {
+      toast.error(validated.error);
+      throw new Error(validated.error);
+    }
     const gender =
       customerGender === "Male" ? "male" : customerGender === "Female" ? "female" : "other";
     const created = await createCustomer({
       fullName: customerName.trim(),
-      phone,
+      phone: validated.phone,
       gender,
       source: "walk-in",
     });
@@ -492,6 +509,7 @@ export function WalkInBilling() {
             servicesValid={servicesValid}
             phoneDigits={phoneDigits}
             onPhoneChange={setPhoneDigits}
+            phoneError={phoneValidation.error}
             lookupStatus={lookupStatus}
             customerName={customerName}
             onCustomerNameChange={setCustomerName}

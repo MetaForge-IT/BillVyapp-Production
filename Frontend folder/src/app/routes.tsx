@@ -15,6 +15,7 @@ import { Appointments } from "./pages/Appointments";
 import { Customers } from "./pages/Customers";
 import { Services } from "./pages/Services";
 import { Finance } from "./pages/Finance";
+import { Expenses } from "./pages/Expenses";
 import { Inventory } from "./pages/Inventory";
 import { Memberships } from "./pages/Memberships";
 import { Feedback } from "./pages/Feedback";
@@ -81,6 +82,7 @@ export const router = createBrowserRouter([
       { path: "customers", Component: Customers },
       { path: "customers/new", Component: NewCustomer },
       { path: "finance", element: <RequireRole roles={["admin"]}><Finance /></RequireRole> },
+      { path: "expenses", element: <RequireRole roles={["admin", "manager"]}><Expenses /></RequireRole> },
       { path: "billing", Component: () => <Navigate to="/finance?tab=receipts" replace /> },
       { path: "billing/new", Component: () => <Navigate to="/finance?tab=receipts" replace /> },
       { path: "billing/save", Component: () => <Navigate to="/finance?tab=receipts" replace /> },

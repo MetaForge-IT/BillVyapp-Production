@@ -36,6 +36,7 @@ function validateRequest(schema: ZodType) {
 franchisesRouter.use(authenticate, authorize("super_admin"));
 
 franchisesRouter.get("/overview", franchisesController.overview);
+franchisesRouter.get("/revenue", franchisesController.revenue);
 franchisesRouter.get("/staff", franchisesController.listStaff);
 franchisesRouter.post(
   "/staff",
