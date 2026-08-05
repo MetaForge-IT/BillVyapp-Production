@@ -33,6 +33,7 @@ import {
 } from "./finance/finance-ui";
 
 import { type Customer, fetchCustomers, createCustomer, updateCustomer, fetchCustomerVisits, redeemLoyaltyPoints, type CustomerVisit } from "../../api/customers";
+import { fetchAccountingOverview } from "../../api/accounting";
 import { fetchMembershipTiers, type MembershipTier } from "../../api/membership-tiers";
 import { enrollCustomerInPlan, fetchSalonPlans, fetchPlanEnrollments, type PlanEnrollment } from "../../api/plans";
 import { customerToApiPayload } from "../../lib/customerMappers";
@@ -122,6 +123,15 @@ function getInactivityLabel(days: number | null): string {
   if (days < 7) return `${days} days inactive`;
   if (days < 30) return `${Math.floor(days / 7)} week${Math.floor(days / 7) > 1 ? "s" : ""} inactive`;
   return `${Math.floor(days / 30)} month${Math.floor(days / 30) > 1 ? "s" : ""} inactive`;
+}
+
+/** Latest visit date for list/table “Date” column. */
+function formatLatestVisitDate(c: Customer): string {
+  const raw = c.lastVisitDate?.trim() || c.lastVisit?.trim();
+  if (!raw) return "—";
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
 function getInactivityColor(days: number | null): string {
@@ -532,6 +542,7 @@ export function Customers() {
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [customersLoading, setCustomersLoading] = useState(true);
+  const [todayRevenue, setTodayRevenue] = useState<number | null>(null);
   const customersLoadGen = useRef(0);
 
   useEffect(() => {
@@ -548,6 +559,22 @@ export function Customers() {
         if (!cancelled && gen === customersLoadGen.current) setCustomersLoading(false);
       }
     })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, "0");
+    const d = String(today.getDate()).padStart(2, "0");
+    fetchAccountingOverview(`${y}-${m}-${d}`)
+      .then((overview) => {
+        if (!cancelled) setTodayRevenue(overview.totalSales ?? 0);
+      })
+      .catch(() => {
+        if (!cancelled) setTodayRevenue(null);
+      });
     return () => { cancelled = true; };
   }, []);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -1264,14 +1291,21 @@ export function Customers() {
         </div>
       </div>
 
-      {/* Laptop/desktop only — tablets and phones prioritize list space. */}
-      <div className="hidden shrink-0 gap-3 lg:grid lg:grid-cols-4">
+      {/* Stat cards — tablet + desktop; phones keep list space. */}
+      <div className="hidden shrink-0 gap-3 md:grid md:grid-cols-2 lg:grid-cols-4">
+        <PageStatCard
+          label="Today's Revenue"
+          value={todayRevenue == null ? "—" : `₹${todayRevenue.toLocaleString("en-IN")}`}
+          sub="Sales collected today"
+          icon={IndianRupee}
+          index={0}
+        />
         <PageStatCard
           label="Total Customers"
           value={customers.length}
           sub="All in CRM"
           icon={Users}
-          index={0}
+          index={1}
           onClick={() => { setFilterTier("all"); setFilterStatus("all"); setFilterBirthday("all"); }}
         />
         <PageStatCard
@@ -1279,16 +1313,8 @@ export function Customers() {
           value={customers.filter(c => c.status === "active").length}
           sub="Currently active"
           icon={CheckCircle}
-          index={1}
-          onClick={() => setFilterStatus("active")}
-        />
-        <PageStatCard
-          label="Platinum Members"
-          value={customers.filter(c => c.membershipTier === "platinum").length}
-          sub="VIP tier members"
-          icon={Crown}
           index={2}
-          onClick={() => setFilterTier("platinum")}
+          onClick={() => setFilterStatus("active")}
         />
         <PageStatCard
           label="Birthdays This Month"
@@ -1400,13 +1426,90 @@ export function Customers() {
             {filterGender !== "all" && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-[#d4af37]" />}
           </div>
 
+          {/* Birthday */}
+          <div className="relative shrink-0">
+            <Cake className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#d4af37] pointer-events-none" />
+            <select
+              value={filterBirthday}
+              onChange={(e) => setFilterBirthday(e.target.value as typeof filterBirthday)}
+              className={`h-10 pl-9 pr-7 rounded-xl border text-[13px] font-semibold appearance-none outline-none cursor-pointer transition-all focus:ring-2 focus:ring-[#d4af37]/20 ${filterBirthday !== "all" ? "border-[#d4af37]/60 bg-[#fffbea] text-[#9a7a1e]" : "border-black/[0.08] bg-[#FAF8F2]/60 text-[#6b6b6b] hover:border-black/[0.12]"}`}
+            >
+              <option value="all">All Birthdays</option>
+              <option value="today">🎂 Today</option>
+              <option value="thismonth">This Month</option>
+            </select>
+            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </span>
+            {filterBirthday !== "all" && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-[#d4af37]" />}
+          </div>
+
+          {/* Inactive days */}
+          <div className="relative shrink-0">
+            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#d4af37] pointer-events-none" />
+            <select
+              value={filterInactive}
+              onChange={(e) => setFilterInactive(e.target.value as typeof filterInactive)}
+              className={`h-10 pl-9 pr-7 rounded-xl border text-[13px] font-semibold appearance-none outline-none cursor-pointer transition-all focus:ring-2 focus:ring-[#d4af37]/20 ${filterInactive !== "all" ? "border-[#d4af37]/60 bg-[#fffbea] text-[#9a7a1e]" : "border-black/[0.08] bg-[#FAF8F2]/60 text-[#6b6b6b] hover:border-black/[0.12]"}`}
+            >
+              <option value="all">Any Activity</option>
+              <option value="7">Inactive 7+ days</option>
+              <option value="30">Inactive 30+ days</option>
+              <option value="60">Inactive 60+ days</option>
+              <option value="90">Inactive 90+ days</option>
+            </select>
+            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </span>
+            {filterInactive !== "all" && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-[#d4af37]" />}
+          </div>
+
+          {/* Last visit range */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Calendar className="h-4 w-4 text-[#d4af37] shrink-0" />
+            <input
+              type="date"
+              value={lastVisitFrom}
+              onChange={(e) => setLastVisitFrom(e.target.value)}
+              title="Last visit from"
+              className={`h-10 rounded-xl border px-2 text-[12px] font-semibold outline-none focus:ring-2 focus:ring-[#d4af37]/20 ${lastVisitFrom ? "border-[#d4af37]/60 bg-[#fffbea] text-[#9a7a1e]" : "border-black/[0.08] bg-[#FAF8F2]/60 text-[#6b6b6b]"}`}
+            />
+            <span className="text-[11px] text-gray-400">to</span>
+            <input
+              type="date"
+              value={lastVisitTo}
+              onChange={(e) => setLastVisitTo(e.target.value)}
+              title="Last visit to"
+              className={`h-10 rounded-xl border px-2 text-[12px] font-semibold outline-none focus:ring-2 focus:ring-[#d4af37]/20 ${lastVisitTo ? "border-[#d4af37]/60 bg-[#fffbea] text-[#9a7a1e]" : "border-black/[0.08] bg-[#FAF8F2]/60 text-[#6b6b6b]"}`}
+            />
+          </div>
+
           {/* Clear */}
-          {(searchQuery || filterTier !== "all" || filterStatus !== "all" || filterGender !== "all" || filterSource !== "all" || filterInactive !== "all" || lastVisitFrom || lastVisitTo) && (
-            <button onClick={() => { setSearchQuery(""); setFilterTier("all"); setFilterStatus("all"); setFilterGender("all"); setFilterSource("all"); setFilterInactive("all"); setLastVisitFrom(""); setLastVisitTo(""); }}
-              className="flex items-center gap-1.5 h-10 px-3 text-[12px] font-semibold text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl border border-black/[0.08] hover:border-red-200 transition-all shrink-0">
+          {(searchQuery || filterTier !== "all" || filterStatus !== "all" || filterGender !== "all" || filterSource !== "all" || filterBirthday !== "all" || filterInactive !== "all" || lastVisitFrom || lastVisitTo) && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery("");
+                setFilterTier("all");
+                setFilterStatus("all");
+                setFilterGender("all");
+                setFilterSource("all");
+                setFilterBirthday("all");
+                setFilterInactive("all");
+                setLastVisitFrom("");
+                setLastVisitTo("");
+              }}
+              className="flex items-center gap-1.5 h-10 px-3 text-[12px] font-semibold text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl border border-black/[0.08] hover:border-red-200 transition-all shrink-0"
+            >
               <X className="h-3.5 w-3.5" /> Clear
             </button>
           )}
+        </div>
+
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <span className="text-[11px] font-semibold text-[#9a9a9a]">
+            Showing {filtered.length} of {customers.length} customers
+          </span>
         </div>
 
         {/* Birthday match action bar */}
@@ -1458,7 +1561,6 @@ export function Customers() {
           {/* Phone/tablet: complete customer cards with no horizontal scrolling. */}
           <div className="divide-y divide-black/[0.06] lg:hidden">
             {paginatedCustomers.map((customer, index) => {
-              const inactiveDays = getInactiveDays(customer);
               const selected = selectedCustomerIds.has(customer.id);
               const formattedPhone = formatDisplayPhone(customer.phone);
               const telHref = phoneTelHref(customer.phone);
@@ -1535,31 +1637,45 @@ export function Customers() {
                     </div>
                   )}
 
-                  <div className="flex flex-wrap gap-1.5 pl-8">
-                    <SourceBadge source={customer.source} />
-                    <Badge className={`${membershipColors[customer.membershipTier]} border text-[10px] capitalize`}>
-                      {customer.membershipTier}
-                    </Badge>
-                    <Badge className={`${getInactivityColor(inactiveDays)} border text-[10px]`}>
-                      <Clock className="mr-1 inline h-3 w-3" />
-                      {getInactivityLabel(inactiveDays)}
-                    </Badge>
-                    {customer.birthday && (
-                      <Badge className="border border-pink-200 bg-pink-50 text-[10px] text-pink-700">
-                        <Cake className="mr-1 h-3 w-3" />
-                        {new Date(customer.birthday).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-                      </Badge>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 pl-8">
+                  <div className="grid grid-cols-2 gap-2 pl-8 sm:grid-cols-3">
+                    <div className="rounded-xl border border-black/[0.06] bg-white/80 px-3 py-2">
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Date</p>
+                      <p className="mt-0.5 text-[13px] font-semibold tabular-nums text-[#111118]">
+                        {formatLatestVisitDate(customer)}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-black/[0.06] bg-white/80 px-3 py-2">
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Source</p>
+                      <div className="mt-1"><SourceBadge source={customer.source} /></div>
+                    </div>
+                    <div className="rounded-xl border border-black/[0.06] bg-white/80 px-3 py-2">
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Tier</p>
+                      <div className="mt-1">
+                        <Badge className={`${membershipColors[customer.membershipTier]} border text-[10px] capitalize`}>
+                          {customer.membershipTier}
+                        </Badge>
+                      </div>
+                    </div>
                     <div className="rounded-xl border border-black/[0.06] bg-white/80 px-3 py-2">
                       <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Visits</p>
                       <p className="mt-0.5 text-[15px] font-black text-[#111118]">{customer.totalVisits}</p>
                     </div>
                     <div className="rounded-xl border border-[#D4AF37]/20 bg-[#FFFBEB] px-3 py-2">
-                      <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a7d20]">Total spend</p>
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a7d20]">Total Spend</p>
                       <p className="mt-0.5 text-[15px] font-black text-[#9a7d20]">₹{customer.totalSpend.toLocaleString()}</p>
+                    </div>
+                    <div className="rounded-xl border border-black/[0.06] bg-white/80 px-3 py-2">
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Birthday</p>
+                      <p className="mt-0.5 flex items-center gap-1 text-[13px] font-semibold text-[#111118]">
+                        {customer.birthday ? (
+                          <>
+                            <Cake className="h-3.5 w-3.5 text-pink-500" />
+                            {new Date(customer.birthday).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </p>
                     </div>
                   </div>
 
@@ -1600,32 +1716,31 @@ export function Customers() {
 
           {/* Laptop/desktop: retain the dense customer table. */}
           <div className="hidden overflow-x-auto lg:block">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[920px] text-sm">
               <thead className="sticky top-0 z-10">
                 <tr className="border-b border-black/[0.06] bg-[#FAF8F2]">
-                  <th className="px-4 py-3 w-10">
+                  <th className="w-10 px-4 py-3">
                     <input
                       type="checkbox"
                       checked={allFilteredSelected}
                       onChange={toggleSelectAll}
-                      className="h-4 w-4 rounded border-gray-300 accent-[#d4af37] cursor-pointer"
+                      className="h-4 w-4 cursor-pointer rounded border-gray-300 accent-[#d4af37]"
                       title="Select all"
                     />
                   </th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Customer</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Source</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Tier</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Status</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Inactivity</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Visits</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Total Spend</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Birthday</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Actions</th>
+                  <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Customer</th>
+                  <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Date</th>
+                  <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Source</th>
+                  <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Tier</th>
+                  <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Status</th>
+                  <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Visits</th>
+                  <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Total Spend</th>
+                  <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Birthday</th>
+                  <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedCustomers.map(c => {
-                  const days = getInactiveDays(c);
                   return (
                     <tr
                       key={c.id}
@@ -1638,23 +1753,26 @@ export function Customers() {
                           checked={selectedCustomerIds.has(c.id)}
                           onChange={() => toggleSelectCustomer(c.id)}
                           onClick={e => e.stopPropagation()}
-                          className="h-4 w-4 rounded border-gray-300 accent-[#d4af37] cursor-pointer"
+                          className="h-4 w-4 cursor-pointer rounded border-gray-300 accent-[#d4af37]"
                         />
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#1a1a1a] to-[#2d2d2d] text-white font-bold text-xs flex-shrink-0">
+                          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#1a1a1a] to-[#2d2d2d] text-xs font-bold text-white">
                             {c.name.split(" ").map(n=>n[0]).join("")}
                           </div>
-                          <div>
-                            <p className="font-semibold">{c.name}</p>
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold">{c.name}</p>
                             <p className="mt-0.5 text-[13px] font-semibold tabular-nums tracking-wide text-[#111118]">
                               {formatDisplayPhone(c.phone)}
                             </p>
-                            <p className="text-xs text-muted-foreground">{c.email || "No email"}</p>
+                            <p className="truncate text-xs text-muted-foreground">{c.email || "No email"}</p>
                           </div>
                           {isBirthdayToday(c.birthday) && <span title="Birthday Today">🎂</span>}
                         </div>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-[13px] font-medium tabular-nums text-[#111118]">
+                        {formatLatestVisitDate(c)}
                       </td>
                       <td className="px-4 py-3">
                         <SourceBadge source={c.source} />
@@ -1667,14 +1785,9 @@ export function Customers() {
                           {c.status === "active" ? "Active" : "Inactive"}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3">
-                        <Badge className={`${getInactivityColor(days)} border text-xs`}>
-                          <Clock className="h-3 w-3 mr-1 inline" />{getInactivityLabel(days)}
-                        </Badge>
-                      </td>
                       <td className="px-4 py-3 font-medium">{c.totalVisits}</td>
                       <td className="px-4 py-3 font-semibold text-[#d4af37]">₹{c.totalSpend.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">{c.birthday ? new Date(c.birthday).toLocaleDateString("en-IN",{day:"numeric",month:"short"}) : "—"}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{c.birthday ? new Date(c.birthday).toLocaleDateString("en-IN",{day:"numeric",month:"short"}) : "—"}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
                           {!someSelected && (
@@ -1689,7 +1802,7 @@ export function Customers() {
                   );
                 })}
                 {filtered.length === 0 && (
-                  <tr><td colSpan={9} className="text-center py-10 text-muted-foreground">No customers match your search.</td></tr>
+                  <tr><td colSpan={10} className="py-10 text-center text-muted-foreground">No customers match your search.</td></tr>
                 )}
               </tbody>
             </table>

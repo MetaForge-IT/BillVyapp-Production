@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import * as authApi from "../api/auth";
+import { clearCachedAuthUser } from "../lib/authUserCache";
 
 /** Legacy raw JWT key — migrated into the Zustand persist blob once. */
 const LEGACY_TOKEN_KEY = "salon_access_token";
@@ -30,6 +31,21 @@ function migrateLegacyToken(): string | null {
   }
 }
 
+/** True when JWT is missing, malformed, or past exp (with small clock skew). */
+function isAccessTokenUnusable(token: string | null, skewSeconds = 30): boolean {
+  if (!token) return true;
+  try {
+    const part = token.split(".")[1];
+    if (!part) return true;
+    const json = atob(part.replace(/-/g, "+").replace(/_/g, "/"));
+    const payload = JSON.parse(json) as { exp?: unknown };
+    if (typeof payload.exp !== "number") return true;
+    return payload.exp * 1000 <= Date.now() + skewSeconds * 1000;
+  } catch {
+    return true;
+  }
+}
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -49,14 +65,15 @@ export const useAuthStore = create<AuthState>()(
       },
 
       clearSession: () => {
+        clearCachedAuthUser();
         set({ accessToken: null, isAuthenticated: false });
       },
 
       /**
        * Restore session on hard refresh.
        * - Prefer silently rotating via httpOnly refresh cookie.
-       * - If refresh fails but an access token still exists, keep the user logged in
-       *   (token validity is checked on the next API call).
+       * - If refresh fails, keep the access token only when it is still unexpired;
+       *   otherwise clear so protected pages never fire APIs with a dead JWT.
        */
       bootstrap: async () => {
         // Wait for Zustand persist to rehydrate from localStorage
@@ -75,16 +92,16 @@ export const useAuthStore = create<AuthState>()(
           get().setAccessToken(legacy);
         }
 
-        const existing = get().accessToken;
-
         try {
           try {
             const response = await authApi.refresh();
             if (response.data?.accessToken) {
               get().setAccessToken(response.data.accessToken);
+            } else if (isAccessTokenUnusable(get().accessToken)) {
+              get().clearSession();
             }
           } catch {
-            if (!existing) {
+            if (isAccessTokenUnusable(get().accessToken)) {
               get().clearSession();
             }
           }

@@ -4,7 +4,11 @@ import type { ZodType } from "zod";
 import { ZodError } from "zod";
 import { BadRequestError } from "../../utils/errors";
 import { authenticate, authorize } from "../auth/auth.middleware";
-import { DAY_CLOSE_ROLES } from "./accounting.constants";
+import {
+  DAY_CLOSE_ROLES,
+  EXPENSE_DELETE_APPROVER_ROLES,
+  EXPENSE_DELETE_REQUESTOR_ROLES,
+} from "./accounting.constants";
 import { accountingController } from "./accounting.controller";
 import {
   createDayCloseSchema,
@@ -49,7 +53,21 @@ accountingRouter.patch(
   validateRequest(updateExpenseSchema),
   accountingController.updateExpense,
 );
-accountingRouter.delete("/expenses/:expenseId", accountingController.deleteExpense);
+accountingRouter.post(
+  "/expenses/:expenseId/delete-request",
+  authorize(...EXPENSE_DELETE_REQUESTOR_ROLES, ...EXPENSE_DELETE_APPROVER_ROLES),
+  accountingController.requestExpenseDelete,
+);
+accountingRouter.post(
+  "/expenses/:expenseId/delete-request/cancel",
+  authorize(...EXPENSE_DELETE_APPROVER_ROLES),
+  accountingController.cancelExpenseDeleteRequest,
+);
+accountingRouter.delete(
+  "/expenses/:expenseId",
+  authorize(...EXPENSE_DELETE_APPROVER_ROLES),
+  accountingController.deleteExpense,
+);
 
 accountingRouter.get("/budgets", accountingController.getBudget);
 accountingRouter.put(

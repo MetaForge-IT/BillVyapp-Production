@@ -36,7 +36,19 @@ function endOfMonthExclusive(year: number, month: number): Date {
   return new Date(Date.UTC(year, month, 1));
 }
 
-function mapExpense(expense: Expense) {
+type ExpenseWithDeleteMeta = Expense & {
+  deleteRequestedBy?: { fullName: string } | null;
+  deleteRejectedBy?: { fullName: string } | null;
+};
+
+const expenseDeleteInclude = {
+  deleteRequestedBy: { select: { fullName: true } },
+  deleteRejectedBy: { select: { fullName: true } },
+} as const;
+
+function mapExpense(expense: ExpenseWithDeleteMeta) {
+  const deleteRequested = Boolean(expense.deleteRequestedAt);
+  const deleteRejected = Boolean(expense.deleteRejectedAt) && !deleteRequested;
   return {
     id: expense.id,
     date: formatDate(expense.date),
@@ -46,6 +58,14 @@ function mapExpense(expense: Expense) {
     amount: Number(expense.amount),
     source: expense.source,
     remarks: expense.remarks ?? "",
+    deleteRequested,
+    deleteRequestedAt: expense.deleteRequestedAt?.toISOString() ?? null,
+    deleteRequestedById: expense.deleteRequestedById ?? null,
+    deleteRequestedByName: expense.deleteRequestedBy?.fullName ?? null,
+    deleteRejected,
+    deleteRejectedAt: expense.deleteRejectedAt?.toISOString() ?? null,
+    deleteRejectedById: expense.deleteRejectedById ?? null,
+    deleteRejectedByName: expense.deleteRejectedBy?.fullName ?? null,
     createdAt: expense.createdAt.toISOString(),
     updatedAt: expense.updatedAt.toISOString(),
   };
@@ -210,6 +230,7 @@ export class AccountingRepository {
 
     const rows = await prisma.expense.findMany({
       where,
+      include: expenseDeleteInclude,
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       take: 1000,
     });
@@ -261,6 +282,65 @@ export class AccountingRepository {
         source: input.source,
         remarks: input.remarks === undefined ? undefined : input.remarks,
       },
+    });
+    return mapExpense(expense);
+  }
+
+  async requestExpenseDelete(auth: AuthContext, expenseId: string) {
+    const existing = await prisma.expense.findFirst({
+      where: { id: expenseId, salonId: auth.salonId },
+      include: expenseDeleteInclude,
+    });
+    if (!existing) {
+      throw new AppError(404, "Expense not found", {
+        code: ACCOUNTING_ERROR_CODES.EXPENSE_NOT_FOUND,
+      });
+    }
+    await assertDateNotClosed(auth.salonId, existing.date);
+    if (existing.deleteRequestedAt) {
+      throw new AppError(409, "Delete already requested for this expense", {
+        code: ACCOUNTING_ERROR_CODES.EXPENSE_DELETE_ALREADY_REQUESTED,
+      });
+    }
+
+    const expense = await prisma.expense.update({
+      where: { id: expenseId },
+      data: {
+        deleteRequestedAt: new Date(),
+        deleteRequestedById: auth.userId,
+        deleteRejectedAt: null,
+        deleteRejectedById: null,
+      },
+      include: expenseDeleteInclude,
+    });
+    return mapExpense(expense);
+  }
+
+  async cancelExpenseDeleteRequest(auth: AuthContext, expenseId: string) {
+    const existing = await prisma.expense.findFirst({
+      where: { id: expenseId, salonId: auth.salonId },
+      include: expenseDeleteInclude,
+    });
+    if (!existing) {
+      throw new AppError(404, "Expense not found", {
+        code: ACCOUNTING_ERROR_CODES.EXPENSE_NOT_FOUND,
+      });
+    }
+    if (!existing.deleteRequestedAt) {
+      throw new AppError(400, "No delete request pending for this expense", {
+        code: ACCOUNTING_ERROR_CODES.EXPENSE_DELETE_NOT_REQUESTED,
+      });
+    }
+
+    const expense = await prisma.expense.update({
+      where: { id: expenseId },
+      data: {
+        deleteRequestedAt: null,
+        deleteRequestedById: null,
+        deleteRejectedAt: new Date(),
+        deleteRejectedById: auth.userId,
+      },
+      include: expenseDeleteInclude,
     });
     return mapExpense(expense);
   }

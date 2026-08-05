@@ -4,10 +4,14 @@ import type { ExpenseCategory, ExpenseSource } from "../api/accounting";
 export const EXPENSE_CATEGORIES = ["Operational", "Inventory", "Payroll", "Transfer"] as const;
 export const EXPENSE_SOURCES = ["Cash", "UPI", "Card"] as const;
 
+const EMP_PREFIX = "EMP:";
+
 export interface ExpenseFormValues {
   date: string;
   category: ExpenseCategory;
   subCategory: string;
+  /** Optional — shown when category is Payroll */
+  employeeName: string;
   amount: string;
   source: ExpenseSource;
   note: string;
@@ -31,6 +35,7 @@ export const expenseFormSchema = Joi.object<ExpenseFormValues>({
     "string.empty": "Sub-category is required",
     "any.required": "Sub-category is required",
   }),
+  employeeName: Joi.string().trim().max(120).allow("").optional(),
   amount: Joi.string()
     .trim()
     .pattern(/^\d+(\.\d{1,2})?$/)
@@ -60,6 +65,33 @@ export const expenseFormSchema = Joi.object<ExpenseFormValues>({
   }),
 });
 
+/** Pack optional employee into remarks without a DB column. */
+export function packExpenseRemarks(note: string, employeeName?: string): string {
+  const cleanNote = note.trim();
+  const emp = employeeName?.trim();
+  if (!emp) return cleanNote;
+  return `${EMP_PREFIX}${emp}\n${cleanNote}`.slice(0, 500);
+}
+
+export function parseExpenseRemarks(remarks?: string | null): {
+  employeeName: string | null;
+  note: string;
+} {
+  const raw = (remarks ?? "").trim();
+  if (!raw.startsWith(EMP_PREFIX)) {
+    return { employeeName: null, note: raw };
+  }
+  const rest = raw.slice(EMP_PREFIX.length);
+  const nl = rest.indexOf("\n");
+  if (nl < 0) {
+    return { employeeName: rest.trim() || null, note: "" };
+  }
+  return {
+    employeeName: rest.slice(0, nl).trim() || null,
+    note: rest.slice(nl + 1).trim(),
+  };
+}
+
 export function validateExpenseForm(values: ExpenseFormValues): {
   ok: true;
   value: {
@@ -83,6 +115,7 @@ export function validateExpenseForm(values: ExpenseFormValues): {
       field: detail?.path?.[0] != null ? String(detail.path[0]) : undefined,
     };
   }
+  const employeeName = value.category === "Payroll" ? value.employeeName?.trim() ?? "" : "";
   return {
     ok: true,
     value: {
@@ -91,7 +124,7 @@ export function validateExpenseForm(values: ExpenseFormValues): {
       subCategory: value.subCategory,
       amount: Number(value.amount),
       source: value.source,
-      remarks: value.note.trim(),
+      remarks: packExpenseRemarks(value.note, employeeName),
     },
   };
 }

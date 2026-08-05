@@ -19,6 +19,8 @@ interface CustomerStepProps {
   customerGender: CustomerGender;
   onCustomerGenderChange: (gender: Exclude<CustomerGender, "">) => void;
   customerTier: string;
+  stylistName: string;
+  onStylistNameChange: (name: string) => void;
 }
 
 export function CustomerStep({
@@ -32,6 +34,8 @@ export function CustomerStep({
   customerGender,
   onCustomerGenderChange,
   customerTier,
+  stylistName,
+  onStylistNameChange,
 }: CustomerStepProps) {
   return (
     <div
@@ -142,6 +146,19 @@ export function CustomerStep({
                   </button>
                 ))}
               </div>
+            </div>
+            <div>
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9a9a9a]">
+                Stylist name{" "}
+                <span className="font-medium normal-case tracking-normal text-[#9a9a9a]/80">(optional)</span>
+              </p>
+              <Input
+                value={stylistName}
+                onChange={(e) => onStylistNameChange(e.target.value)}
+                placeholder="e.g. Rahul"
+                maxLength={200}
+                className="h-10 rounded-xl border-black/[0.08] bg-white text-[12.5px] focus:border-[#D4AF37]/40"
+              />
             </div>
           </motion.div>
         )}

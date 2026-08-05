@@ -63,32 +63,35 @@ export function PaymentResultDialog({
 
   const submitFeedbackAndFinish = async () => {
     if (!receipt) return;
-    if (!feedbackRating || feedbackRating < 1 || feedbackRating > 5) {
-      toast.error("Please select a rating from 1 to 5 stars");
-      return;
-    }
-    if (!receipt.appointmentId) {
-      toast.error("Unable to save feedback — appointment not found");
-      return;
+
+    const hasRating = feedbackRating >= 1 && feedbackRating <= 5;
+
+    if (hasRating) {
+      if (!receipt.appointmentId) {
+        toast.error("Unable to save feedback — appointment not found");
+        return;
+      }
+      setFeedbackSubmitting(true);
+      try {
+        await createFeedback({
+          appointmentId: receipt.appointmentId,
+          rating: feedbackRating,
+          source: "app",
+        });
+        toast.success("Thanks for the feedback!");
+      } catch (error) {
+        toast.error(getApiErrorMessage(error, "Failed to save feedback"));
+        setFeedbackSubmitting(false);
+        return;
+      } finally {
+        setFeedbackSubmitting(false);
+      }
     }
 
-    setFeedbackSubmitting(true);
-    try {
-      await createFeedback({
-        appointmentId: receipt.appointmentId,
-        rating: feedbackRating,
-        source: "app",
-      });
-      toast.success("Thanks for the feedback!");
-      resetFeedback();
-      onOpenChange(false);
-      onDone();
-      navigate("/dashboard");
-    } catch (error) {
-      toast.error(getApiErrorMessage(error, "Failed to save feedback"));
-    } finally {
-      setFeedbackSubmitting(false);
-    }
+    resetFeedback();
+    onOpenChange(false);
+    onDone();
+    navigate("/dashboard");
   };
 
   return (
@@ -100,7 +103,7 @@ export function PaymentResultDialog({
         <DialogDescription className="sr-only">
           {step === "pending"
             ? "The invoice was created with an outstanding balance."
-            : "Checkout completed. Rate this visit before continuing."}
+            : "Checkout completed. You can optionally rate this visit."}
         </DialogDescription>
 
         <AnimatePresence mode="wait">
@@ -257,7 +260,8 @@ export function PaymentResultDialog({
                   How was the experience?
                 </p>
                 <p className="mt-1 text-center text-[13px] font-semibold text-[#111118]">
-                  Rate this visit for {receipt.customer}
+                  Rate this visit for {receipt.customer}{" "}
+                  <span className="font-medium text-[#9a9a9a]">(optional)</span>
                 </p>
                 <div
                   className="mt-3 flex items-center justify-center gap-2"

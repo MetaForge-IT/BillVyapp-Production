@@ -13,6 +13,16 @@ export interface AccountingExpense {
   amount: number;
   source: ExpenseSource | string;
   remarks: string;
+  /** True when a manager has requested admin approval to delete. */
+  deleteRequested?: boolean;
+  deleteRequestedAt?: string | null;
+  deleteRequestedById?: string | null;
+  deleteRequestedByName?: string | null;
+  /** True when admin rejected the last delete request (cleared on new request). */
+  deleteRejected?: boolean;
+  deleteRejectedAt?: string | null;
+  deleteRejectedById?: string | null;
+  deleteRejectedByName?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -162,6 +172,20 @@ export async function createExpense(payload: CreateExpensePayload): Promise<Acco
 
 export async function deleteExpense(expenseId: string): Promise<void> {
   await apiClient.delete(`/accounting/expenses/${expenseId}`);
+}
+
+export async function requestExpenseDelete(expenseId: string): Promise<AccountingExpense> {
+  const { data } = await apiClient.post<ApiEnvelope<AccountingExpense>>(
+    `/accounting/expenses/${expenseId}/delete-request`,
+  );
+  return data.data;
+}
+
+export async function cancelExpenseDeleteRequest(expenseId: string): Promise<AccountingExpense> {
+  const { data } = await apiClient.post<ApiEnvelope<AccountingExpense>>(
+    `/accounting/expenses/${expenseId}/delete-request/cancel`,
+  );
+  return data.data;
 }
 
 export async function fetchBudget(year: number, month: number): Promise<BudgetPeriod> {

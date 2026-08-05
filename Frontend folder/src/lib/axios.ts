@@ -98,12 +98,12 @@ apiClient.interceptors.response.use(
   async (error: AxiosError<ApiErrorBody>) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
+    // Retry once via httpOnly refresh cookie — even if the access JWT is already gone.
     if (
       error.response?.status === 401 &&
       originalRequest &&
       !originalRequest._retry &&
-      !shouldSkipRefreshRetry(originalRequest.url) &&
-      getAccessToken()
+      !shouldSkipRefreshRetry(originalRequest.url)
     ) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {

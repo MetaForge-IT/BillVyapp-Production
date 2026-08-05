@@ -42,6 +42,24 @@ export class AccountingController {
     sendSuccess(res, { message: "Expense updated", data: expense });
   });
 
+  requestExpenseDelete = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const auth = (req as AuthenticatedRequest).auth;
+    const expense = await accountingService.requestExpenseDelete(
+      auth,
+      String(req.params.expenseId),
+    );
+    sendSuccess(res, { message: "Delete requested; waiting for admin approval", data: expense });
+  });
+
+  cancelExpenseDeleteRequest = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const auth = (req as AuthenticatedRequest).auth;
+    const expense = await accountingService.cancelExpenseDeleteRequest(
+      auth,
+      String(req.params.expenseId),
+    );
+    sendSuccess(res, { message: "Delete request rejected", data: expense });
+  });
+
   deleteExpense = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const auth = (req as AuthenticatedRequest).auth;
     await accountingService.deleteExpense(auth, String(req.params.expenseId));

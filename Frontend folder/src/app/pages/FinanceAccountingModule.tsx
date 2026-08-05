@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   IndianRupee, TrendingUp, TrendingDown, Banknote, CreditCard,
   Smartphone, ArrowLeftRight, AlertTriangle, Lock, BarChart3, PiggyBank, FileText,
-  Plus, Trash2, Receipt, ShoppingCart, Users, Zap, ChevronRight,
+  Plus, Trash2, Receipt, ShoppingCart, Users, Zap, ChevronRight, Check, X, Loader2,
 } from "lucide-react";
 import { toast } from "../components/ui/hot-toast";
 import { SegmentedPillNav } from "../components/layout/SegmentedPillNav";
@@ -10,6 +10,7 @@ import { Pagination } from "../components/shared/Pagination";
 import { useTablePagination } from "../hooks/useTablePagination";
 import { getApiErrorMessage } from "../../lib/api";
 import {
+  cancelExpenseDeleteRequest,
   createDayClose,
   createExpense,
   deleteExpense,
@@ -17,6 +18,7 @@ import {
   fetchBudget,
   fetchDayCloses,
   fetchExpenses,
+  requestExpenseDelete,
   upsertBudget,
   type AccountingExpense,
   type AccountingOverview,
@@ -24,6 +26,7 @@ import {
   type DayCloseRecord,
   type ExpenseCategory,
 } from "../../api/accounting";
+import { isAdmin, useRole } from "../context/RoleContext";
 import {
   FinanceStatCard,
   FinanceStatGrid,
@@ -205,10 +208,13 @@ const EXP_ICONS: Record<ExpCat, typeof Zap> = {
 };
 
 function ExpensesTab() {
+  const { role } = useRole();
+  const admin = isAdmin(role);
   const [activeCat, setActiveCat] = useState<ExpCat>("Operational");
   const [expenses, setExpenses] = useState<AccountingExpense[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [actionId, setActionId] = useState<string | null>(null);
   const [isClosed, setIsClosed] = useState(false);
   const [form, setForm] = useState({ sub: "", amount: "", source: "Cash", remarks: "" });
   const [showForm, setShowForm] = useState(false);
@@ -271,14 +277,39 @@ function ExpensesTab() {
     }
   };
 
-  const removeExpense = async (id: string) => {
+  const removeExpense = async (expense: AccountingExpense) => {
     if (isClosed) return;
+    setActionId(expense.id);
     try {
-      await deleteExpense(id);
-      setExpenses((prev) => prev.filter((x) => x.id !== id));
-      toast.success("Expense deleted");
+      if (admin) {
+        await deleteExpense(expense.id);
+        setExpenses((prev) => prev.filter((x) => x.id !== expense.id));
+        toast.success(
+          expense.deleteRequested ? "Delete approved — expense removed" : "Expense deleted",
+        );
+      } else {
+        const updated = await requestExpenseDelete(expense.id);
+        setExpenses((prev) => prev.map((x) => (x.id === expense.id ? updated : x)));
+        toast.success("Requested to admin");
+      }
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Failed to delete expense"));
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const cancelDelete = async (expense: AccountingExpense) => {
+    if (isClosed || !admin) return;
+    setActionId(expense.id);
+    try {
+      const updated = await cancelExpenseDeleteRequest(expense.id);
+      setExpenses((prev) => prev.map((x) => (x.id === expense.id ? updated : x)));
+      toast.success("Delete request rejected");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Failed to reject delete request"));
+    } finally {
+      setActionId(null);
     }
   };
 
@@ -395,13 +426,52 @@ function ExpensesTab() {
                   </div>
                 </div>
                 <p className="text-[14px] font-black text-[#111]">₹{e.amount.toLocaleString()}</p>
-                <button
-                  onClick={() => void removeExpense(e.id)}
-                  disabled={isClosed}
-                  className="h-7 w-7 rounded-lg border border-black/[0.07] flex items-center justify-center text-[#9a9a9a] hover:text-[#111118] hover:border-[#D4AF37]/30 transition-all disabled:opacity-30"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                {admin && e.deleteRequested ? (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => void removeExpense(e)}
+                      disabled={isClosed || actionId === e.id}
+                      className="inline-flex h-7 items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2 text-[10px] font-bold text-emerald-800 disabled:opacity-30"
+                    >
+                      {actionId === e.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void cancelDelete(e)}
+                      disabled={isClosed || actionId === e.id}
+                      className="inline-flex h-7 items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 text-[10px] font-bold text-red-700 disabled:opacity-30"
+                    >
+                      <X className="h-3 w-3" />
+                      Reject
+                    </button>
+                  </div>
+                ) : !admin && e.deleteRequested ? (
+                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[9px] font-bold uppercase text-amber-800">
+                    Pending
+                  </span>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    {!admin && e.deleteRejected ? (
+                      <span className="rounded-full bg-red-50 px-2 py-0.5 text-[9px] font-bold uppercase text-red-700">
+                        Rejected by admin
+                      </span>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => void removeExpense(e)}
+                      disabled={isClosed || actionId === e.id}
+                      className="h-7 w-7 rounded-lg border border-black/[0.07] flex items-center justify-center text-[#9a9a9a] hover:text-[#111118] hover:border-[#D4AF37]/30 transition-all disabled:opacity-30"
+                    >
+                      {actionId === e.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

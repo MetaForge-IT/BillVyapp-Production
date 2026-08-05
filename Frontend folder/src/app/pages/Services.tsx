@@ -79,22 +79,26 @@ function getCategoryColor(name: string): string {
   return "from-purple-500 to-purple-700";
 }
 
+function normalizeCategoryKey(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[&/\\#,+()$~%.'":*?<>{}]/g, " ")
+    .replace(/[\s\-–—_]+/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
 function resolveCategoryId(categoryLabel: string, categories: ServiceCategory[]): string | null {
-  const exact = categories.find((c) => c.name.toLowerCase() === categoryLabel.toLowerCase());
+  const exact = categories.find((c) => c.name.toLowerCase() === categoryLabel.trim().toLowerCase());
   if (exact) return exact.id;
 
-  const lower = categoryLabel.toLowerCase();
-  const heuristics: Record<string, string[]> = {
-    male: ["men", "male", "hair"],
-    female: ["women", "female", "spa"],
-    others: ["kid", "child"],
-  };
-  const hints = heuristics[lower] ?? [lower];
-  for (const hint of hints) {
-    const match = categories.find((c) => c.name.toLowerCase().includes(hint));
-    if (match) return match.id;
+  const key = normalizeCategoryKey(categoryLabel);
+  if (key) {
+    const fuzzy = categories.find((c) => normalizeCategoryKey(c.name) === key);
+    if (fuzzy) return fuzzy.id;
   }
-  return categories[0]?.id ?? null;
+
+  return null;
 }
 
 const emptyForm = {
@@ -254,42 +258,107 @@ export function Services() {
   const paginatedServices = useMemo(() => paginate(filteredServices), [filteredServices, paginate]);
 
 
-  async function handleBulkImport(rows: BulkServiceRow[]) {
+  async function handleBulkImport(
+    rows: BulkServiceRow[],
+    onProgress: (progress: { current: number; total: number }) => void,
+  ) {
     setSaving(true);
-    let imported = 0;
+    let createdCount = 0;
+    let updatedCount = 0;
     let failed = 0;
 
-    for (const row of rows) {
+    const byCode = new Map(
+      allServicesFlat.map((s) => [s.serviceCode.toUpperCase(), s] as const),
+    );
+    const byDisplayName = new Map(
+      allServicesFlat.map((s) => [s.displayName.toLowerCase(), s] as const),
+    );
+    const byFullName = new Map(
+      allServicesFlat.map((s) => [s.name.toLowerCase(), s] as const),
+    );
+
+    const total = rows.length;
+    onProgress({ current: 0, total });
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
       const categoryId = resolveCategoryId(row.category, categories);
       if (!categoryId) {
         failed += 1;
+        onProgress({ current: i + 1, total });
         continue;
       }
 
+      const code = row.service_code?.trim().toUpperCase();
+      const nameKey = row.service_name.trim().toLowerCase();
+      const existing =
+        (code ? byCode.get(code) : undefined) ??
+        byDisplayName.get(nameKey) ??
+        byFullName.get(nameKey);
+
+      const payload = {
+        displayName: row.service_name,
+        categoryId,
+        serviceGroup: row.service_group?.trim() || null,
+        description: row.description,
+        duration: row.duration_minutes,
+        price: row.price,
+        memberPrice: row.member_price,
+        gender: row.gender,
+        tax: row.tax,
+        status: row.status ?? ("active" as const),
+      };
+
       try {
-        const created = await createService({
-          displayName: row.service_name,
-          categoryId,
-          description: row.description,
-          duration: row.duration_minutes,
-          price: row.price,
-          memberPrice: row.member_price,
-          status: "active",
-        });
-        setServices((prev) => [...prev, created]);
-        imported += 1;
+        if (existing) {
+          const updated = await updateService(existing.id, payload);
+          setServices((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+          const merged = {
+            ...existing,
+            ...updated,
+            category: updated.categoryName,
+            color: existing.color,
+          };
+          byCode.set(updated.serviceCode.toUpperCase(), merged);
+          byDisplayName.set(updated.displayName.toLowerCase(), merged);
+          byFullName.set(updated.name.toLowerCase(), merged);
+          updatedCount += 1;
+        } else {
+          const created = await createService({
+            ...payload,
+            serviceCode: code || undefined,
+            serviceGroup: row.service_group?.trim() || undefined,
+          });
+          setServices((prev) => [...prev, created]);
+          const asRow = {
+            ...created,
+            category: created.categoryName,
+            color: "#D4AF37",
+          } as ServiceRow;
+          byCode.set(created.serviceCode.toUpperCase(), asRow);
+          byDisplayName.set(created.displayName.toLowerCase(), asRow);
+          byFullName.set(created.name.toLowerCase(), asRow);
+          createdCount += 1;
+        }
       } catch {
         failed += 1;
       }
+
+      onProgress({ current: i + 1, total });
     }
 
     setSaving(false);
-    if (imported > 0) {
-      toast.success(`${imported} service${imported === 1 ? "" : "s"} imported`);
+    if (updatedCount > 0) {
+      toast.success(`${updatedCount} service${updatedCount === 1 ? "" : "s"} updated`);
+    }
+    if (createdCount > 0) {
+      toast.success(`${createdCount} service${createdCount === 1 ? "" : "s"} created`);
     }
     if (failed > 0) {
       toast.error(`${failed} row${failed === 1 ? "" : "s"} could not be imported`);
     }
+
+    return { created: createdCount, updated: updatedCount, failed };
   }
 
   function resetAddForm() {
@@ -1058,7 +1127,11 @@ export function Services() {
         open={showBulkUpload}
         onClose={() => setShowBulkUpload(false)}
         onImport={handleBulkImport}
-        existingNames={allServicesFlat.map(s => s.name)}
+        existingServices={allServicesFlat.map((s) => ({
+          id: s.id,
+          serviceCode: s.serviceCode,
+          displayName: s.displayName,
+        }))}
         categoryNames={categories.map((c) => c.name)}
       />
 

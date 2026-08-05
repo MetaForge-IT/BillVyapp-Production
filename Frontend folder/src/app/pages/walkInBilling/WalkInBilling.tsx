@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Sparkles, Zap } from "lucide-react";
+import { Zap } from "lucide-react";
 import { toast } from "../../components/ui/hot-toast";
 import { cn } from "../../components/ui/utils";
 import { AppointmentStepper } from "../appointments/AppointmentStepper";
@@ -60,6 +60,7 @@ export function WalkInBilling() {
   const [customerName, setCustomerName] = useState("");
   const [customerGender, setCustomerGender] = useState<CustomerGender>("");
   const [customerTier, setCustomerTier] = useState("Regular");
+  const [stylistName, setStylistName] = useState("");
 
   const [gstEnabled, setGstEnabled] = useState(false);
   const [gstRate, setGstRate] = useState(18);
@@ -276,6 +277,7 @@ export function WalkInBilling() {
       scheduledDate,
       scheduledTime,
       durationMinutes: estimatedDuration || 30,
+      staffName: stylistName.trim() || undefined,
       services: selectedServices.flatMap((s) =>
         Array.from({ length: s.qty }, () => ({
           serviceId: s.id,
@@ -436,6 +438,7 @@ export function WalkInBilling() {
     setCustomerName("");
     setCustomerGender("");
     setCustomerTier("Regular");
+    setStylistName("");
     setLookupStatus("idle");
     setLoyaltyAvailable(0);
     setLoyaltyRedeem(0);
@@ -459,10 +462,10 @@ export function WalkInBilling() {
     <>
     <div
       className={cn(
-        "-mx-4 -my-4 flex flex-col overflow-hidden sm:-mx-6 sm:-my-5 lg:-mx-10 lg:-my-6",
+        "flex flex-col overflow-hidden",
         isDesktop
-          ? "min-h-[calc(100dvh-3.5rem)]"
-          : "h-[calc(100dvh-6rem)] sm:h-[calc(100dvh-5.5rem)]",
+          ? "-mx-6 -my-6 h-[calc(100dvh-5rem)] max-h-[calc(100dvh-5rem)] lg:-mx-8"
+          : "-mx-4 -my-4 h-[calc(100dvh-6rem)] sm:-mx-6 sm:-my-5 sm:h-[calc(100dvh-5.5rem)]",
       )}
     >
       <div className="shrink-0 border-b border-black/[0.06] bg-white px-4 py-4 sm:px-6 lg:px-8">
@@ -472,10 +475,6 @@ export function WalkInBilling() {
           </div>
           <div>
             <p className="text-[15px] font-bold leading-tight text-[#111118]">Walk-In Billing</p>
-            <p className="mt-0.5 flex items-center gap-1 text-[10.5px] text-[#9a9a9a]">
-              <Sparkles className="h-2.5 w-2.5 text-[#D4AF37]" />
-              Add services → mobile → checkout (family cart)
-            </p>
           </div>
         </div>
         <AppointmentStepper
@@ -516,6 +515,8 @@ export function WalkInBilling() {
             customerGender={customerGender}
             onCustomerGenderChange={setCustomerGender}
             customerTier={customerTier}
+            stylistName={stylistName}
+            onStylistNameChange={setStylistName}
           />
         )}
 
