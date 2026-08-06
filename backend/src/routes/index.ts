@@ -26,6 +26,7 @@ import { stockPurchasesRouter } from "../modules/stock-purchases/stock-purchases
 import { vendorsRouter } from "../modules/vendors/vendors.routes";
 import { franchisesRouter } from "../modules/franchises/franchises.routes";
 import { myFranchiseRouter } from "../modules/my-franchise/my-franchise.routes";
+import { messagingRouter } from "../modules/messaging/messaging.routes";
 import healthRoutes from "./healthRoutes";
 
 const apiRouter = Router();
@@ -37,6 +38,7 @@ apiRouter.use("/my-franchise", myFranchiseRouter);
 apiRouter.use("/customers", customersRouter);
 apiRouter.use("/dashboard", dashboardRouter);
 apiRouter.use("/notifications", appNotificationsRouter);
+apiRouter.use("/messaging", messagingRouter);
 apiRouter.use("/appointments", appointmentsRouter);
 apiRouter.use("/services", servicesRouter);
 apiRouter.use("/service-categories", serviceCategoriesRouter);

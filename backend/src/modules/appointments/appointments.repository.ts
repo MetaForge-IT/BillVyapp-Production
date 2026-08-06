@@ -13,6 +13,7 @@ import type {
   UpdateAppointmentStatusInput,
 } from "./appointments.validators";
 import { appNotificationGenerator } from "../app-notifications/app-notifications.generator";
+import { notificationService } from "../notifications/notification.service";
 
 type AppointmentWithRelations = Appointment & {
   customer: Pick<Customer, "id" | "fullName" | "phone">;
@@ -256,6 +257,20 @@ export class AppointmentsRepository {
       })
       .catch(() => {});
 
+    // Walk-ins are created at checkout time — only send payment-received (from billing).
+    // Scheduled bookings still get the appointment confirmation WhatsApp.
+    if (appointmentType !== APPOINTMENT_TYPE.WALK_IN && appointment.customer.phone) {
+      const dateLabel = formatWhatsAppDate(appointment.scheduledDate);
+      const timeLabel = formatWhatsAppTime(appointment.scheduledTime);
+      void notificationService
+        .sendAppointmentConfirmed({
+          phone: appointment.customer.phone,
+          dateLabel,
+          timeLabel,
+        })
+        .catch(() => {});
+    }
+
     return mapAppointment(appointment);
   }
 
@@ -462,6 +477,30 @@ export class AppointmentsRepository {
         .catch(() => {});
     }
   }
+}
+
+function formatWhatsAppDate(value: Date | string): string {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatWhatsAppTime(value: Date | string): string {
+  if (value instanceof Date) {
+    return value.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+  }
+  // scheduledTime may already be "11:30 AM" or "11:30:00"
+  const raw = String(value).trim();
+  if (/am|pm/i.test(raw)) return raw;
+  const parsed = new Date(`1970-01-01T${raw}`);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+  }
+  return raw;
 }
 
 export const appointmentsRepository = new AppointmentsRepository();

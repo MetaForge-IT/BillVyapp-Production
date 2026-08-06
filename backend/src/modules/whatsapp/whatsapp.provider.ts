@@ -1,5 +1,6 @@
 import type {
   SendWhatsAppOtpInput,
+  SendWhatsAppTemplateInput,
   SendWhatsAppTextInput,
   WhatsAppDeliveryResult,
 } from "./whatsapp.types";
@@ -11,4 +12,5 @@ export interface WhatsAppProvider {
   readonly name: string;
   sendText(input: SendWhatsAppTextInput): Promise<WhatsAppDeliveryResult>;
   sendOtp(input: SendWhatsAppOtpInput): Promise<WhatsAppDeliveryResult>;
+  sendTemplate?(input: SendWhatsAppTemplateInput): Promise<WhatsAppDeliveryResult>;
 }

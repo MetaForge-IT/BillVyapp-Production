@@ -19,6 +19,11 @@ import {
   LayoutList, LayoutGrid, Filter, ArrowLeft, Clock, ThumbsUp, ThumbsDown, Minus, IndianRupee, ArrowRight,
 } from "lucide-react";
 import { formatDisplayPhone, phoneTelHref } from "../../lib/phone";
+import { getApiErrorMessage } from "../../lib/api";
+import {
+  sendBirthdayOfferWhatsApp,
+  sendCouponWhatsApp,
+} from "../../api/messaging";
 import { Pagination } from "../components/shared/Pagination";
 import { PageStatCard } from "../components/shared/PageStatCard";
 import { useTablePagination } from "../hooks/useTablePagination";
@@ -37,7 +42,6 @@ import { fetchAccountingOverview } from "../../api/accounting";
 import { fetchMembershipTiers, type MembershipTier } from "../../api/membership-tiers";
 import { enrollCustomerInPlan, fetchSalonPlans, fetchPlanEnrollments, type PlanEnrollment } from "../../api/plans";
 import { customerToApiPayload } from "../../lib/customerMappers";
-import { getApiErrorMessage } from "../../lib/api";
 import { NotifyCustomerModal, SendCouponModal } from "./customers/CustomersCommModals";
 import {
   MembershipPaymentConfirmDialog,
@@ -802,34 +806,116 @@ export function Customers() {
     }
   };
 
-  const sendBirthdayCoupons = () => {
-    todayBirthdays.forEach(c => console.log(`Birthday coupon sent to ${c.name}`));
+  const sendBirthdayCoupons = async () => {
+    const offerLabel = "20 percent OFF";
+    const validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+
+    let sent = 0;
+    let failed = 0;
+    for (const c of todayBirthdays) {
+      if (!c.phone) {
+        failed += 1;
+        continue;
+      }
+      try {
+        await sendBirthdayOfferWhatsApp({
+          phone: c.phone,
+          customerName: c.name,
+          offerLabel,
+          validUntil,
+        });
+        sent += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+
     setBdayCouponOpen(false);
-    toast.success("Birthday coupons sent", {
-      description: `Delivered to ${todayBirthdays.length} customer(s)`,
-    });
+    if (sent > 0) {
+      toast.success("Birthday WhatsApp offers sent", {
+        description: `Delivered to ${sent} customer(s)${failed ? ` · ${failed} failed` : ""}`,
+      });
+    } else {
+      toast.error("Could not send birthday WhatsApp offers");
+    }
   };
 
-  const sendSingleCoupon = (channel: "whatsapp" | "sms") => {
-    const sel = coupons.find(c => c.id === selectedCouponId);
+  const couponValueLabel = (coupon: { type: string; value: number }) =>
+    coupon.type === "percentage" ? `${coupon.value} percent OFF` : `Rs.${coupon.value} OFF`;
+
+  const sendSingleCoupon = async (channel: "whatsapp" | "sms") => {
+    const sel = coupons.find((c) => c.id === selectedCouponId);
     if (!sel || !couponTarget) return;
-    recordSend(sel.id, couponTarget.id, couponTarget.name, channel);
-    toast.success(`Coupon ${sel.code} sent`, {
-      description: `Delivered via ${channel === "whatsapp" ? "WhatsApp" : "SMS"} to ${couponTarget.name}`,
-    });
-    setSingleCouponOpen(false);
+
+    if (channel !== "whatsapp") {
+      toast.error("SMS sending is disabled — use WhatsApp");
+      return;
+    }
+    if (!couponTarget.phone) {
+      toast.error("Customer has no phone number");
+      return;
+    }
+
+    try {
+      await sendCouponWhatsApp({
+        phone: couponTarget.phone,
+        code: sel.code,
+        valueLabel: couponValueLabel(sel),
+        validUntil: sel.validTill,
+        customerName: couponTarget.name,
+      });
+      recordSend(sel.id, couponTarget.id, couponTarget.name, "whatsapp");
+      toast.success(`Coupon ${sel.code} sent on WhatsApp`, {
+        description: `Delivered to ${couponTarget.name}`,
+      });
+      setSingleCouponOpen(false);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Failed to send coupon on WhatsApp"));
+    }
   };
 
-  const sendBulkCoupon = (channel: "whatsapp" | "sms") => {
-    const sel = coupons.find(c => c.id === bulkCouponId);
+  const sendBulkCoupon = async (channel: "whatsapp" | "sms") => {
+    const sel = coupons.find((c) => c.id === bulkCouponId);
     if (!sel) return;
-    const targets = customers.filter(c => selectedCustomerIds.has(c.id));
-    targets.forEach(c => recordSend(sel.id, c.id, c.name, channel));
-    toast.success(`Coupon ${sel.code} sent`, {
-      description: `Delivered to ${targets.length} customer(s) via ${channel === "whatsapp" ? "WhatsApp" : "SMS"}`,
-    });
-    setBulkCouponOpen(false);
-    setSelectedCustomerIds(new Set());
+
+    if (channel !== "whatsapp") {
+      toast.error("SMS sending is disabled — use WhatsApp");
+      return;
+    }
+
+    const targets = customers.filter((c) => selectedCustomerIds.has(c.id) && c.phone);
+    let sent = 0;
+    let failed = 0;
+
+    for (const c of targets) {
+      try {
+        await sendCouponWhatsApp({
+          phone: c.phone,
+          code: sel.code,
+          valueLabel: couponValueLabel(sel),
+          validUntil: sel.validTill,
+          customerName: c.name,
+        });
+        recordSend(sel.id, c.id, c.name, "whatsapp");
+        sent += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+
+    if (sent > 0) {
+      toast.success(`Coupon ${sel.code} sent`, {
+        description: `WhatsApp delivered to ${sent} customer(s)${failed ? ` · ${failed} failed` : ""}`,
+      });
+      setBulkCouponOpen(false);
+      setSelectedCustomerIds(new Set());
+    } else {
+      toast.error("Could not send coupon WhatsApp messages");
+    }
   };
 
   const saveEdit = async () => {

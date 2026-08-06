@@ -460,22 +460,13 @@ export function WalkInBilling() {
 
   return (
     <>
-    <div
-      className={cn(
-        "flex flex-col overflow-hidden",
-        isDesktop
-          ? "-mx-6 -my-6 h-[calc(100dvh-5rem)] max-h-[calc(100dvh-5rem)] lg:-mx-8"
-          : "-mx-4 -my-4 h-[calc(100dvh-6rem)] sm:-mx-6 sm:-my-5 sm:h-[calc(100dvh-5.5rem)]",
-      )}
-    >
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div className="shrink-0 border-b border-black/[0.06] bg-white px-4 py-4 sm:px-6 lg:px-8">
         <div className="mb-4 flex items-center gap-2.5">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/12">
             <Zap className="h-4 w-4 text-[#D4AF37]" />
           </div>
-          <div>
-            <p className="text-[15px] font-bold leading-tight text-[#111118]">Walk-In Billing</p>
-          </div>
+          <p className="text-[15px] font-bold leading-tight text-[#111118]">Walk-In Billing</p>
         </div>
         <AppointmentStepper
           steps={walkInBillingSteps}

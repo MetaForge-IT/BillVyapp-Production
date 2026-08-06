@@ -1,0 +1,6 @@
+status_id,source_id,assigned_id,firstname,lastname,company,type,email,phone,group_id
+1,1,1,sample data,sample data,,lead,abc@gmail.com,+1 555 123 4567,
+1,1,1,Priya,Sharma,Starr Kuts Walk-In,lead,priya.sharma@example.com,+91 98765 43210,
+1,1,1,Rahul,Verma,,customer,rahul.verma@example.com,+91 91234 56789,
+1,1,1,Ananya,Iyer,,lead,ananya.iyer@example.com,+91 99887 76655,
+1,1,1,Amit,Patel,Corporate Client,customer,amit.patel@example.com,+91 90000 11122,

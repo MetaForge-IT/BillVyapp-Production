@@ -12,11 +12,13 @@ import {
 import { AppError } from "../../utils/errors";
 import { applyStockChange, MOVEMENT_TYPE, notifyStockChangeResult, type StockChangeResult } from "../inventory/inventory.shared";
 import { appNotificationGenerator } from "../app-notifications/app-notifications.generator";
+import { notificationService } from "../notifications/notification.service";
 import { LOYALTY_TRANSACTION_TYPE } from "../customers/customers.constants";
 
 type InvoiceWithRelations = Invoice & {
   lineItems: InvoiceLineItem[];
   payments: Payment[];
+  customer?: { fullName: string; phone?: string | null };
 };
 
 function normalizePhone(phone: string): string {
@@ -862,7 +864,7 @@ export class BillingRepository {
             })),
           },
         },
-        include: { lineItems: true, payments: true, customer: { select: { fullName: true } } },
+        include: { lineItems: true, payments: true, customer: { select: { fullName: true, phone: true } } },
       });
 
       await recordCouponRedemption(tx, {
@@ -901,7 +903,7 @@ export class BillingRepository {
         invoiceWithPoints = await tx.invoice.update({
           where: { id: created.id },
           data: { loyaltyPointsEarned: earnedPoints },
-          include: { lineItems: true, payments: true, customer: { select: { fullName: true } } },
+          include: { lineItems: true, payments: true, customer: { select: { fullName: true, phone: true } } },
         });
       }
 
@@ -932,10 +934,29 @@ export class BillingRepository {
         salonId: auth.salonId,
         invoicePublicId: invoice.publicId,
         receiptNumber: invoice.receiptNumber,
-        customerName: invoice.customer.fullName,
+        customerName: invoice.customer?.fullName ?? "Customer",
         totalAmount: Number(invoice.totalAmount),
       })
       .catch(() => {});
+
+    if (invoice.customer?.phone) {
+      const amountLabel = Number(invoice.totalAmount).toLocaleString("en-IN", {
+        maximumFractionDigits: 0,
+      });
+      const dateLabel = new Date(invoice.invoiceDate).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+      void notificationService
+        .sendPaymentReceived({
+          phone: invoice.customer.phone,
+          amountLabel,
+          invoiceNo: invoice.receiptNumber,
+          dateLabel,
+        })
+        .catch(() => {});
+    }
 
     for (const payment of invoice.payments) {
       if (Number(payment.amount) <= 0) continue;
@@ -945,7 +966,7 @@ export class BillingRepository {
           invoicePublicId: invoice.publicId,
           paymentPublicId: payment.publicId,
           receiptNumber: invoice.receiptNumber,
-          customerName: invoice.customer.fullName,
+          customerName: invoice.customer?.fullName ?? "Customer",
           amount: Number(payment.amount),
         })
         .catch(() => {});
@@ -957,7 +978,7 @@ export class BillingRepository {
           salonId: auth.salonId,
           invoicePublicId: invoice.publicId,
           receiptNumber: invoice.receiptNumber,
-          customerName: invoice.customer.fullName,
+          customerName: invoice.customer?.fullName ?? "Customer",
           discountAmount: Number(invoice.membershipDiscount),
         })
         .catch(() => {});

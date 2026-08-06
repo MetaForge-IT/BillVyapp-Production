@@ -37,6 +37,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const { isDesktop } = useBreakpoint();
   const { showBack, goBack } = useAppBackNavigation();
+  const isWalkInBilling = /(^|\/)walk-in\/?$/.test(location.pathname);
 
   // The drawer only exists below lg; don't leave it mounted after a resize.
   useEffect(() => {
@@ -120,8 +121,20 @@ export function Layout({ children }: { children: ReactNode }) {
               </header>
 
               {/* Page content */}
-              <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-none">
-                <div className="mx-auto w-full max-w-[1800px] px-6 py-6 safe-area-bottom lg:px-8">
+              <main
+                className={cn(
+                  "min-h-0 min-w-0 flex-1 overscroll-y-none",
+                  isWalkInBilling ? "overflow-hidden" : "overflow-y-auto",
+                )}
+              >
+                <div
+                  className={cn(
+                    "mx-auto w-full max-w-[1800px] safe-area-bottom",
+                    isWalkInBilling
+                      ? "h-full min-h-0"
+                      : "px-6 py-6 lg:px-8",
+                  )}
+                >
                   <AnimatePresence mode="wait">
                       <motion.div
                         key={location.pathname}
@@ -129,6 +142,7 @@ export function Layout({ children }: { children: ReactNode }) {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                        className={isWalkInBilling ? "h-full min-h-0" : undefined}
                       >
                         {children}
                       </motion.div>

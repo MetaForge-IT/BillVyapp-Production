@@ -19,6 +19,8 @@ import {
   type FeedbackStats,
   type FeedbackStatus,
 } from "../../api/feedback";
+import { sendFeedbackRequestWhatsApp } from "../../api/messaging";
+import { getApiErrorMessage } from "../../lib/api";
 import { toast } from "../components/ui/hot-toast";
 
 const SOURCE_META: Record<string, { label: string }> = {
@@ -153,10 +155,28 @@ export function Feedback() {
     }
   };
 
-  const handleSendRequest = () => {
+  const handleSendRequest = async () => {
     if (!requestName.trim() || !requestPhone.trim()) return;
-    setRequestSent(true);
-    setTimeout(() => { setRequestOpen(false); setRequestSent(false); }, 2000);
+
+    if (requestChannel !== "whatsapp") {
+      toast.error("Only WhatsApp feedback requests are enabled right now");
+      return;
+    }
+
+    try {
+      await sendFeedbackRequestWhatsApp({
+        phone: requestPhone.trim(),
+        customerName: requestName.trim(),
+      });
+      setRequestSent(true);
+      toast.success("Feedback request sent on WhatsApp");
+      window.setTimeout(() => {
+        setRequestOpen(false);
+        setRequestSent(false);
+      }, 2000);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Failed to send feedback request on WhatsApp"));
+    }
   };
 
   return (

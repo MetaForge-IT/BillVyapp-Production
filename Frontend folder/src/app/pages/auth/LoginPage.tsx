@@ -51,7 +51,6 @@ export function LoginPage() {
   const [otp, setOtp] = useState("");
   const [otpResendState, setOtpResendState] = useState<"idle" | "sending" | "sent" | "cooldown">("idle");
   const [resendSecondsLeft, setResendSecondsLeft] = useState(0);
-  const [devOtp, setDevOtp] = useState<string | null>(null);
 
   const from =
     searchParams.get("redirect") ||
@@ -97,7 +96,6 @@ export function LoginPage() {
     setChallengeId(data.challengeId);
     setPhoneHint(readPhoneHint(data));
     setOtpMessage(data.message);
-    setDevOtp(data.otp ?? null);
     setOtp("");
     setStep("otp");
     setError("");
@@ -192,9 +190,6 @@ export function LoginPage() {
     try {
       const response = await authService.resendLoginOtp(challengeId);
       if (response.data) {
-        if (response.data.otp) {
-          setDevOtp(response.data.otp);
-        }
         setPhoneHint(readPhoneHint(response.data));
         setOtpMessage(response.data.message);
         setOtp("");
@@ -222,7 +217,6 @@ export function LoginPage() {
     setStep("credentials");
     setChallengeId(null);
     setOtp("");
-    setDevOtp(null);
     setOtpMessage("");
     setResendSecondsLeft(0);
     setOtpResendState("idle");
@@ -436,13 +430,8 @@ export function LoginPage() {
                     </InputOTPGroup>
                   </InputOTP>
                   <p className="text-[11px] text-white/35 text-center">
-                    Check your phone for the text message from BillVyapp
+                    Check WhatsApp for the verification code from Starr Kuts
                   </p>
-                  {devOtp && (
-                    <p className="text-[10px] text-amber-400/80 text-center" data-testid="dev-otp-hint">
-                      Dev OTP (Twilio not configured): {devOtp}
-                    </p>
-                  )}
                 </div>
 
                 {error && (

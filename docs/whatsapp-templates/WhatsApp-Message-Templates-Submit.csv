@@ -1,0 +1,18 @@
+# Starr Kuts WhatsApp templates (Sparklebot)
+
+code,template_name,category,language,body,var1_sample,var2_sample,var3_sample,var4_sample,sms_twin,status
+WA-01,starrkuts_login_otp,AUTHENTICATION,en,"{{1}} is your verification code. (Auth template — OTP only; minutes via footer if enabled)",482917,,,,SMS-01,approved
+WA-02,starrkuts_appt_confirm,UTILITY,en,"Dear Customer, your appointment with Starr Kuts is confirmed for {{1}} at {{2}}. For assistance, contact {{3}}. Thank you. - Starr Kuts",03-Aug-2026,11:30 AM,9876543210,,SMS-02,approved
+WA-03,starrkuts_appt_reminder,UTILITY,en,"Dear Customer, this is a reminder that your appointment with Starr Kuts is scheduled on {{1}} at {{2}}. We look forward to serving you. - Starr Kuts",03-Aug-2026,11:30 AM,,,SMS-03,approved
+WA-04,starrkuts_appt_delay,UTILITY,en,"Dear Customer, Starr Kuts regrets to inform you that your appointment is delayed by approximately {{1}}. We apologize for the inconvenience and appreciate your patience. - Starr Kuts",15 minutes,,,,SMS-04,approved
+WA-05,starrkuts_thank_you_visit,MARKETING,en,"Dear Customer, thank you for visiting Starr Kuts today. We appreciate your trust and look forward to serving you again. - Starr Kuts",,,,,SMS-05,approved
+WA-06,starrkuts_appt_upcoming,UTILITY,en,"Dear Customer, your upcoming appointment with Starr Kuts is on {{1}} at {{2}}. Please arrive {{3}} minutes early. - Starr Kuts",03-Aug-2026,11:30 AM,10,,SMS-06,approved
+WA-07,starrkuts_loyalty_points,MARKETING,en,"Dear Customer, you have {{1}} loyalty points available in your account. Redeem them before {{2}}. Thank you for choosing Starr Kuts.",450,31-Dec-2026,,,SMS-07,approved
+WA-08,starrkuts_member_offer,MARKETING,en,"Dear Customer, enjoy an exclusive member offer of {{1}} valid until {{2}}. Visit Starr Kuts to redeem your benefit. - Starr Kuts",20 percent OFF services,31-Aug-2026,,,SMS-08,approved
+WA-09,starrkuts_birthday_offer,MARKETING,en,"Happy Birthday, {{1}}! Wishing you a wonderful year ahead. Enjoy our special offer: {{2}}, valid until {{3}}. Team Starr Kuts.",Priya Sharma,20 percent OFF,31-Aug-2026,,SMS-09,approved
+WA-10,starrkuts_payment_received,UTILITY,en,"Dear Customer, Starr Kuts has received your payment of Rs.{{1}} against Invoice {{2}} on {{3}}. Thank you for your payment. - Starr Kuts",1850,INV-2026-0842,03-Aug-2026,,SMS-10,approved
+WA-11,starrkuts_pay_overdue,UTILITY,en,"Dear Customer, a payment of Rs.{{1}} for Invoice {{2}} at Starr Kuts is due on {{3}}. Kindly please make the payment to avoid any inconvenience. - Starr Kuts",1850,INV-2026-0842,20-Jul-2026,,SMS-11,approved
+WA-12,starrkuts_payment_overdue,UTILITY,en,"Dear Customer, your payment of Rs.{{1}} for Invoice {{2}} at Starr Kuts is overdue since {{3}}. Kindly clear the outstanding amount at the earliest. Thank you. - Starr Kuts",1850,INV-2026-0842,20-Jul-2026,,SMS-12,approved
+WA-13,starrkuts_coupon_send,MARKETING,en,"Dear Customer, your coupon code {{1}} is worth {{2}} and is valid until {{3}}. Redeem it at Starr Kuts.",SAVE20,20 percent OFF,31-Aug-2026,,SMS-13,approved
+WA-14,starrkuts_feedback_request,UTILITY,en,"Dear Customer, thank you for choosing Starr Kuts. Please share your feedback here: {{1}}. Your opinion helps us improve. - Starr Kuts",https://billvy.app/r/abc123,,,,SMS-14,approved
+WA-15,starrkuts_staff_new_booking,UTILITY,en,"Dear {{1}}, a new appointment at Starr Kuts has been booked by {{2}} for {{3}} at {{4}}. Please review your schedule. - Starr Kuts",Ananya,Priya Sharma,03-Aug-2026,11:30 AM,SMS-15,approved

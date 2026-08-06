@@ -14,6 +14,9 @@ import {
 } from "lucide-react";
 import { useCoupons, type Coupon, type CouponType, type CouponStatus } from "../context/CouponsContext";
 import { useRole } from "../context/RoleContext";
+import { sendCouponWhatsApp } from "../../api/messaging";
+import { getApiErrorMessage } from "../../lib/api";
+import { toast } from "../components/ui/hot-toast";
 import { Pagination } from "../components/shared/Pagination";
 import { useTablePagination } from "../hooks/useTablePagination";
 
@@ -119,12 +122,32 @@ export function CouponsSection() {
     setSendPhone("");
   }
 
-  function sendCoupon(channel: "whatsapp" | "sms") {
+  async function sendCoupon(channel: "whatsapp" | "sms") {
     if (!sendTarget || !sendPhone.trim()) return;
-    alert(
-      `Coupon ${sendTarget.code} (${sendTarget.title}) sent via ${channel === "whatsapp" ? "WhatsApp" : "SMS"} to ${sendName || "customer"} (${sendPhone}).`
-    );
-    setSendTarget(null);
+
+    if (channel !== "whatsapp") {
+      toast.error("SMS sending is disabled — use WhatsApp");
+      return;
+    }
+
+    const valueLabel =
+      sendTarget.type === "percentage"
+        ? `${sendTarget.value} percent OFF`
+        : `Rs.${sendTarget.value} OFF`;
+
+    try {
+      await sendCouponWhatsApp({
+        phone: sendPhone.trim(),
+        code: sendTarget.code,
+        valueLabel,
+        validUntil: sendTarget.validTill,
+        customerName: sendName.trim() || undefined,
+      });
+      toast.success(`Coupon ${sendTarget.code} sent on WhatsApp`);
+      setSendTarget(null);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Failed to send coupon on WhatsApp"));
+    }
   }
 
   return (

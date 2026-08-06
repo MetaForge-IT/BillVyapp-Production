@@ -61,37 +61,43 @@ export function PaymentResultDialog({
     onOpenChange(next);
   };
 
-  const submitFeedbackAndFinish = async () => {
-    if (!receipt) return;
-
-    const hasRating = feedbackRating >= 1 && feedbackRating <= 5;
-
-    if (hasRating) {
-      if (!receipt.appointmentId) {
-        toast.error("Unable to save feedback — appointment not found");
-        return;
-      }
-      setFeedbackSubmitting(true);
-      try {
-        await createFeedback({
-          appointmentId: receipt.appointmentId,
-          rating: feedbackRating,
-          source: "app",
-        });
-        toast.success("Thanks for the feedback!");
-      } catch (error) {
-        toast.error(getApiErrorMessage(error, "Failed to save feedback"));
-        setFeedbackSubmitting(false);
-        return;
-      } finally {
-        setFeedbackSubmitting(false);
-      }
-    }
-
+  const finishWithoutFeedback = () => {
     resetFeedback();
     onOpenChange(false);
     onDone();
     navigate("/dashboard");
+  };
+
+  const submitFeedbackAndFinish = async () => {
+    if (!receipt) return;
+
+    const hasRating = feedbackRating >= 1 && feedbackRating <= 5;
+    if (!hasRating) {
+      finishWithoutFeedback();
+      return;
+    }
+
+    if (!receipt.appointmentId) {
+      // Rating chosen but no appointment to attach — still allow exit
+      toast.error("Unable to save feedback — appointment not found");
+      finishWithoutFeedback();
+      return;
+    }
+
+    setFeedbackSubmitting(true);
+    try {
+      await createFeedback({
+        appointmentId: receipt.appointmentId,
+        rating: feedbackRating,
+        source: "app",
+      });
+      toast.success("Thanks for the feedback!");
+      finishWithoutFeedback();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Failed to save feedback"));
+    } finally {
+      setFeedbackSubmitting(false);
+    }
   };
 
   return (
@@ -257,7 +263,10 @@ export function PaymentResultDialog({
 
               <div className="relative z-10 w-full rounded-xl border border-[#D4AF37]/25 bg-[#fffdf7] px-4 py-4">
                 <p className="text-center text-[11px] font-bold uppercase tracking-widest text-gray-400">
-                  How was the experience?
+                  How was the experience?{" "}
+                  <span className="font-medium normal-case tracking-normal text-[#9a9a9a]">
+                    (optional)
+                  </span>
                 </p>
                 <p className="mt-1 text-center text-[13px] font-semibold text-[#111118]">
                   Rate this visit for {receipt.customer}{" "}

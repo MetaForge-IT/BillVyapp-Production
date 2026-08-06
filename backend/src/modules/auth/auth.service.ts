@@ -12,10 +12,12 @@ import type { AuthUser, LoginRequest, SessionMetadata } from "./auth.types";
 import { emailService, type EmailService } from "../email/email.service";
 import { emailConfig } from "../../config/email.config";
 import { authConfig } from "../../config/auth.config";
+import { whatsappConfig } from "../../config/whatsapp.config";
 import { prisma } from "../../config/prisma";
 import { AppError, NotFoundError } from "../../utils/errors";
 import { compareTokenHash } from "../../utils/crypto";
 import { logger } from "../../utils/logger";
+import { notificationService } from "../notifications/notification.service";
 
 export interface LoginResult {
   accessToken: string;
@@ -119,7 +121,7 @@ export class AuthService {
       rememberMe: credentials.rememberMe ?? false,
     });
 
-    await this.sendLoginOtpEmail(user, rawOtp);
+    await this.sendLoginOtpWhatsApp(user, rawOtp);
 
     const phoneHint = this.maskPhone(user.phone) || this.maskEmail(user.email);
     const result: LoginOtpChallengeResult = {
@@ -127,8 +129,8 @@ export class AuthService {
       challengeId: challenge.id,
       expiresIn,
       message: user.phone
-        ? "Enter the verification code sent to your phone."
-        : "Enter the verification code sent to your email.",
+        ? "Enter the verification code sent to your WhatsApp."
+        : "Enter the verification code sent to your WhatsApp.",
       phoneHint,
       emailHint: phoneHint,
     };
@@ -253,7 +255,7 @@ export class AuthService {
     const expiresIn = this.tokens.parseDurationToSeconds(authConfig.loginOtpExpiresIn);
 
     await this.repository.refreshLoginOtpChallenge(challenge.id, { otpHash, expiresAt });
-    await this.sendLoginOtpEmail(credentialsUser, rawOtp);
+    await this.sendLoginOtpWhatsApp(credentialsUser, rawOtp);
 
     const phoneHint =
       this.maskPhone(credentialsUser.phone) || this.maskEmail(user.email);
@@ -262,8 +264,8 @@ export class AuthService {
       challengeId: challenge.id,
       expiresIn,
       message: credentialsUser.phone
-        ? "A new verification code has been sent to your phone."
-        : "A new verification code has been sent to your email.",
+        ? "A new verification code has been sent to your WhatsApp."
+        : "A new verification code has been sent to your WhatsApp.",
       phoneHint,
       emailHint: phoneHint,
     };
@@ -396,20 +398,54 @@ export class AuthService {
     }
   }
 
-  private async sendLoginOtpEmail(
-    user: Pick<UserCredentialsRecord, "email" | "fullName">,
+  private async sendLoginOtpWhatsApp(
+    user: Pick<UserCredentialsRecord, "email" | "fullName" | "phone">,
     rawOtp: string,
   ): Promise<void> {
-    await this.emails.sendLoginOtp(
-      { email: user.email, name: user.fullName },
-      {
-        fullName: user.fullName,
+    if (!user.phone?.trim()) {
+      throw new AppError(
+        400,
+        "WhatsApp login requires a mobile number on your account. Ask an admin to add your phone number.",
+        { code: AUTH_ERROR_CODES.LOGIN_OTP_PHONE_REQUIRED },
+      );
+    }
+
+    if (!whatsappConfig.enabled || !whatsappConfig.isConfigured) {
+      // Dev escape hatch: still allow login when OTP is returned in response
+      if (authConfig.loginOtpReturnInResponse) {
+        logger.warn("WhatsApp not configured — OTP only available in API response", {
+          email: user.email,
+        });
+        return;
+      }
+      throw new AppError(503, "WhatsApp OTP is not configured. Contact support.", {
+        code: AUTH_ERROR_CODES.BAD_REQUEST,
+      });
+    }
+
+    const expiresMinutes = this.tokens.parseDurationToMinutes(authConfig.loginOtpExpiresIn);
+    try {
+      await notificationService.sendLoginOtpWhatsApp({
+        phone: user.phone,
         otp: rawOtp,
-        loginUrl: this.emails.buildLoginUrl(),
-        supportEmail: emailConfig.supportEmail,
-        otpExpiresMinutes: this.tokens.parseDurationToMinutes(authConfig.loginOtpExpiresIn),
-      },
-    );
+        fullName: user.fullName,
+        expiresMinutes,
+      });
+    } catch (error) {
+      logger.error("WhatsApp login OTP send failed", {
+        email: user.email,
+        reason: error instanceof Error ? error.message : "unknown",
+      });
+      // Dev: still allow login when OTP is echoed in the API response
+      if (authConfig.loginOtpReturnInResponse) {
+        return;
+      }
+      throw new AppError(
+        502,
+        "Could not send WhatsApp OTP. Please try again or contact support.",
+        { code: AUTH_ERROR_CODES.BAD_REQUEST },
+      );
+    }
   }
 
   private maskEmail(email: string): string {
