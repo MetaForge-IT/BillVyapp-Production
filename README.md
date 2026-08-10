@@ -20,14 +20,13 @@ That document covers frontend, backend modules, MySQL schema, auth (JWT + WhatsA
 
 ```mermaid
 flowchart LR
-  User[Staff browser] --> CF[Cloudflare]
-  CF --> SPA[React SPA]
-  CF --> API[Express /api]
-  API --> DB[(MySQL)]
-  API --> Redis[(Memurai)]
-  API --> WA[Sparklebot WhatsApp]
+  User["Staff browser"] --> CF["Cloudflare"]
+  CF --> SPA["React SPA"]
+  CF --> API["Express API"]
+  API --> DB[("MySQL")]
+  API --> Redis[("Memurai")]
+  API --> WA["Sparklebot WhatsApp"]
 ```
-
 ---
 
 ## Repository

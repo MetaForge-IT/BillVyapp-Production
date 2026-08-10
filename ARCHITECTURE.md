@@ -48,39 +48,39 @@ BillVyapp is a **multi-tenant salon operations platform** for franchise salons. 
 ```mermaid
 flowchart TB
   subgraph Clients
-    Browser[Staff browser<br/>Manager / Admin / Super-admin]
+    Browser["Staff browser<br/>Manager / Admin / Super-admin"]
   end
 
   subgraph Edge
-    CF[Cloudflare<br/>HTTPS · DNS · CDN]
+    CF["Cloudflare<br/>HTTPS DNS CDN"]
   end
 
-  subgraph AppHost["Windows EC2 (production)"]
-    FE[Vite React SPA<br/>static / Vite preview]
-    API[Express API<br/>:4000 · /api]
-    Redis[(Memurai / Redis<br/>:6379)]
-    MySQL[(MySQL 8<br/>salon_app)]
-    Uploads[Local uploads<br/>or S3]
+  subgraph AppHost["Windows EC2 production"]
+    FE["Vite React SPA"]
+    API["Express API :4000"]
+    Redis[("Memurai Redis :6379")]
+    MySQL[("MySQL 8 salon_app")]
+    Uploads["Local uploads or S3"]
   end
 
   subgraph External
-    WA[Sparklebot WhatsApp API]
-    SMTP[SMTP email — pending]
-    SMS[SMS provider — pending]
-    RZ[Razorpay — pending]
+    WA["Sparklebot WhatsApp API"]
+    SMTP["SMTP email - pending"]
+    SMS["SMS provider - pending"]
+    RZ["Razorpay - pending"]
   end
 
   Browser --> CF --> FE
   Browser --> CF --> API
-  FE -->|Axios /api proxy| API
+  FE -->|"Axios API proxy"| API
   API --> MySQL
   API --> Redis
   API --> Uploads
-  API -->|templates · OTP · billing| WA
+  API -->|"templates OTP billing"| WA
   API -.-> SMTP
   API -.-> SMS
   API -.-> RZ
-  Redis -->|BullMQ worker| API
+  Redis -->|"BullMQ worker"| API
 ```
 
 **Stack (as built):**
@@ -100,8 +100,16 @@ flowchart TB
 ## 2. System context
 
 ```mermaid
-C4Context
-  title BillVyapp V1 — System context
+flowchart TB
+  Manager["Manager"] --> App["BillVyapp V1"]
+  Admin["Admin"] --> App
+  SuperAdmin["Super-admin"] --> App
+  App --> MySQL[("MySQL")]
+  App --> Redis[("Memurai Redis")]
+  App --> WA["Sparklebot WhatsApp"]
+  App -.-> SMTP["SMTP - pending"]
+  App -.-> SMS["SMS - pending"]
+  App -.-> RZ["Razorpay - pending"]
 ```
 
 | Actor | Access |
@@ -172,11 +180,11 @@ Production HEAD tracks feature delivery: `rbac` → `fix-ui-db` → `admin-dashb
 
 ```mermaid
 flowchart LR
-  Pages[Pages / Steps] --> Contexts[React Contexts]
-  Pages --> Stores[Zustand authStore]
-  Pages --> API[src/api/*]
-  API --> Axios[Axios client<br/>refresh interceptors]
-  Axios --> Backend[/api]
+  Pages["Pages / Steps"] --> Contexts["React Contexts"]
+  Pages --> Stores["Zustand authStore"]
+  Pages --> ApiMods["src/api clients"]
+  ApiMods --> Axios["Axios client<br/>refresh interceptors"]
+  Axios --> BackendAPI["Backend /api"]
 ```
 
 | Concern | Location |
@@ -219,20 +227,20 @@ Three-step POS (`Services` → `Customer` → `Bill`) with optional discounts/GS
 
 ```mermaid
 flowchart TB
-  Req[HTTP request] --> Helmet[Helmet]
-  Helmet --> CORS[CORS + credentials]
-  CORS --> Cookies[cookie-parser]
-  Cookies --> Body[JSON / urlencoded]
-  Body --> Log[requestLogger]
-  Log --> Metrics[metricsMiddleware]
-  Metrics --> Router[apiRouter /api]
-  Router --> AuthMW{authenticate / authorize}
-  AuthMW --> Ctrl[Controller]
-  Ctrl --> Svc[Service]
-  Svc --> Repo[Repository]
-  Repo --> Prisma[Prisma Client]
-  Prisma --> DB[(MySQL)]
-  Ctrl --> Err[errorHandler]
+  Req["HTTP request"] --> Helmet["Helmet"]
+  Helmet --> CORS["CORS + credentials"]
+  CORS --> Cookies["cookie-parser"]
+  Cookies --> Body["JSON body parser"]
+  Body --> Log["requestLogger"]
+  Log --> Metrics["metricsMiddleware"]
+  Metrics --> Router["apiRouter"]
+  Router --> AuthMW{"authenticate authorize"}
+  AuthMW --> Ctrl["Controller"]
+  Ctrl --> Svc["Service"]
+  Svc --> Repo["Repository"]
+  Repo --> Prisma["Prisma Client"]
+  Prisma --> DB[("MySQL")]
+  Ctrl --> Err["errorHandler"]
 ```
 
 Entry points:
@@ -336,18 +344,19 @@ sequenceDiagram
   participant UI as LoginPage
   participant API as Auth API
   participant DB as MySQL
-  participant Q as BullMQ / Redis
+  participant Q as BullMQ Redis
   participant WA as Sparklebot
+  participant Cust as Customer phone
 
-  UI->>API: POST /api/auth/login (email, password)
-  API->>DB: Validate user · create LoginOtpChallenge
-  API->>Q: Enqueue OTP template (or inline)
+  UI->>API: POST login email password
+  API->>DB: Validate user create LoginOtpChallenge
+  API->>Q: Enqueue OTP template or inline
   Q->>WA: starrkuts_login_otp
-  WA-->>Customer: WhatsApp OTP
-  API-->>UI: challengeId (OTP not returned in prod)
-  UI->>API: POST /api/auth/login/verify-otp
-  API->>DB: Verify OTP · issue RefreshToken
-  API-->>UI: accessToken + Set-Cookie refresh
+  WA-->>Cust: WhatsApp OTP
+  API-->>UI: challengeId OTP not returned in prod
+  UI->>API: POST login verify-otp
+  API->>DB: Verify OTP issue RefreshToken
+  API-->>UI: accessToken and refresh cookie
 ```
 
 | Token | Storage | Purpose |
@@ -438,10 +447,10 @@ Walk-in checkout intentionally **does not** send appointment confirmation — on
 
 ```mermaid
 flowchart LR
-  API[WhatsAppService] -->|enqueue| Q[(BullMQ queue)]
-  Q --> Worker[whatsapp.worker]
-  Worker --> Sparklebot
-  API -->|Redis down| Inline[Direct Sparklebot send]
+  API["WhatsAppService"] -->|"enqueue"| Q[("BullMQ queue")]
+  Q --> Worker["whatsapp.worker"]
+  Worker --> Sparklebot["Sparklebot"]
+  API -->|"Redis down"| Inline["Direct Sparklebot send"]
 ```
 
 - **Windows (local + EC2):** Memurai on `127.0.0.1:6379`  
@@ -472,25 +481,25 @@ sequenceDiagram
 
   UI->>Appt: create walk-in appointment
   Note over Appt: No WhatsApp confirm for walk-in
-  UI->>Bill: POST /api/billing/checkout
-  Bill->>Bill: Invoice PAID + stock + loyalty
+  UI->>Bill: POST billing checkout
+  Bill->>Bill: Invoice PAID plus stock and loyalty
   Bill->>WA: payment_received template
-  Bill-->>UI: invoice + receipt dialog
+  Bill-->>UI: invoice and receipt dialog
 ```
 
 ### 10.2 Staff coupon / feedback WhatsApp
 
 ```mermaid
 sequenceDiagram
-  participant UI as Customers / Feedback
-  participant Msg as /api/messaging/whatsapp/*
+  participant UI as Customers or Feedback
+  participant Msg as Messaging API
   participant N as notificationService
   participant WA as Sparklebot
 
-  UI->>Msg: POST coupon | feedback-request | birthday-offer
-  Msg->>N: sendCoupon / sendFeedbackRequest / …
+  UI->>Msg: POST coupon or feedback-request or birthday-offer
+  Msg->>N: sendCoupon or sendFeedbackRequest
   N->>WA: approved template
-  Msg-->>UI: 200 queued / sent
+  Msg-->>UI: 200 queued or sent
 ```
 
 ---
