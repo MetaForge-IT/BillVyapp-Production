@@ -20,7 +20,7 @@ function AnimatedMetric({ value }: { value: string }) {
     const suffix = value.match(/[^0-9.]*$/)?.[0] ?? "";
     const hasDecimal = value.includes(".");
     const start = performance.now();
-    const duration = 1000;
+    const duration = 1400;
     const tick = (now: number) => {
       const p = Math.min((now - start) / duration, 1);
       const eased = 1 - Math.pow(1 - p, 4);
@@ -47,14 +47,6 @@ export interface MetricCardProps {
   href?: string;
 }
 
-const cardVariants = {
-  hidden: { opacity: 0, y: 16, scale: 0.97 },
-  show: (i: number) => ({
-    opacity: 1, y: 0, scale: 1,
-    transition: { duration: 0.5, delay: i * 0.07, ease: [0.22, 1, 0.36, 1] },
-  }),
-};
-
 export function MetricCard({
   label,
   value,
@@ -72,10 +64,7 @@ export function MetricCard({
 
   const card = (
     <motion.div
-      variants={cardVariants}
-      initial="hidden"
-      animate="show"
-      whileHover={{ y: -3, transition: { duration: 0.2 } }}
+      whileHover={{ y: -2, transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] } }}
       className={cn(
         "group relative overflow-hidden rounded-xl bg-white border border-black/[0.06] shadow-[0_2px_10px_rgba(17,17,24,0.05)] hover:shadow-[0_12px_36px_rgba(17,17,24,0.1)] transition-shadow duration-300 h-full flex flex-col",
         href && "cursor-pointer",

@@ -12,6 +12,7 @@ import { Textarea } from "../components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { Switch } from "../components/ui/switch";
 import {
   Users, User, Search, Plus, Star, Crown, Phone, Mail, Calendar, Heart,
   Gift, UserPlus, Cake, Award, Edit, MessageSquare, Send,
@@ -583,6 +584,7 @@ export function Customers() {
   }, []);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [detailView, setDetailView] = useState(false);
+  const [showSearchFilters, setShowSearchFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTier, setFilterTier] = useState("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
@@ -629,23 +631,38 @@ export function Customers() {
     return () => { cancelled = true; };
   }, []);
 
-  const filtered = useMemo(() => customers.filter(c => {
-    const q = searchQuery.toLowerCase();
-    const matchQ = c.name.toLowerCase().includes(q) || c.phone.includes(q) || c.email.toLowerCase().includes(q);
-    const matchT = filterTier === "all" || c.membershipTier === filterTier;
-    const matchS = filterStatus === "all" || c.status === filterStatus;
-    const matchB = filterBirthday === "all" ? true :
-      filterBirthday === "today" ? isBirthdayToday(c.birthday) :
-      isBirthdayThisMonth(c.birthday);
-    const matchG = filterGender === "all" || c.gender === filterGender;
-    const matchSrc = filterSource === "all" || (c.source ?? "unknown") === filterSource;
-    const visitDate = c.lastVisitDate ? new Date(c.lastVisitDate) : null;
-    const matchFrom = !lastVisitFrom ? true : (visitDate ? visitDate >= new Date(lastVisitFrom) : false);
-    const matchTo = !lastVisitTo ? true : (visitDate ? visitDate <= new Date(lastVisitTo) : false);
-    const days = getInactiveDays(c);
-    const matchI = filterInactive === "all" ? true : days != null && days >= Number(filterInactive);
-    return matchQ && matchT && matchS && matchB && matchI && matchG && matchSrc && matchFrom && matchTo;
-  }), [customers, searchQuery, filterTier, filterStatus, filterBirthday, filterInactive, filterGender, filterSource, lastVisitFrom, lastVisitTo]);
+  const clearSearchFilters = () => {
+    setSearchQuery("");
+    setFilterTier("all");
+    setFilterStatus("all");
+    setFilterGender("all");
+    setFilterSource("all");
+    setFilterBirthday("all");
+    setFilterInactive("all");
+    setLastVisitFrom("");
+    setLastVisitTo("");
+  };
+
+  const filtered = useMemo(() => {
+    if (!showSearchFilters) return customers;
+    return customers.filter(c => {
+      const q = searchQuery.toLowerCase();
+      const matchQ = c.name.toLowerCase().includes(q) || c.phone.includes(q) || c.email.toLowerCase().includes(q);
+      const matchT = filterTier === "all" || c.membershipTier === filterTier;
+      const matchS = filterStatus === "all" || c.status === filterStatus;
+      const matchB = filterBirthday === "all" ? true :
+        filterBirthday === "today" ? isBirthdayToday(c.birthday) :
+        isBirthdayThisMonth(c.birthday);
+      const matchG = filterGender === "all" || c.gender === filterGender;
+      const matchSrc = filterSource === "all" || (c.source ?? "unknown") === filterSource;
+      const visitDate = c.lastVisitDate ? new Date(c.lastVisitDate) : null;
+      const matchFrom = !lastVisitFrom ? true : (visitDate ? visitDate >= new Date(lastVisitFrom) : false);
+      const matchTo = !lastVisitTo ? true : (visitDate ? visitDate <= new Date(lastVisitTo) : false);
+      const days = getInactiveDays(c);
+      const matchI = filterInactive === "all" ? true : days != null && days >= Number(filterInactive);
+      return matchQ && matchT && matchS && matchB && matchI && matchG && matchSrc && matchFrom && matchTo;
+    });
+  }, [customers, showSearchFilters, searchQuery, filterTier, filterStatus, filterBirthday, filterInactive, filterGender, filterSource, lastVisitFrom, lastVisitTo]);
 
   // Live counts for the source segmented toggle (respects all filters except source itself).
   const sourceCounts = useMemo(() => ({
@@ -655,7 +672,7 @@ export function Customers() {
   }), [customers]);
   const { page, setPage, pageSize, setPageSize, paginate } = useTablePagination(
     filtered.length,
-    [searchQuery, filterTier, filterStatus, filterBirthday, filterInactive, filterGender, filterSource, lastVisitFrom, lastVisitTo],
+    [showSearchFilters, searchQuery, filterTier, filterStatus, filterBirthday, filterInactive, filterGender, filterSource, lastVisitFrom, lastVisitTo],
   );
   const paginatedCustomers = useMemo(() => paginate(filtered), [filtered, paginate]);
   const birthdayCustomers = useMemo(() => customers.filter(c => isBirthdayThisMonth(c.birthday)), [customers]);
@@ -1351,13 +1368,14 @@ export function Customers() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className="flex h-[calc(100dvh-8rem)] min-h-0 flex-col gap-4 overflow-hidden"
+      className="flex h-[calc(100dvh-8rem)] min-h-0 flex-col gap-3 overflow-hidden sm:gap-4"
     >
+      <div className="shrink-0 space-y-3 sm:space-y-4">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+        <div className="min-w-0 shrink-0">
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#D4AF37]">CRM</p>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-[#1a1a1a] to-[#d4af37] bg-clip-text text-transparent">Customers</h1>
+          <h1 className="whitespace-nowrap text-2xl font-bold bg-gradient-to-r from-[#1a1a1a] to-[#d4af37] bg-clip-text text-transparent sm:text-3xl">Customers</h1>
           <p className="text-muted-foreground mt-1 text-sm">Manage customers, loyalty programs, and communication</p>
         </div>
         <div className="flex gap-2 flex-wrap items-center">
@@ -1392,7 +1410,7 @@ export function Customers() {
           sub="All in CRM"
           icon={Users}
           index={1}
-          onClick={() => { setFilterTier("all"); setFilterStatus("all"); setFilterBirthday("all"); }}
+          onClick={() => { setShowSearchFilters(true); setFilterTier("all"); setFilterStatus("all"); setFilterBirthday("all"); }}
         />
         <PageStatCard
           label="Active Customers"
@@ -1400,7 +1418,7 @@ export function Customers() {
           sub="Currently active"
           icon={CheckCircle}
           index={2}
-          onClick={() => setFilterStatus("active")}
+          onClick={() => { setShowSearchFilters(true); setFilterStatus("active"); }}
         />
         <PageStatCard
           label="Birthdays This Month"
@@ -1408,13 +1426,43 @@ export function Customers() {
           sub="Send birthday coupons"
           icon={Gift}
           index={3}
-          onClick={() => setFilterBirthday("thismonth")}
+          onClick={() => { setShowSearchFilters(true); setFilterBirthday("thismonth"); }}
         />
       </div>
 
-      {/* Search + Filters */}
+      {/* Search + Filters — visible only when toggle is on */}
       <div className="shrink-0 rounded-2xl border border-black/[0.07] bg-white shadow-sm px-4 py-3">
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D4AF37]/25 bg-[#D4AF37]/10">
+              <Filter className="h-4 w-4 text-[#D4AF37]" />
+            </div>
+            <div>
+              <p className="text-[13px] font-bold text-[#111118]">Search &amp; filters</p>
+              <p className="text-[11px] text-[#9a9a9a]">
+                {showSearchFilters ? "Turn off to hide and reset" : "Turn on to search or filter customers"}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`text-[11px] font-semibold ${showSearchFilters ? "text-[#9a7d20]" : "text-[#9a9a9a]"}`}>
+              {showSearchFilters ? "On" : "Off"}
+            </span>
+            <Switch
+              checked={showSearchFilters}
+              onCheckedChange={(checked) => {
+                setShowSearchFilters(checked);
+                if (!checked) clearSearchFilters();
+              }}
+              className="data-[state=checked]:bg-[#D4AF37] data-[state=unchecked]:bg-[#e0dbd0]"
+              aria-label="Toggle search and filters"
+            />
+          </div>
+        </div>
+
+        {showSearchFilters && (
+          <>
+        <div className="mt-3 flex items-center gap-2.5 flex-wrap">
 
           {/* Search */}
           <div className="relative flex-1 min-w-[200px]">
@@ -1574,17 +1622,7 @@ export function Customers() {
           {(searchQuery || filterTier !== "all" || filterStatus !== "all" || filterGender !== "all" || filterSource !== "all" || filterBirthday !== "all" || filterInactive !== "all" || lastVisitFrom || lastVisitTo) && (
             <button
               type="button"
-              onClick={() => {
-                setSearchQuery("");
-                setFilterTier("all");
-                setFilterStatus("all");
-                setFilterGender("all");
-                setFilterSource("all");
-                setFilterBirthday("all");
-                setFilterInactive("all");
-                setLastVisitFrom("");
-                setLastVisitTo("");
-              }}
+              onClick={clearSearchFilters}
               className="flex items-center gap-1.5 h-10 px-3 text-[12px] font-semibold text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl border border-black/[0.08] hover:border-red-200 transition-all shrink-0"
             >
               <X className="h-3.5 w-3.5" /> Clear
@@ -1610,6 +1648,9 @@ export function Customers() {
             </button>
           </div>
         )}
+          </>
+        )}
+      </div>
       </div>
 
       {/* Customer Table */}
@@ -1643,7 +1684,8 @@ export function Customers() {
             <Badge className={financeBadgeGold}>{filtered.length}</Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-0 pb-0">
+        <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden px-0 pb-0">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {/* Phone/tablet: complete customer cards with no horizontal scrolling. */}
           <div className="divide-y divide-black/[0.06] lg:hidden">
             {paginatedCustomers.map((customer, index) => {
@@ -1893,6 +1935,8 @@ export function Customers() {
               </tbody>
             </table>
           </div>
+          </div>
+          <div className="shrink-0 border-t border-black/[0.06] bg-white">
           <Pagination
             page={page}
             pageSize={pageSize}
@@ -1900,6 +1944,7 @@ export function Customers() {
             onPageChange={setPage}
             onPageSizeChange={setPageSize}
           />
+          </div>
         </CardContent>
       </Card>
 

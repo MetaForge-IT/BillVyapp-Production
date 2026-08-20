@@ -33,6 +33,17 @@ export class CustomersController {
     sendSuccess(res, { message: "Customer lookup", data: customer });
   });
 
+  searchByPhone = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const auth = (req as AuthenticatedRequest).auth;
+    const phone = String(req.query.phone ?? "").trim();
+    if (!phone) {
+      sendSuccess(res, { message: "Customer phone search", data: [] });
+      return;
+    }
+    const customers = await customersService.searchByPhone(auth, phone);
+    sendSuccess(res, { message: "Customer phone search", data: customers });
+  });
+
   create = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const auth = (req as AuthenticatedRequest).auth;
     const body = req.body as CreateCustomerInput;

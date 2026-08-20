@@ -301,25 +301,56 @@ export class FranchisesService {
       throw new ConflictError("A franchise with this slug already exists");
     }
 
-    const created = await prisma.franchise.create({
-      data: {
-        name: input.name,
-        slug,
-        logoUrl: input.logoUrl || null,
-        isActive: input.isActive ?? true,
-      },
+    const emailTaken = await prisma.user.findFirst({ where: { email: input.admin.email } });
+    if (emailTaken) {
+      throw new ConflictError("A user with this email already exists");
+    }
+
+    const passwordHash = await bcrypt.hash(input.admin.password, 10);
+
+    const { franchise, admin } = await prisma.$transaction(async (tx) => {
+      const franchise = await tx.franchise.create({
+        data: {
+          name: input.name,
+          slug,
+          logoUrl: input.logoUrl || null,
+          isActive: input.isActive ?? true,
+        },
+      });
+
+      const admin = await tx.user.create({
+        data: {
+          email: input.admin.email,
+          fullName: input.admin.fullName,
+          phone: input.admin.phone || null,
+          passwordHash,
+          role: "admin",
+          salonId: null,
+          franchiseId: franchise.id,
+          emailVerifiedAt: new Date(),
+          isActive: true,
+        },
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          phone: true,
+        },
+      });
+
+      return { franchise, admin };
     });
 
     return {
-      id: created.id,
-      name: created.name,
-      slug: created.slug,
-      logoUrl: created.logoUrl,
-      isActive: created.isActive,
+      id: franchise.id,
+      name: franchise.name,
+      slug: franchise.slug,
+      logoUrl: franchise.logoUrl,
+      isActive: franchise.isActive,
       shopCount: 0,
-      userCount: 0,
-      admins: [],
-      createdAt: created.createdAt.toISOString(),
+      userCount: 1,
+      admins: [admin],
+      createdAt: franchise.createdAt.toISOString(),
     };
   }
 
@@ -436,13 +467,30 @@ export class FranchisesService {
     const franchise = await prisma.franchise.findUnique({ where: { id: input.franchiseId } });
     if (!franchise) throw new NotFoundError("Franchise not found");
 
-    const shop = await prisma.salon.findFirst({
-      where: { id: input.salonId, franchiseId: input.franchiseId },
-    });
-    if (!shop) {
-      throw new AppError(400, "Shop does not belong to this franchise", {
-        code: "SHOP_FRANCHISE_MISMATCH",
+    const salonId = input.salonId ?? null;
+    if (input.role === "manager") {
+      if (!salonId) {
+        throw new AppError(400, "salonId is required for managers", {
+          code: "SALON_REQUIRED",
+        });
+      }
+      const shop = await prisma.salon.findFirst({
+        where: { id: salonId, franchiseId: input.franchiseId },
       });
+      if (!shop) {
+        throw new AppError(400, "Shop does not belong to this franchise", {
+          code: "SHOP_FRANCHISE_MISMATCH",
+        });
+      }
+    } else if (salonId) {
+      const shop = await prisma.salon.findFirst({
+        where: { id: salonId, franchiseId: input.franchiseId },
+      });
+      if (!shop) {
+        throw new AppError(400, "Shop does not belong to this franchise", {
+          code: "SHOP_FRANCHISE_MISMATCH",
+        });
+      }
     }
 
     const emailTaken = await prisma.user.findFirst({ where: { email: input.email } });
@@ -456,7 +504,7 @@ export class FranchisesService {
         phone: input.phone || null,
         passwordHash,
         role: input.role,
-        salonId: input.salonId,
+        salonId,
         franchiseId: input.franchiseId,
         emailVerifiedAt: new Date(),
         isActive: true,

@@ -31,7 +31,7 @@ import {
   IndianRupee,
   Scissors,
 } from "lucide-react";
-import { BRAND } from "../../config/brand";
+import { BRAND, SHOW_PUBLIC_SIGNUP } from "../../config/brand";
 
 const features = [
   {
@@ -282,17 +282,19 @@ export function LandingPage() {
             <button
               type="button"
               onClick={() => navigate("/login")}
-              className="hidden sm:inline-flex h-10 items-center rounded-lg border border-white/25 bg-transparent px-5 py-2.5 text-[15px] font-medium text-white/90 hover:border-[#D4AF37]/50 hover:bg-white/[0.05] hover:text-white transition-all duration-300"
+              className="inline-flex h-10 items-center rounded-lg border border-white/25 bg-transparent px-5 py-2.5 text-[15px] font-medium text-white/90 hover:border-[#D4AF37]/50 hover:bg-white/[0.05] hover:text-white transition-all duration-300"
             >
               Sign In
             </button>
-            <button
-              type="button"
-              onClick={() => navigate("/signup")}
-              className="inline-flex h-10 items-center rounded-lg bg-gradient-to-r from-[#D4AF37] to-[#C9A227] px-5 py-2.5 text-[15px] font-semibold text-[#0A0A0F] shadow-[0_4px_22px_rgba(212,175,55,0.3)] hover:shadow-[0_8px_30px_rgba(212,175,55,0.4)] transition-all duration-300 sm:px-6"
-            >
-              Get Started
-            </button>
+            {SHOW_PUBLIC_SIGNUP && (
+              <button
+                type="button"
+                onClick={() => navigate("/signup")}
+                className="inline-flex h-10 items-center rounded-lg bg-gradient-to-r from-[#D4AF37] to-[#C9A227] px-5 py-2.5 text-[15px] font-semibold text-[#0A0A0F] shadow-[0_4px_22px_rgba(212,175,55,0.3)] hover:shadow-[0_8px_30px_rgba(212,175,55,0.4)] transition-all duration-300 sm:px-6"
+              >
+                Get Started
+              </button>
+            )}
           </div>
         </nav>
       </header>
@@ -350,12 +352,14 @@ export function LandingPage() {
                 >
                   Sign In
                 </button>
-                <button
-                  onClick={() => { setMobileNavOpen(false); navigate("/signup"); }}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#C9A227] text-sm font-semibold text-[#0A0A0F] hover:shadow-lg hover:shadow-[#D4AF37]/25 transition-all"
-                >
-                  Get Started Free
-                </button>
+                {SHOW_PUBLIC_SIGNUP && (
+                  <button
+                    onClick={() => { setMobileNavOpen(false); navigate("/signup"); }}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#C9A227] text-sm font-semibold text-[#0A0A0F] hover:shadow-lg hover:shadow-[#D4AF37]/25 transition-all"
+                  >
+                    Get Started Free
+                  </button>
+                )}
               </div>
             </motion.div>
           </div>
@@ -404,22 +408,29 @@ export function LandingPage() {
           transition={{ duration: 0.55, delay: 0.3 }}
           className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4"
         >
-          <button
-            onClick={() => navigate("/signup")}
-            className="group flex w-full sm:w-auto items-center justify-center gap-2 px-8 py-3.5 text-base font-semibold bg-gradient-to-r from-[#D4AF37] to-[#C9A227] text-[#0A0A0F] rounded-xl shadow-[0_8px_32px_rgba(212,175,55,0.28)] hover:shadow-[0_12px_40px_rgba(212,175,55,0.38)] transition-all duration-300 hover:-translate-y-0.5"
-          >
-            Start Free Trial
-            <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-          </button>
+          {SHOW_PUBLIC_SIGNUP && (
+            <button
+              onClick={() => navigate("/signup")}
+              className="group flex w-full sm:w-auto items-center justify-center gap-2 px-8 py-3.5 text-base font-semibold bg-gradient-to-r from-[#D4AF37] to-[#C9A227] text-[#0A0A0F] rounded-xl shadow-[0_8px_32px_rgba(212,175,55,0.28)] hover:shadow-[0_12px_40px_rgba(212,175,55,0.38)] transition-all duration-300 hover:-translate-y-0.5"
+            >
+              Start Free Trial
+              <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+          )}
           <button
             onClick={() => navigate("/login")}
-            className="flex w-full sm:w-auto items-center justify-center gap-2 px-8 py-3.5 text-base font-semibold text-white/85 border border-white/15 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/25 transition-all duration-200"
+            className={`flex w-full sm:w-auto items-center justify-center gap-2 px-8 py-3.5 text-base font-semibold rounded-xl transition-all duration-200 ${
+              SHOW_PUBLIC_SIGNUP
+                ? "text-white/85 border border-white/15 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/25"
+                : "bg-gradient-to-r from-[#D4AF37] to-[#C9A227] text-[#0A0A0F] shadow-[0_8px_32px_rgba(212,175,55,0.28)] hover:shadow-[0_12px_40px_rgba(212,175,55,0.38)] hover:-translate-y-0.5"
+            }`}
           >
-            View Live Demo
+            Sign In
             <ChevronRight className="h-4 w-4" />
           </button>
         </motion.div>
 
+        {SHOW_PUBLIC_SIGNUP && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -433,6 +444,7 @@ export function LandingPage() {
             </span>
           ))}
         </motion.div>
+        )}
 
         {/* Stats — integrated into hero */}
         <motion.div
@@ -768,14 +780,14 @@ export function LandingPage() {
                 </ul>
                 <button
                   type="button"
-                  onClick={() => navigate(plan.name === "Enterprise" ? "/login" : "/signup")}
+                  onClick={() => navigate(SHOW_PUBLIC_SIGNUP && plan.name !== "Enterprise" ? "/signup" : "/login")}
                   className={`mt-6 w-full py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
                     plan.highlighted
                       ? "bg-gradient-to-r from-[#D4AF37] to-[#C9A227] text-[#0A0A0F] shadow-[0_4px_20px_rgba(212,175,55,0.3)] hover:shadow-[0_8px_28px_rgba(212,175,55,0.4)]"
                       : "border border-white/15 text-white/80 hover:border-[#D4AF37]/40 hover:bg-white/[0.04]"
                   }`}
                 >
-                  {plan.cta}
+                  {SHOW_PUBLIC_SIGNUP ? plan.cta : "Sign In"}
                 </button>
               </motion.div>
             ))}
@@ -912,15 +924,27 @@ export function LandingPage() {
             Ready to Transform Your Salon?
           </h2>
           <p className="text-white/50 mb-8 max-w-lg mx-auto">
-            Join 2,400+ salon owners who run smarter operations with BillVyapp. Setup takes under 10 minutes.
+            {SHOW_PUBLIC_SIGNUP
+              ? "Join 2,400+ salon owners who run smarter operations with BillVyapp. Setup takes under 10 minutes."
+              : "Already on BillVyapp? Sign in to manage your salon operations."}
           </p>
-          <button
-            onClick={() => navigate("/signup")}
-            className="group inline-flex items-center gap-2 px-8 py-4 text-base font-semibold bg-gradient-to-r from-[#D4AF37] to-[#C9A227] text-[#0A0A0F] rounded-2xl shadow-xl shadow-[#D4AF37]/20 hover:shadow-[#D4AF37]/35 transition-all duration-300 hover:-translate-y-1"
-          >
-            Create Free Account
-            <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-          </button>
+          {SHOW_PUBLIC_SIGNUP ? (
+            <button
+              onClick={() => navigate("/signup")}
+              className="group inline-flex items-center gap-2 px-8 py-4 text-base font-semibold bg-gradient-to-r from-[#D4AF37] to-[#C9A227] text-[#0A0A0F] rounded-2xl shadow-xl shadow-[#D4AF37]/20 hover:shadow-[#D4AF37]/35 transition-all duration-300 hover:-translate-y-1"
+            >
+              Create Free Account
+              <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate("/login")}
+              className="group inline-flex items-center gap-2 px-8 py-4 text-base font-semibold bg-gradient-to-r from-[#D4AF37] to-[#C9A227] text-[#0A0A0F] rounded-2xl shadow-xl shadow-[#D4AF37]/20 hover:shadow-[#D4AF37]/35 transition-all duration-300 hover:-translate-y-1"
+            >
+              Sign In
+              <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+          )}
           </div>
         </motion.div>
         </div>
@@ -960,6 +984,7 @@ export function LandingPage() {
                 ))}
               </ul>
             </div>
+            {SHOW_PUBLIC_SIGNUP && (
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-4">Get Started</p>
               <button
@@ -971,6 +996,7 @@ export function LandingPage() {
               </button>
               <p className="mt-3 text-xs text-white/30">14-day trial · No credit card</p>
             </div>
+            )}
           </div>
           <div className="pt-6 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-xs text-white/30">{BRAND.copyright}</p>

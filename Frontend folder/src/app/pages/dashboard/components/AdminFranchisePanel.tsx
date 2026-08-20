@@ -7,6 +7,9 @@ import {
   updateMyFranchiseShop,
   type MyFranchiseDetail,
 } from "../../../../api/franchises";
+import * as authApi from "../../../../api/auth";
+import { clearCachedAuthUser } from "../../../../lib/authUserCache";
+import { useAuthStore } from "../../../../stores/authStore";
 import { getApiErrorMessage } from "../../../../lib/api";
 import { toast } from "../../../components/ui/hot-toast";
 import { DashboardCard, DashboardCardHeader, SectionLabel } from "./DashboardCard";
@@ -117,8 +120,18 @@ export function AdminFranchisePanel() {
       setShopForm(emptyShopForm);
       await reload();
       setManagerForm((f) => ({ ...f, salonId: created.id }));
+      // First shop is linked as the admin's primary salonId — refresh JWT so ops APIs work.
+      try {
+        const refreshed = await authApi.refresh();
+        if (refreshed.data?.accessToken) {
+          clearCachedAuthUser();
+          useAuthStore.getState().setAccessToken(refreshed.data.accessToken);
+        }
+      } catch {
+        // Shop exists; user can re-login if scoped APIs fail until next refresh.
+      }
       toast.success(
-        `Shop created${created.city ? ` in ${created.city}` : ""} — you can assign a manager to it now`,
+        `Shop created${created.city ? ` in ${created.city}` : ""} — empty menu; upload services, then add a manager`,
       );
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Failed to create shop"));

@@ -19,6 +19,10 @@ export class CustomersService {
     return customersRepository.lookupByPhone(auth.salonId, phone);
   }
 
+  searchByPhone(auth: AuthContext, phone: string) {
+    return customersRepository.searchByPhone(auth.salonId, phone);
+  }
+
   create(auth: AuthContext, input: CreateCustomerInput) {
     return customersRepository.create(auth, input);
   }

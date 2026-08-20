@@ -88,6 +88,12 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  } else if (!shouldSkipRefreshRetry(config.url)) {
+    // Surface a clear client error instead of hitting the API without a Bearer token
+    // (that previously produced TOKEN_MISSING noise on /dashboard during auth race).
+    return Promise.reject(
+      new ApiError("Authorization header is missing", 401, "TOKEN_MISSING"),
+    );
   }
 
   return config;
@@ -95,7 +101,17 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 
 apiClient.interceptors.response.use(
   (response) => response,
-  async (error: AxiosError<ApiErrorBody>) => {
+  async (error: AxiosError<ApiErrorBody> | ApiError) => {
+    if (error instanceof ApiError) {
+      // No access token yet — try cookie refresh once, then retry original intent via queue pattern.
+      if (error.code === "TOKEN_MISSING" && error.statusCode === 401) {
+        // Fall through: callers that race before login should not spam /auth/refresh.
+        // RequireAuth already gates the shell; DashboardProvider waits for accessToken.
+        return Promise.reject(error);
+      }
+      return Promise.reject(error);
+    }
+
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
     // Retry once via httpOnly refresh cookie — even if the access JWT is already gone.

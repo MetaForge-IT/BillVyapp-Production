@@ -19,6 +19,7 @@ import { authService } from "../../../services/authService";
 import { isLoginOtpChallenge, type LoginOtpChallengeResponse } from "../../../types/auth";
 import { useAuth } from "../../context/AuthContext";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "../../components/ui/input-otp";
+import { SHOW_PUBLIC_SIGNUP } from "../../config/brand";
 
 const LOGIN_DRAFT_KEY = "login";
 const RESEND_COOLDOWN_SECONDS = 60;
@@ -483,7 +484,7 @@ export function LoginPage() {
             )}
           </AnimatePresence>
 
-          {step === "credentials" && (
+          {SHOW_PUBLIC_SIGNUP && step === "credentials" && (
             <div className="mt-6 pt-6 border-t border-white/[0.06] text-center">
               <p className="text-sm text-white/40">
                 Don&apos;t have an account?{" "}

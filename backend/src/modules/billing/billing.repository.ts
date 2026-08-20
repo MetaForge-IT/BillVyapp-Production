@@ -1125,37 +1125,60 @@ export class BillingRepository {
       });
     }
 
-    if (input.amount > balance + 0.01) {
+    const paymentRows =
+      input.payments && input.payments.length > 0
+        ? input.payments
+        : [
+            {
+              paymentMethod: input.paymentMethod!,
+              amount: input.amount!,
+              reference: input.reference,
+              planEnrollmentId: input.planEnrollmentId,
+            },
+          ];
+
+    const collectedAmount = paymentRows.reduce((sum, row) => sum + row.amount, 0);
+
+    if (collectedAmount > balance + 0.01) {
       throw new AppError(400, "Payment amount exceeds outstanding balance", {
         code: BILLING_ERROR_CODES.INVALID_PAYMENT_AMOUNT,
       });
     }
 
     const now = new Date();
-    const newPaid = Number(invoice.amountPaid) + input.amount;
+    const newPaid = Number(invoice.amountPaid) + collectedAmount;
     const newBalance = Math.max(0, Number(invoice.totalAmount) - newPaid);
     const newStatus = computeInvoiceStatus(Number(invoice.totalAmount), newPaid);
 
-    const { updated, stockResults, payment, walletDeduction } = await prisma.$transaction(async (tx) => {
-      const createdPayment = await tx.payment.create({
-        data: {
-          invoiceId: invoice.id,
-          paymentMethod: input.paymentMethod,
-          amount: input.amount,
-          reference: input.reference,
-          paidAt: now,
-        },
-      });
+    const { updated, stockResults, payments, walletDeductions } = await prisma.$transaction(async (tx) => {
+      const createdPayments = [];
+      for (const row of paymentRows) {
+        createdPayments.push(
+          await tx.payment.create({
+            data: {
+              invoiceId: invoice.id,
+              paymentMethod: row.paymentMethod,
+              amount: row.amount,
+              reference: row.reference,
+              paidAt: now,
+            },
+          }),
+        );
+      }
 
-      let walletDeduction: WalletDeductionResult | null = null;
-      if (input.paymentMethod === "wallet" && input.planEnrollmentId) {
-        walletDeduction = await applyWalletDeduction(tx, {
-          salonId: auth.salonId,
-          customerId: invoice.customerId,
-          invoiceId: invoice.id,
-          enrollmentId: input.planEnrollmentId,
-          amount: input.amount,
-        });
+      const walletDeductions: WalletDeductionResult[] = [];
+      for (const row of paymentRows) {
+        if (row.paymentMethod === "wallet" && row.planEnrollmentId) {
+          walletDeductions.push(
+            await applyWalletDeduction(tx, {
+              salonId: auth.salonId,
+              customerId: invoice.customerId,
+              invoiceId: invoice.id,
+              enrollmentId: row.planEnrollmentId,
+              amount: row.amount,
+            }),
+          );
+        }
       }
 
       const updatedInvoice = await tx.invoice.update({
@@ -1195,25 +1218,32 @@ export class BillingRepository {
         }
       }
 
-      return { updated: updatedInvoice, stockResults, payment: createdPayment, walletDeduction };
+      return {
+        updated: updatedInvoice,
+        stockResults,
+        payments: createdPayments,
+        walletDeductions,
+      };
     });
 
     stockResults.forEach(notifyStockChangeResult);
 
-    if (Number(payment.amount) > 0) {
-      void appNotificationGenerator
-        .notifyPaymentReceived({
-          salonId: auth.salonId,
-          invoicePublicId: invoice.publicId,
-          paymentPublicId: payment.publicId,
-          receiptNumber: invoice.receiptNumber,
-          customerName: invoice.customer.fullName,
-          amount: Number(payment.amount),
-        })
-        .catch(() => {});
+    for (const payment of payments) {
+      if (Number(payment.amount) > 0) {
+        void appNotificationGenerator
+          .notifyPaymentReceived({
+            salonId: auth.salonId,
+            invoicePublicId: invoice.publicId,
+            paymentPublicId: payment.publicId,
+            receiptNumber: invoice.receiptNumber,
+            customerName: invoice.customer.fullName,
+            amount: Number(payment.amount),
+          })
+          .catch(() => {});
+      }
     }
 
-    if (walletDeduction) {
+    for (const walletDeduction of walletDeductions) {
       void appNotificationGenerator
         .notifyWalletUsed({
           salonId: auth.salonId,

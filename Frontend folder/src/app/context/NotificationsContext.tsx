@@ -17,6 +17,7 @@ import {
   markNotificationRead,
 } from "../../api/notifications";
 import { getApiErrorMessage } from "../../lib/api";
+import { useAuthStore } from "../../stores/authStore";
 import type { AppNotification, NotificationCategory } from "../components/layout/header/types";
 
 const REFRESH_INTERVAL_MS = 60_000;
@@ -37,6 +38,8 @@ const NotificationsContext = createContext<NotificationsContextValue | null>(nul
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const authReady = useAuthStore((s) => s.isReady);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -47,6 +50,10 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     category?: NotificationCategory;
     silent?: boolean;
   }) => {
+    if (!useAuthStore.getState().accessToken) {
+      setLoading(false);
+      return;
+    }
     try {
       const [items, count] = await Promise.all([
         fetchNotifications({
@@ -70,12 +77,16 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (!authReady || !accessToken) {
+      if (authReady && !accessToken) setLoading(false);
+      return;
+    }
     void refresh({ silent: true });
     const intervalId = window.setInterval(() => {
       void refresh({ silent: true });
     }, REFRESH_INTERVAL_MS);
     return () => window.clearInterval(intervalId);
-  }, [refresh]);
+  }, [authReady, accessToken, refresh]);
 
   const markAsRead = useCallback(async (id: string) => {
     setNotifications((prev) =>

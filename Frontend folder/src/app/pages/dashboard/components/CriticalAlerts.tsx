@@ -4,11 +4,7 @@ import { Bell } from "lucide-react";
 import { DashboardCard, DashboardCardHeader, SectionLabel } from "./DashboardCard";
 import { useNotificationsContext } from "../../../context/NotificationsContext";
 import { notificationCategoryConfig } from "../../../components/layout/header/types";
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 18 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.48, ease: [0.22, 1, 0.36, 1] } },
-};
+import { DASHBOARD_VIEWPORT, dashboardFadeUp } from "../motion";
 
 /** Dashboard alerts fed from Notification Center (DB-backed). */
 export function CriticalAlerts() {
@@ -25,7 +21,7 @@ export function CriticalAlerts() {
   return (
     <section aria-label="Critical alerts" className="h-full flex flex-col">
       <SectionLabel>Alerts &amp; Notifications</SectionLabel>
-      <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="flex-1 min-h-0">
+      <motion.div variants={dashboardFadeUp} initial="hidden" whileInView="show" viewport={DASHBOARD_VIEWPORT} className="flex-1 min-h-0">
         <DashboardCard className="h-full">
           <DashboardCardHeader
             icon={Bell}

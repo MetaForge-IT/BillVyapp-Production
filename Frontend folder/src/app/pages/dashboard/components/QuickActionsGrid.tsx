@@ -1,16 +1,8 @@
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router";
 import { quickActions } from "../data";
+import { dashboardFadeUpStagger } from "../motion";
 import { SectionLabel } from "./DashboardCard";
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 12 },
-  show: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.4, delay: i * 0.06, ease: [0.22, 1, 0.36, 1] },
-  }),
-};
 
 export function QuickActionsGrid() {
   const navigate = useNavigate();
@@ -24,11 +16,11 @@ export function QuickActionsGrid() {
             key={action.label}
             type="button"
             custom={i}
-            variants={fadeUp}
+            variants={dashboardFadeUpStagger}
             initial="hidden"
             animate="show"
-            whileHover={{ y: -2, transition: { duration: 0.15 } }}
-            whileTap={{ scale: 0.97 }}
+            whileHover={{ y: -2, transition: { duration: 0.28 } }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => {
               const [pathname, search] = action.href.split("?");
               navigate({ pathname, search: search ? `?${search}` : undefined });

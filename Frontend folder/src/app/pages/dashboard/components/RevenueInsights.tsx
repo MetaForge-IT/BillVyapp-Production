@@ -16,6 +16,13 @@ import {
 import { BarChart3, Scissors, TrendingUp } from "lucide-react";
 import type { DashboardTrendPoint } from "../../../api/dashboard";
 import { DashboardCard, DashboardCardHeader, SectionLabel } from "./DashboardCard";
+import {
+  DASHBOARD_DURATION,
+  DASHBOARD_STAGGER,
+  DASHBOARD_STAGGER_BASE,
+  DASHBOARD_VIEWPORT,
+  dashboardFadeUpStagger,
+} from "../motion";
 import { useDashboard } from "../useDashboard";
 
 type ChartClickState = {
@@ -26,15 +33,6 @@ function getTrendPoint(state: ChartClickState | null | undefined): DashboardTren
   const point = state?.activePayload?.[0]?.payload;
   return point?.date ? point : null;
 }
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 18 },
-  show: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.48, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] },
-  }),
-};
 
 function RevenueTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: string }) {
   if (!active || !payload?.length) return null;
@@ -105,10 +103,10 @@ export function RevenueInsights() {
       <div className="grid gap-4 xl:grid-cols-12 items-stretch">
         <motion.div
           custom={0}
-          variants={fadeUp}
+          variants={dashboardFadeUpStagger}
           initial="hidden"
           whileInView="show"
-          viewport={{ once: true }}
+          viewport={DASHBOARD_VIEWPORT}
           className="xl:col-span-5 h-full flex flex-col"
         >
           <DashboardCard className="h-full">
@@ -163,10 +161,10 @@ export function RevenueInsights() {
 
         <motion.div
           custom={1}
-          variants={fadeUp}
+          variants={dashboardFadeUpStagger}
           initial="hidden"
           whileInView="show"
-          viewport={{ once: true }}
+          viewport={DASHBOARD_VIEWPORT}
           className="xl:col-span-4 h-full flex flex-col"
         >
           <DashboardCard className="h-full">
@@ -208,10 +206,10 @@ export function RevenueInsights() {
 
         <motion.div
           custom={2}
-          variants={fadeUp}
+          variants={dashboardFadeUpStagger}
           initial="hidden"
           whileInView="show"
-          viewport={{ once: true }}
+          viewport={DASHBOARD_VIEWPORT}
           className="xl:col-span-3 h-full flex flex-col"
         >
           <DashboardCard className="h-full">
@@ -240,8 +238,11 @@ export function RevenueInsights() {
                       <motion.div
                         initial={{ width: 0 }}
                         whileInView={{ width: `${service.pct}%` }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.7, delay: i * 0.08 }}
+                        viewport={DASHBOARD_VIEWPORT}
+                        transition={{
+                          duration: DASHBOARD_DURATION,
+                          delay: DASHBOARD_STAGGER_BASE + i * DASHBOARD_STAGGER,
+                        }}
                         className="h-full rounded-full bg-gradient-to-r from-[#D4AF37] to-[#C9A227]"
                       />
                     </div>

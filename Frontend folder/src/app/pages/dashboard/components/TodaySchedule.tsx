@@ -2,12 +2,8 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router";
 import { Calendar, ChevronRight } from "lucide-react";
 import { DashboardCard, DashboardCardHeader, SectionLabel } from "./DashboardCard";
+import { DASHBOARD_DURATION, DASHBOARD_EASE, DASHBOARD_VIEWPORT, dashboardFadeUp, dashboardItemDelay } from "../motion";
 import { useDashboard } from "../useDashboard";
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 18 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.48, ease: [0.22, 1, 0.36, 1] } },
-};
 
 export function TodaySchedule() {
   const navigate = useNavigate();
@@ -28,7 +24,7 @@ export function TodaySchedule() {
   return (
     <section aria-label="Today's schedule" className="h-full flex flex-col">
       <SectionLabel>Today&apos;s Schedule</SectionLabel>
-      <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="flex-1 min-h-0">
+      <motion.div variants={dashboardFadeUp} initial="hidden" whileInView="show" viewport={DASHBOARD_VIEWPORT} className="flex-1 min-h-0">
         <DashboardCard className="h-full">
           <DashboardCardHeader
             icon={Calendar}
@@ -46,7 +42,11 @@ export function TodaySchedule() {
                 type="button"
                 initial={{ opacity: 0, x: -6 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.15 + i * 0.05 }}
+                transition={{
+                  duration: DASHBOARD_DURATION,
+                  delay: dashboardItemDelay(i, 0.28),
+                  ease: DASHBOARD_EASE,
+                }}
                 onClick={() => {
                   const params = new URLSearchParams();
                   params.set("appointment", apt.id);

@@ -81,6 +81,22 @@ export class ServiceCategoriesRepository {
   }
 
   async create(auth: AuthContext, input: CreateServiceCategoryInput) {
+    if (!auth.salonId) {
+      throw new AppError(400, "No shop is linked to this account. Create or open a shop first.", {
+        code: SERVICE_CATEGORY_ERROR_CODES.NOT_FOUND,
+      });
+    }
+
+    const salon = await prisma.salon.findFirst({
+      where: { id: auth.salonId },
+      select: { id: true },
+    });
+    if (!salon) {
+      throw new AppError(400, "Linked shop was not found. Re-login or link a shop from the dashboard.", {
+        code: SERVICE_CATEGORY_ERROR_CODES.NOT_FOUND,
+      });
+    }
+
     const duplicate = await prisma.serviceCategory.findFirst({
       where: { salonId: auth.salonId, name: input.name },
     });

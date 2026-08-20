@@ -310,6 +310,26 @@ export class AuthRepository {
     return user ? toUserRecord(user) : null;
   }
 
+  /**
+   * When franchise staff have no salonId, attach the franchise's oldest active shop
+   * and persist it so subsequent requests (and JWT refresh) stay shop-scoped.
+   */
+  async resolvePrimarySalonId(userId: string, franchiseId: string): Promise<string | null> {
+    const shop = await this.db.salon.findFirst({
+      where: { franchiseId, isActive: true },
+      orderBy: { createdAt: "asc" },
+      select: { id: true },
+    });
+    if (!shop) return null;
+
+    await this.db.user.update({
+      where: { id: userId },
+      data: { salonId: shop.id },
+    });
+
+    return shop.id;
+  }
+
   async updateLastLogin(userId: string): Promise<void> {
     await this.db.user.update({
       where: { id: userId },

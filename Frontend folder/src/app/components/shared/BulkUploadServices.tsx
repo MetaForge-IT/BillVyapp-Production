@@ -127,7 +127,7 @@ function downloadTemplate(categoryNames: string[]) {
   const guide = XLSX.utils.aoa_to_sheet([
     ["Column", "Required", "Notes"],
     ["service_name", "Yes", "Display name shown in UI / billing"],
-    ["category", "Yes", `Must exactly match an existing category: ${categoryNames.join(", ") || "(create categories first)"}`],
+    ["category", "Yes", "Any category name is allowed. Existing names are matched; new names are created on import."],
     ["service_group", "No", "Group inside category (e.g. Face, Cut). Leave blank if none"],
     ["price", "Yes", "Selling price in ₹"],
     ["member_price", "No", "Member price; defaults to 90% of price if blank"],
@@ -182,6 +182,7 @@ const CATEGORY_ALIASES: Record<string, string> = {
   bleachdetan: "detanbleach",
 };
 
+/** Prefer an existing category name when it matches; otherwise keep Excel label as-is (will be created on import). */
 function resolveCategoryName(input: string, validCategories: string[]): string | undefined {
   const cleaned = input.normalize("NFKC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim();
   if (!cleaned) return undefined;
@@ -190,7 +191,7 @@ function resolveCategoryName(input: string, validCategories: string[]): string |
   if (exact) return exact;
 
   const key = normalizeCategoryKey(cleaned);
-  if (!key) return undefined;
+  if (!key) return cleaned;
 
   const aliasKey = CATEGORY_ALIASES[key] ?? key;
 
@@ -207,7 +208,8 @@ function resolveCategoryName(input: string, validCategories: string[]): string |
   });
   if (partial.length === 1) return partial[0];
 
-  return undefined;
+  // Open category: any new label is allowed
+  return cleaned;
 }
 
 function parseRow(
@@ -241,11 +243,15 @@ function parseRow(
   else {
     const match = resolveCategoryName(cat, validCategories);
     if (!match) {
-      issues.push(
-        `category "${cat}" not found — use one of: ${validCategories.join(", ") || "(create categories first)"}`,
-      );
+      issues.push("category is required");
     } else {
       data.category = match;
+      const known = validCategories.some(
+        (c) => normalizeCategoryKey(c) === normalizeCategoryKey(match) || c.toLowerCase() === match.toLowerCase(),
+      );
+      if (!known) {
+        issues.push(`category "${match}" is new — will be created on import`);
+      }
     }
   }
 
@@ -318,7 +324,8 @@ function parseRow(
     issues.some(
       (i) =>
         !i.includes("defaulted") &&
-        !i.includes("higher than price"),
+        !i.includes("higher than price") &&
+        !i.includes("will be created on import"),
     );
 
   const status: RowStatus = hasHardError ? "error" : issues.length > 0 ? "warning" : "valid";
@@ -571,7 +578,7 @@ export function BulkUploadServices({
                   <div className="grid grid-cols-1 gap-0 divide-y divide-gray-100 sm:grid-cols-2">
                     {[
                       { h: "service_name", req: true, note: "Display name in UI / billing" },
-                      { h: "category", req: true, note: categoryNames.length ? `Must match: ${categoryNames.slice(0, 4).join(", ")}${categoryNames.length > 4 ? "…" : ""}` : "Create categories first" },
+                      { h: "category", req: true, note: "Any name OK — new categories are created automatically" },
                       { h: "service_group", req: false, note: "e.g. Face, Cut" },
                       { h: "price", req: true, note: "Selling price ₹" },
                       { h: "member_price", req: false, note: "Defaults to 90% of price" },

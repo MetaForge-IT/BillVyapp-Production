@@ -38,6 +38,11 @@ interface PendingPaymentsContextType {
     amount: number,
     paymentMethod: "cash" | "card" | "upi" | "wallet",
     reference?: string,
+    payments?: Array<{
+      paymentMethod: "cash" | "card" | "upi" | "wallet";
+      amount: number;
+      reference?: string;
+    }>,
   ) => Promise<PendingPayment | null>;
   removePendingPayment: (id: string) => void;
 }
@@ -99,9 +104,19 @@ export function PendingPaymentsProvider({ children }: { children: ReactNode }) {
     amount: number,
     paymentMethod: "cash" | "card" | "upi" | "wallet",
     reference?: string,
+    payments?: Array<{
+      paymentMethod: "cash" | "card" | "upi" | "wallet";
+      amount: number;
+      reference?: string;
+    }>,
   ): Promise<PendingPayment | null> {
     try {
-      const updated = await collectInvoicePayment(id, { amount, paymentMethod, reference });
+      const updated = await collectInvoicePayment(
+        id,
+        payments && payments.length > 0
+          ? { payments }
+          : { amount, paymentMethod, reference },
+      );
       await refresh();
       return {
         id: updated.id,

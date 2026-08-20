@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useProducts } from "../context/ProductsContext";
-import { useRole } from "../context/RoleContext";
+import { useRole, canManageInventoryOps } from "../context/RoleContext";
 import { toast } from "../components/ui/hot-toast";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -21,7 +21,7 @@ import {
   Truck, Pencil, Trash2, Tag, Loader2, Receipt,
 } from "lucide-react";
 import { BulkUploadProducts, type ParsedRow, type ExistingProduct } from "../components/shared/BulkUploadProducts";
-import { DirectBillDialog } from "../components/shared/DirectBillDialog";
+import { VendorDirectBillDialog } from "../components/shared/VendorDirectBillDialog";
 import { Pagination } from "../components/shared/Pagination";
 import { PageStatCard } from "../components/shared/PageStatCard";
 import { useTablePagination } from "../hooks/useTablePagination";
@@ -55,6 +55,7 @@ import {
   mapStockAdjustmentToLog,
   mapStockPurchaseToRow,
   parsePriceInput,
+  formatInr,
   type PurchaseOrderRow,
 } from "../../lib/inventoryMappers";
 import type { Product } from "../context/ProductsContext";
@@ -80,6 +81,7 @@ const orderStatusConfig = {
 
 export function Inventory() {
   const { role } = useRole();
+  const canManageInventory = canManageInventoryOps(role);
   const { products, setProducts, stockLog, setStockLog, loading: productsLoading, refresh: refreshProducts } = useProducts();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
@@ -159,6 +161,12 @@ export function Inventory() {
     void loadMeta();
   }, [loadMeta]);
 
+  useEffect(() => {
+    if (isCreatePOOpen || directBillOpen) {
+      void loadMeta();
+    }
+  }, [isCreatePOOpen, directBillOpen, loadMeta]);
+
   const totalValue = useMemo(() => {
     const sum = products.reduce((acc, p) => acc + p.stock * parsePriceInput(p.costPrice), 0);
     return `₹${sum.toLocaleString("en-IN")}`;
@@ -236,6 +244,18 @@ export function Inventory() {
 
   const lowStockCount = products.filter(p => p.status === "low" || p.status === "critical" || p.status === "out").length;
   const pendingOrdersCount = purchaseOrders.filter(po => po.status === "pending" || po.status === "shipped").length;
+
+  const openVendorBill = () => {
+    if (products.length === 0) {
+      toast.error("Add at least one product before creating a vendor bill");
+      return;
+    }
+    if (vendors.length === 0) {
+      toast.error("Add a vendor first under the Vendors tab");
+      return;
+    }
+    setDirectBillOpen(true);
+  };
 
   const validateProduct = () => {
     const errors: Record<string, string> = {};
@@ -564,62 +584,74 @@ export function Inventory() {
   };
 
   return (
-    <div className="min-w-0 space-y-4 sm:space-y-6" key={refreshKey}>
+    <div className="inventory-page flex h-[calc(100dvh-8rem)] min-h-0 flex-col gap-3 overflow-hidden sm:gap-4" key={refreshKey}>
+      {/* Fixed top: title, actions, KPIs, alert */}
+      <div className="inventory-top shrink-0 space-y-3 sm:space-y-4">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <div className="page-header-row">
+        <div className="min-w-0 shrink-0 lg:max-w-[min(100%,28rem)]">
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#D4AF37]">Stock Control</p>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-[#1a1a1a] to-[#d4af37] bg-clip-text text-transparent sm:text-3xl">
+          <h1 className="whitespace-nowrap text-xl font-bold bg-gradient-to-r from-[#1a1a1a] to-[#d4af37] bg-clip-text text-transparent sm:text-2xl lg:text-3xl">
             Inventory Management
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">Track products, stock levels, purchase orders & vendors</p>
         </div>
-        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:shrink-0 sm:flex-wrap">
-          {role !== "admin" && (
+        <div className="inventory-actions">
+          {canManageInventory && (
             <button
               type="button"
-              onClick={() => setDirectBillOpen(true)}
-              className="flex h-10 items-center justify-center gap-2 rounded-xl border border-[#d4af37] bg-white px-3 text-[12px] font-semibold text-[#9a7a1e] transition-all hover:bg-[#d4af37]/10 sm:h-9 sm:px-4 sm:text-[13px]"
+              onClick={openVendorBill}
+              className="inventory-action-btn flex h-10 items-center justify-center gap-2 rounded-xl border border-[#d4af37] bg-white px-3 text-[12px] font-semibold text-[#9a7a1e] transition-all hover:bg-[#d4af37]/10 sm:h-9 sm:px-4 sm:text-[13px]"
             >
-              <Receipt className="h-4 w-4" /> Direct Bill
+              <Receipt className="h-4 w-4 shrink-0" />
+              <span className="inventory-action-label-short">Bill</span>
+              <span className="inventory-action-label-full">Vendor Bill</span>
             </button>
           )}
-          {role !== "admin" && role !== "manager" && (
+          {canManageInventory && (
             <button
               onClick={() => { resetCategoryForm(); setShowCategoryManager(true); }}
-              className="flex h-10 items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-[#FAF8F2] px-3 text-[12px] font-semibold text-[#6b6b6b] transition-all hover:border-[#D4AF37]/30 hover:text-[#111118] sm:h-9 sm:px-4 sm:text-[13px]"
+              className="inventory-action-btn flex h-10 items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-[#FAF8F2] px-3 text-[12px] font-semibold text-[#6b6b6b] transition-all hover:border-[#D4AF37]/30 hover:text-[#111118] sm:h-9 sm:px-4 sm:text-[13px]"
             >
-              <Tag className="h-4 w-4" /> Categories
+              <Tag className="h-4 w-4 shrink-0" />
+              <span className="inventory-action-label-short">Cats</span>
+              <span className="inventory-action-label-full">Categories</span>
             </button>
           )}
           <button
             onClick={() => void handleRefresh()}
-            className="flex h-10 items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-[#FAF8F2] px-3 text-[12px] font-semibold text-[#6b6b6b] transition-all hover:border-[#D4AF37]/30 hover:text-[#111118] sm:h-9 sm:px-4 sm:text-[13px]"
+            className="inventory-action-btn flex h-10 items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-[#FAF8F2] px-3 text-[12px] font-semibold text-[#6b6b6b] transition-all hover:border-[#D4AF37]/30 hover:text-[#111118] sm:h-9 sm:px-4 sm:text-[13px]"
           >
-            <RefreshCw className={`h-4 w-4 ${productsLoading || ordersLoading ? "animate-spin" : ""}`} /> Refresh
+            <RefreshCw className={`h-4 w-4 shrink-0 ${productsLoading || ordersLoading ? "animate-spin" : ""}`} /> Refresh
           </button>
-          {role !== "admin" && role !== "manager" && (
+          {canManageInventory && (
             <button
               onClick={() => setShowBulkUpload(true)}
-              className="flex h-10 items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-[#FAF8F2] px-3 text-[12px] font-semibold text-[#6b6b6b] transition-all hover:border-[#D4AF37]/30 hover:text-[#111118] sm:h-9 sm:px-4 sm:text-[13px]"
+              className="inventory-action-btn flex h-10 items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-[#FAF8F2] px-3 text-[12px] font-semibold text-[#6b6b6b] transition-all hover:border-[#D4AF37]/30 hover:text-[#111118] sm:h-9 sm:px-4 sm:text-[13px]"
             >
-              <Upload className="h-4 w-4" /> Bulk Upload
+              <Upload className="h-4 w-4 shrink-0" />
+              <span className="inventory-action-label-short">Upload</span>
+              <span className="inventory-action-label-full">Bulk Upload</span>
             </button>
           )}
-          {role !== "admin" && role !== "manager" && (
-            <button type="button" className={financeGoldBtn + " inline-flex items-center justify-center gap-2"} onClick={() => { resetProductForm(); setIsAddProductOpen(true); }}>
-              <Plus className="h-4 w-4" />
+          {canManageInventory && (
+            <button
+              type="button"
+              className={cn(financeGoldBtn, "inventory-action-btn inline-flex items-center justify-center gap-2 col-span-2 sm:col-span-1")}
+              onClick={() => { resetProductForm(); setIsAddProductOpen(true); }}
+            >
+              <Plus className="h-4 w-4 shrink-0" />
               Add Product
             </button>
           )}
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="hidden gap-3 lg:grid lg:grid-cols-4">
-        <PageStatCard label="Total Products" value={productsLoading ? "…" : String(products.length)} sub="Live from database" icon={Package} index={0} href="/inventory?tab=stock" />
-        <PageStatCard label="Low / Out of Stock" value={String(lowStockCount)} sub="Needs immediate reorder" icon={AlertTriangle} index={1} onClick={openStockAlertModal} />
-        <PageStatCard label="Total Stock Value" value={totalValue} sub="Across all categories" icon={TrendingUp} index={2} href="/inventory?tab=stock" />
+      {/* KPI Cards — 2×2 on phones, 4-up from md */}
+      <div className="stat-grid-4">
+        <PageStatCard label="Total Products" value={productsLoading ? "…" : String(products.length)} sub="Live from database" icon={Package} index={0} href="/inventory?tab=stock" compact />
+        <PageStatCard label="Low / Out of Stock" value={String(lowStockCount)} sub="Needs immediate reorder" icon={AlertTriangle} index={1} onClick={openStockAlertModal} compact />
+        <PageStatCard label="Total Stock Value" value={totalValue} sub="Across all categories" icon={TrendingUp} index={2} href="/inventory?tab=stock" compact />
         <PageStatCard
           label="Pending Orders"
           value={String(pendingOrdersCount)}
@@ -627,25 +659,27 @@ export function Inventory() {
           icon={ShoppingCart}
           index={3}
           href="/inventory?tab=orders"
+          compact
         />
       </div>
 
       {/* Alert Banner */}
       {lowStockCount > 0 && (
-        <div className="flex flex-col items-stretch gap-3 rounded-xl border border-[#D4AF37]/25 bg-[#FFFBEB] p-4 sm:flex-row sm:items-center">
+        <div className="flex flex-col items-stretch gap-3 rounded-xl border border-[#D4AF37]/25 bg-[#FFFBEB] p-3 sm:flex-row sm:items-center sm:p-4">
           <div className={financeIconWrap}>
             <AlertTriangle className="h-4 w-4 text-[#D4AF37]" />
           </div>
-          <div className="flex-1">
-            <p className="font-semibold text-[#111118]">Stock Alert: {lowStockCount} products need attention</p>
-            <p className="text-sm text-[#6b6b6b]">1 out of stock, 2 critical, 3 low stock items require immediate reorder</p>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-[#111118] text-sm sm:text-base">Stock Alert: {lowStockCount} products need attention</p>
+            <p className="hidden text-sm text-[#6b6b6b] sm:block">Review low and out-of-stock items and reorder before service is impacted</p>
           </div>
-          <button type="button" className={financeGoldBtn + " !h-9 !px-3 !text-[11px] sm:!h-8"} onClick={openStockAlertModal}>Reorder Now</button>
+          <button type="button" className={financeGoldBtn + " !h-10 !w-full !px-3 !text-[11px] sm:!h-8 sm:!w-auto"} onClick={openStockAlertModal}>Reorder Now</button>
         </div>
       )}
+      </div>
 
-      <Tabs defaultValue={initialTab}>
-        <TabsList className={SEGMENTED_PILL_LIST}>
+      <Tabs defaultValue={initialTab} className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+        <TabsList className={cn(SEGMENTED_PILL_LIST, "tabs-scroll-x shrink-0")}>
           <TabsTrigger value="stock" className={SEGMENTED_PILL_TRIGGER}>
             <Package className="h-3.5 w-3.5" />
             Stock
@@ -656,11 +690,13 @@ export function Inventory() {
           </TabsTrigger>
           <TabsTrigger value="orders" className={SEGMENTED_PILL_TRIGGER}>
             <ShoppingCart className="h-3.5 w-3.5" />
-            Purchase Orders
+            <span className="inventory-tab-label-short">Orders</span>
+            <span className="inventory-tab-label-long">Purchase Orders</span>
           </TabsTrigger>
           <TabsTrigger value="log" className={SEGMENTED_PILL_TRIGGER}>
             <History className="h-3.5 w-3.5" />
-            Usage Log
+            <span className="inventory-tab-label-short">Log</span>
+            <span className="inventory-tab-label-long">Usage Log</span>
             {stockLog.length > 0 && (
               <span className="ml-0.5 rounded-full bg-[#D4AF37]/20 px-1.5 py-0.5 text-[10px] font-bold text-[#D4AF37]">
                 {stockLog.length}
@@ -669,11 +705,11 @@ export function Inventory() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="stock" className="space-y-4 mt-4">
+        <TabsContent value="stock" className="mt-0 flex min-h-0 flex-1 flex-col gap-3 overflow-hidden data-[state=inactive]:hidden">
           {/* Filter Bar */}
-          <div className="flex flex-col gap-2.5 rounded-2xl border border-black/[0.07] bg-white p-3 shadow-sm sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="inventory-filter-bar shrink-0 rounded-2xl border border-black/[0.07] bg-white p-3 shadow-sm">
             {/* Search */}
-            <div className="relative flex-1 min-w-[180px]">
+            <div className="inventory-filter-search">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#d4af37]" />
               <input
                 placeholder="Search product, SKU, brand…"
@@ -686,14 +722,14 @@ export function Inventory() {
             <div className="hidden h-6 w-px shrink-0 bg-black/[0.06] sm:block" />
 
             {/* Category Dropdown */}
-            <div className="relative min-w-0 flex-1 sm:flex-none">
+            <div className="inventory-filter-select">
               <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
                 <Package className="h-3.5 w-3.5 text-[#d4af37]" />
               </div>
               <select
                 value={category}
                 onChange={e => setCategory(e.target.value)}
-                className={`h-9 w-full pl-8 pr-7 rounded-xl border text-[12px] font-medium outline-none appearance-none cursor-pointer transition-all sm:w-auto ${
+                className={`h-9 w-full pl-8 pr-7 rounded-xl border text-[12px] font-medium outline-none appearance-none cursor-pointer transition-all sm:min-w-[9.5rem] ${
                   category !== "All"
                     ? "border-[#D4AF37]/45 bg-[#FFFBEB] text-[#9a7d20] font-semibold"
                     : "border-black/[0.08] bg-[#FAF8F2]/60 text-[#6b6b6b] hover:border-black/[0.12]"
@@ -711,14 +747,14 @@ export function Inventory() {
             </div>
 
             {/* Stock Alert Dropdown */}
-            <div className="relative min-w-0 flex-1 sm:flex-none">
+            <div className="inventory-filter-select">
               <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
                 <AlertTriangle className="h-3.5 w-3.5 text-[#d4af37]" />
               </div>
               <select
                 value={stockAlertFilter}
                 onChange={e => setStockAlertFilter(e.target.value)}
-                className={`h-9 w-full pl-8 pr-7 rounded-xl border text-[12px] font-medium outline-none appearance-none cursor-pointer transition-all sm:w-auto ${
+                className={`h-9 w-full pl-8 pr-7 rounded-xl border text-[12px] font-medium outline-none appearance-none cursor-pointer transition-all sm:min-w-[10.5rem] ${
                   stockAlertFilter !== "all"
                     ? "border-[#D4AF37]/45 bg-[#FFFBEB] text-[#9a7d20] font-semibold"
                     : "border-black/[0.08] bg-[#FAF8F2]/60 text-[#6b6b6b] hover:border-black/[0.12]"
@@ -737,8 +773,9 @@ export function Inventory() {
 
           </div>
 
-          <Card className={CARD_TABLE}>
-            <CardContent className="p-0">
+          <Card className={cn(CARD_TABLE, "flex min-h-0 flex-1 flex-col")}>
+            <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
               {/* Phone/tablet cards avoid a seven-column horizontal table. */}
               <div className="divide-y divide-black/[0.06] lg:hidden">
                 {productsLoading ? (
@@ -758,7 +795,7 @@ export function Inventory() {
                         <Badge className={status.className}>{status.label}</Badge>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="inventory-metric-grid">
                         <div className="rounded-xl border border-black/[0.06] bg-[#FAF8F2] p-2.5">
                           <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Stock</p>
                           <p className={cn(
@@ -772,13 +809,13 @@ export function Inventory() {
                           <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Minimum</p>
                           <p className="mt-1 text-[17px] font-black text-[#111118]">{product.minStock}</p>
                         </div>
-                        <div className="rounded-xl border border-[#D4AF37]/20 bg-[#FFFBEB] p-2.5">
+                        <div className="rounded-xl border border-[#D4AF37]/20 bg-[#FFFBEB] p-2.5 col-span-2 min-[400px]:col-span-1">
                           <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a7d20]">Price</p>
                           <p className="mt-1 truncate text-[14px] font-black text-[#9a7d20]">{product.price}</p>
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap justify-end gap-2">
+                      <div className="inventory-card-actions">
                         <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => openEditProduct(product)}>
                           <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
                         </Button>
@@ -805,7 +842,7 @@ export function Inventory() {
                 )}
               </div>
 
-              <div className="hidden overflow-x-auto lg:block">
+              <div className="hidden overflow-x-auto table-scroll lg:block">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-black/[0.06] bg-[#FAF8F2]">
@@ -882,7 +919,7 @@ export function Inventory() {
                           <div className="flex flex-col items-center justify-center text-center gap-3">
                             <Package className="h-10 w-10 text-muted-foreground/40" />
                             <p className="text-sm text-muted-foreground">No products found in <strong>{category}</strong>.</p>
-                            {role !== "admin" && (
+                            {canManageInventory && (
                               <Button size="sm" className="bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d]" onClick={() => { resetProductForm(); if (category !== "All") { const cat = productCategories.find((c) => c.name === category); if (cat) setNewProduct((f) => ({ ...f, categoryId: cat.id })); } setIsAddProductOpen(true); }}>
                                 <Plus className="h-4 w-4 mr-2" />
                                 Add Product for {category}
@@ -895,6 +932,8 @@ export function Inventory() {
                   </tbody>
                 </table>
               </div>
+              </div>
+              <div className="shrink-0 border-t border-black/[0.06] bg-white">
               <Pagination
                 page={stockPagination.page}
                 pageSize={stockPagination.pageSize}
@@ -902,30 +941,54 @@ export function Inventory() {
                 onPageChange={stockPagination.setPage}
                 onPageSizeChange={stockPagination.setPageSize}
               />
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="vendors" className="mt-4">
-          <Vendors />
+        <TabsContent value="vendors" className="mt-0 min-h-0 flex-1 overflow-y-auto overscroll-contain data-[state=inactive]:hidden">
+          <Vendors onVendorsChanged={loadMeta} />
         </TabsContent>
 
-        <TabsContent value="orders" className="mt-4">
-          <Card className={CARD_TABLE}>
-            <CardHeader>
+        <TabsContent value="orders" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden data-[state=inactive]:hidden">
+          <Card className={cn(CARD_TABLE, "flex min-h-0 flex-1 flex-col")}>
+            <CardHeader className="shrink-0">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <ShoppingCart className="h-5 w-5 text-[#1a1a1a]" />
                   Purchase Orders
                 </CardTitle>
-                {role !== "admin" && (
-                  <Button size="sm" className="bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d]" onClick={() => { setPoForm({ vendorId: "", productId: "", quantity: "", unitCost: "", date: new Date().toISOString().slice(0, 10), notes: "" }); setFormErrors({}); setIsCreatePOOpen(true); }}>
-                    <Plus className="h-4 w-4 mr-1" /> Create PO
-                  </Button>
+                {canManageInventory && (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-xl border-[#d4af37]/35 text-[#9a7a1e] hover:bg-[#d4af37]/10"
+                      onClick={openVendorBill}
+                    >
+                      <Receipt className="h-4 w-4 mr-1" /> Vendor Bill
+                    </Button>
+                    <Button size="sm" className="bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d]" onClick={() => {
+                      if (products.length === 0) {
+                        toast.error("Add at least one product before creating a purchase order");
+                        return;
+                      }
+                      if (vendors.length === 0) {
+                        toast.error("Add a vendor first under the Vendors tab");
+                        return;
+                      }
+                      setPoForm({ vendorId: "", productId: "", quantity: "", unitCost: "", date: new Date().toISOString().slice(0, 10), notes: "" });
+                      setFormErrors({});
+                      setIsCreatePOOpen(true);
+                    }}>
+                      <Plus className="h-4 w-4 mr-1" /> Create PO
+                    </Button>
+                  </div>
                 )}
               </div>
             </CardHeader>
-            <CardContent className="px-0 sm:px-6">
+            <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden px-0 sm:px-6">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
               <div className="divide-y divide-black/[0.06] lg:hidden">
                 {paginatedOrders.map((order) => {
                   const status = orderStatusConfig[order.status as keyof typeof orderStatusConfig];
@@ -936,20 +999,26 @@ export function Inventory() {
                           <p className="font-mono text-[13px] font-bold text-[#111118]">{order.id}</p>
                           <p className="mt-1 truncate text-[14px] font-semibold">{order.supplier}</p>
                           <p className="mt-0.5 text-[11px] text-[#9a9a9a]">{order.date}</p>
+                          {order.isVendorBill && (
+                            <Badge className="mt-1 bg-[#d4af37]/10 text-[#9a7a1e] border-[#d4af37]/25 hover:bg-[#d4af37]/10">Vendor Bill</Badge>
+                          )}
                         </div>
                         <Badge className={status.className}>{status.label}</Badge>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div className="rounded-xl bg-[#FAF8F2] px-3 py-2.5">
-                          <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Items</p>
-                          <p className="mt-1 text-[15px] font-black">{order.items}</p>
+                          <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Qty</p>
+                          <p className="mt-1 text-[15px] font-black">{order.totalQuantity}</p>
+                          {order.lineCount > 1 && (
+                            <p className="mt-0.5 text-[10px] text-[#9a9a9a]">{order.lineCount} products</p>
+                          )}
                         </div>
                         <div className="rounded-xl border border-[#D4AF37]/20 bg-[#FFFBEB] px-3 py-2.5">
                           <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a7d20]">Total</p>
                           <p className="mt-1 text-[15px] font-black text-[#9a7d20]">{order.total}</p>
                         </div>
                       </div>
-                      <div className="flex flex-wrap justify-end gap-2">
+                      <div className="inventory-card-actions">
                         <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => openViewPOModal(order)}>View</Button>
                         {order.status === "pending" && (
                           <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => handlePOAction(order.id, "mark-shipped")}>Ship</Button>
@@ -966,13 +1035,13 @@ export function Inventory() {
                 )}
               </div>
 
-              <div className="hidden overflow-x-auto lg:block">
+              <div className="hidden overflow-x-auto table-scroll lg:block">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-black/[0.06] bg-[#FAF8F2]">
                       <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Order ID</th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Supplier</th>
-                      <th className="text-center py-3 px-4 text-sm font-semibold text-muted-foreground">Items</th>
+                      <th className="text-center py-3 px-4 text-sm font-semibold text-muted-foreground">Qty</th>
                       <th className="text-right py-3 px-4 text-sm font-semibold text-muted-foreground">Total</th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Date</th>
                       <th className="text-center py-3 px-4 text-sm font-semibold text-muted-foreground">Status</th>
@@ -984,7 +1053,12 @@ export function Inventory() {
                       <tr key={po.id} className={TABLE_ROW}>
                         <td className="py-3 px-4 font-mono font-semibold text-[#1a1a1a] text-sm">{po.id}</td>
                         <td className="py-3 px-4 text-sm font-medium">{po.supplier}</td>
-                        <td className="py-3 px-4 text-center text-sm">{po.items} items</td>
+                        <td className="py-3 px-4 text-center text-sm">
+                          <span className="font-semibold">{po.totalQuantity}</span>
+                          {po.lineCount > 1 && (
+                            <span className="block text-[10px] text-muted-foreground">{po.lineCount} lines</span>
+                          )}
+                        </td>
                         <td className="py-3 px-4 text-right font-semibold text-sm">{po.total}</td>
                         <td className="py-3 px-4 text-sm text-muted-foreground">{po.date}</td>
                         <td className="py-3 px-4 text-center">
@@ -1009,6 +1083,8 @@ export function Inventory() {
                   </tbody>
                 </table>
               </div>
+              </div>
+              <div className="shrink-0 border-t border-black/[0.06] bg-white">
               <Pagination
                 page={ordersPagination.page}
                 pageSize={ordersPagination.pageSize}
@@ -1016,14 +1092,15 @@ export function Inventory() {
                 onPageChange={ordersPagination.setPage}
                 onPageSizeChange={ordersPagination.setPageSize}
               />
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         {/* ── Usage Log Tab ── */}
-        <TabsContent value="log" className="mt-4">
-          <Card className="rounded-2xl border border-black/[0.07] shadow-sm">
-            <CardHeader className="pb-3">
+        <TabsContent value="log" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden data-[state=inactive]:hidden">
+          <Card className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-black/[0.07] shadow-sm">
+            <CardHeader className="shrink-0 pb-3">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <CardTitle className="text-[15px] font-bold text-[#1a1a1a] flex items-center gap-2">
                   <History className="h-4 w-4 text-[#d4af37]" /> Stock Usage Log
@@ -1038,7 +1115,8 @@ export function Inventory() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
               {filteredLog.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 py-16 text-center">
                   <History className="h-10 w-10 text-gray-200" />
@@ -1090,7 +1168,7 @@ export function Inventory() {
                     </article>
                   ))}
                 </div>
-                <div className="hidden overflow-x-auto lg:block">
+                <div className="hidden overflow-x-auto table-scroll lg:block">
                   <table className="w-full text-[12px]">
                     <thead className="bg-[#fafaf8] border-b border-gray-100">
                       <tr>
@@ -1138,7 +1216,9 @@ export function Inventory() {
                 </div>
                 </>
               )}
+              </div>
               {filteredLog.length > 0 && (
+                <div className="shrink-0 border-t border-black/[0.06] bg-white">
                 <Pagination
                   page={logPagination.page}
                   pageSize={logPagination.pageSize}
@@ -1146,6 +1226,7 @@ export function Inventory() {
                   onPageChange={logPagination.setPage}
                   onPageSizeChange={logPagination.setPageSize}
                 />
+                </div>
               )}
             </CardContent>
           </Card>
@@ -1155,7 +1236,7 @@ export function Inventory() {
 
       {/* ── Manual Adjust Modal ── */}
       <Dialog open={!!adjustTarget} onOpenChange={open => { if (!open) setAdjustTarget(null); }}>
-        <DialogContent className="max-w-md rounded-2xl p-0 overflow-hidden border-0 shadow-2xl">
+        <DialogContent className="w-[min(100%,28rem)] max-w-[calc(100%-1rem)] rounded-2xl p-0 overflow-hidden border-0 shadow-2xl max-sm:dialog-mobile-sheet">
           <div className="bg-gradient-to-br from-[#111118] to-[#2a2a2a] px-6 py-5">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl bg-[#d4af37]/15 border border-[#d4af37]/30 flex items-center justify-center shrink-0">
@@ -1252,18 +1333,18 @@ export function Inventory() {
 
       {/* Add Product Modal */}
       <Dialog open={isAddProductOpen} onOpenChange={setIsAddProductOpen}>
-        <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-2xl border-0 shadow-2xl max-h-[95vh] [&>button:last-of-type]:hidden">
+        <DialogContent className="w-[min(100%,42rem)] max-w-[calc(100%-1rem)] p-0 overflow-hidden rounded-2xl border-0 shadow-2xl max-h-[95dvh] max-sm:dialog-mobile-sheet [&>button:last-of-type]:hidden">
 
           {/* Header */}
-          <div className="relative bg-gradient-to-br from-[#1a1a1a] via-[#222] to-[#2d2d2d] px-7 pt-7 pb-6">
+          <div className="relative bg-gradient-to-br from-[#1a1a1a] via-[#222] to-[#2d2d2d] px-4 pt-6 pb-5 sm:px-7 sm:pt-7 sm:pb-6">
             <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "radial-gradient(circle at 70% 30%, #d4af37 0%, transparent 60%)" }} />
-            <div className="relative flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#d4af37]/15 border border-[#d4af37]/30">
-                <Package className="h-6 w-6 text-[#d4af37]" />
+            <div className="relative flex items-start gap-3 sm:gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#d4af37]/15 border border-[#d4af37]/30 sm:h-12 sm:w-12">
+                <Package className="h-5 w-5 text-[#d4af37] sm:h-6 sm:w-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <DialogTitle className="text-xl font-bold text-white tracking-tight">{editingProduct ? "Edit Product" : "Add New Product"}</DialogTitle>
-                <p className="text-sm text-white/50 mt-0.5">{editingProduct ? "Update product details in inventory" : "Fill in all required fields to add a product to inventory"}</p>
+                <DialogTitle className="text-lg font-bold text-white tracking-tight sm:text-xl">{editingProduct ? "Edit Product" : "Add New Product"}</DialogTitle>
+                <p className="text-xs text-white/50 mt-0.5 sm:text-sm">{editingProduct ? "Update product details in inventory" : "Fill in all required fields to add a product to inventory"}</p>
               </div>
               <button onClick={() => setIsAddProductOpen(false)}
                 className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-white/50 hover:text-white transition-all">
@@ -1273,13 +1354,13 @@ export function Inventory() {
           </div>
 
           {/* Body */}
-          <div className="overflow-y-auto max-h-[calc(95vh-200px)] px-7 py-6 bg-[#fafaf8] space-y-5">
+          <div className="overflow-y-auto max-h-[calc(95dvh-200px)] px-4 py-5 sm:px-7 sm:py-6 bg-[#fafaf8] space-y-5">
 
             {/* Section: Identity */}
             <div>
               <p className="text-[11px] font-bold uppercase tracking-widest text-[#d4af37] mb-3">Product Identity</p>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="col-span-2 space-y-1.5">
+              <div className="form-grid-2 gap-4">
+                <div className="sm:col-span-2 space-y-1.5">
                   <label className="text-[12px] font-semibold text-[#333]">Product Name <span className="text-red-500">*</span></label>
                   <input value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })}
                     placeholder="e.g. L'Oreal Professional Shampoo"
@@ -1308,7 +1389,7 @@ export function Inventory() {
             {/* Section: Classification */}
             <div>
               <p className="text-[11px] font-bold uppercase tracking-widest text-[#d4af37] mb-3">Classification</p>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="form-grid-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[12px] font-semibold text-[#333]">Category <span className="text-red-500">*</span></label>
                   <Select value={newProduct.categoryId} onValueChange={v => setNewProduct({ ...newProduct, categoryId: v })}>
@@ -1341,7 +1422,7 @@ export function Inventory() {
             {/* Section: Stock */}
             <div>
               <p className="text-[11px] font-bold uppercase tracking-widest text-[#d4af37] mb-3">Stock Levels</p>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="form-grid-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[12px] font-semibold text-[#333]">Current Stock {!editingProduct && <span className="text-red-500">*</span>}</label>
                   <div className="relative">
@@ -1373,7 +1454,7 @@ export function Inventory() {
             {/* Section: Pricing */}
             <div>
               <p className="text-[11px] font-bold uppercase tracking-widest text-[#d4af37] mb-3">Pricing</p>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="form-grid-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[12px] font-semibold text-[#333]">Selling Price <span className="text-red-500">*</span></label>
                   <div className="relative">
@@ -1404,15 +1485,15 @@ export function Inventory() {
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between gap-3 px-7 py-4 bg-white border-t border-gray-100">
-            <p className="text-[11px] text-gray-400"><span className="text-red-400">*</span> Required fields</p>
-            <div className="flex gap-2.5">
+          <div className="inventory-dialog-footer px-4 py-4 sm:px-7 bg-white border-t border-gray-100">
+            <p className="text-[11px] text-gray-400 text-center sm:text-left"><span className="text-red-400">*</span> Required fields</p>
+            <div className="inventory-dialog-footer-actions">
               <button onClick={() => setIsAddProductOpen(false)}
                 className="h-10 px-5 rounded-xl border border-gray-200 text-[13px] font-semibold text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all">
                 Cancel
               </button>
               <button onClick={() => void handleSaveProduct()} disabled={saving}
-                className="h-10 px-6 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b8962e] text-[13px] font-bold text-black hover:from-[#c9a42e] hover:to-[#a8862a] shadow-[0_2px_12px_rgba(212,175,55,0.35)] hover:shadow-[0_4px_16px_rgba(212,175,55,0.45)] transition-all flex items-center gap-2">
+                className="h-10 px-6 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b8962e] text-[13px] font-bold text-black hover:from-[#c9a42e] hover:to-[#a8862a] shadow-[0_2px_12px_rgba(212,175,55,0.35)] hover:shadow-[0_4px_16px_rgba(212,175,55,0.45)] transition-all flex items-center justify-center gap-2">
                 <Plus className="h-4 w-4" /> {saving ? "Saving…" : editingProduct ? "Save Changes" : "Add Product"}
               </button>
             </div>
@@ -1724,6 +1805,9 @@ export function Inventory() {
                   {vendors.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {vendors.length === 0 && (
+                <p className="text-[11px] text-amber-700">No vendors loaded — add one under the Vendors tab or click Refresh.</p>
+              )}
               {formErrors.vendorId && <p className="text-[11px] text-red-500 mt-1">{formErrors.vendorId}</p>}
             </div>
 
@@ -1734,9 +1818,15 @@ export function Inventory() {
                   <SelectValue placeholder="Select product" />
                 </SelectTrigger>
                 <SelectContent>
-                  {products
-                    .filter((p) => !poForm.vendorId || p.vendorId === poForm.vendorId)
-                    .map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                  {products.length === 0 ? (
+                    <SelectItem value="__none__" disabled>No products — add a product first</SelectItem>
+                  ) : (
+                    products.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}{p.supplier ? ` · ${p.supplier}` : ""}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
               {formErrors.productId && <p className="text-[11px] text-red-500 mt-1">{formErrors.productId}</p>}
@@ -1836,8 +1926,11 @@ export function Inventory() {
                   <p className="text-[20px] font-black text-[#111118]">{selectedPO.total}</p>
                 </div>
                 <div className="p-4 rounded-xl bg-white border border-gray-200 text-center">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Items</p>
-                  <p className="text-[20px] font-black text-[#111118]">{selectedPO.items}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Qty Ordered</p>
+                  <p className="text-[20px] font-black text-[#111118]">{selectedPO.totalQuantity}</p>
+                  {selectedPO.lineCount > 1 && (
+                    <p className="text-[10px] text-gray-500 mt-0.5">{selectedPO.lineCount} product lines</p>
+                  )}
                 </div>
               </div>
 
@@ -1849,7 +1942,11 @@ export function Inventory() {
                     { label: "Order ID", value: selectedPO.id, mono: true },
                     { label: "Supplier", value: selectedPO.supplier },
                     { label: "Date", value: selectedPO.date },
-                    { label: "Items Ordered", value: String(selectedPO.items) },
+                    {
+                      label: "Qty Ordered",
+                      value: `${selectedPO.totalQuantity} unit${selectedPO.totalQuantity !== 1 ? "s" : ""}${selectedPO.lineCount > 1 ? ` (${selectedPO.lineCount} products)` : ""}`,
+                    },
+                    ...(selectedPO.isVendorBill ? [{ label: "Type", value: "Vendor Bill" }] : []),
                   ].map(({ label, value, mono }) => (
                     <div key={label} className="flex items-center justify-between px-4 py-2.5">
                       <span className="text-[12px] text-gray-500">{label}</span>
@@ -1858,6 +1955,27 @@ export function Inventory() {
                   ))}
                 </div>
               </div>
+
+              {/* Line items */}
+              {selectedPO.raw.items.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#b8962e] mb-3">Products</p>
+                  <div className="rounded-xl bg-white border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+                    {selectedPO.raw.items.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[12px] font-semibold text-[#111118] truncate">{item.productName}</p>
+                          <p className="text-[10px] text-gray-500 font-mono mt-0.5">{item.sku}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-[12px] font-bold text-[#111118]">× {item.quantity}</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5">{formatInr(item.unitCost)} each</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Status timeline */}
               <div>
@@ -1897,7 +2015,7 @@ export function Inventory() {
       </Dialog>
 
       <Dialog open={showCategoryManager} onOpenChange={(open) => { setShowCategoryManager(open); if (!open) resetCategoryForm(); }}>
-        <DialogContent className="sm:max-w-2xl p-0 gap-0 overflow-hidden rounded-2xl [&>button]:hidden">
+        <DialogContent className="w-[min(100%,42rem)] max-w-[calc(100%-1rem)] p-0 gap-0 overflow-hidden rounded-2xl max-sm:dialog-mobile-sheet [&>button]:hidden">
           <div className="bg-[#111118] px-6 py-5 flex items-center justify-between">
             <div>
               <DialogTitle className="text-white text-[15px] font-bold">Manage Categories</DialogTitle>
@@ -1923,7 +2041,7 @@ export function Inventory() {
                 {saving ? "Saving…" : editingCategory ? "Update Category" : "Add Category"}
               </Button>
             </div>
-            <div className="rounded-xl border border-black/[0.07] overflow-hidden">
+            <div className="rounded-xl border border-black/[0.07] overflow-x-auto table-scroll">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-gray-50">
@@ -1964,7 +2082,17 @@ export function Inventory() {
         onImport={handleBulkImport}
         existingProducts={products as ExistingProduct[]}
       />
-      <DirectBillDialog open={directBillOpen} onOpenChange={setDirectBillOpen} />
+      <VendorDirectBillDialog
+        open={directBillOpen}
+        onOpenChange={setDirectBillOpen}
+        vendors={vendors}
+        products={products}
+        onSuccess={(purchase) => {
+          setPurchaseOrders((prev) => [mapStockPurchaseToRow(purchase), ...prev]);
+          void refreshProducts();
+          void loadMeta();
+        }}
+      />
     </div>
   );
 }

@@ -7,7 +7,6 @@ import {
   Plus,
   QrCode,
   Receipt,
-  Search,
   Trash2,
   Wallet,
   X,
@@ -74,22 +73,12 @@ export function Expenses() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<ExpenseFormValues>(emptyForm);
   const [fieldError, setFieldError] = useState<string | undefined>();
-  const [categoryFilter, setCategoryFilter] = useState<"all" | ExpenseCategory>("all");
-  const [sourceFilter, setSourceFilter] = useState<"all" | ExpenseSource>("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "rejected" | "normal">("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const [rows, overview] = await Promise.all([
-        fetchExpenses({
-          from: dateFrom || undefined,
-          to: dateTo || undefined,
-          category: categoryFilter === "all" ? undefined : categoryFilter,
-        }),
+        fetchExpenses(),
         fetchAccountingOverview(todayIsoDate()),
       ]);
       setExpenses(rows);
@@ -99,64 +88,15 @@ export function Expenses() {
     } finally {
       setLoading(false);
     }
-  }, [dateFrom, dateTo, categoryFilter]);
+  }, []);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const filtered = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    return expenses.filter((e) => {
-      if (categoryFilter !== "all" && e.category !== categoryFilter) return false;
-      if (sourceFilter !== "all" && e.source !== sourceFilter) return false;
-      if (statusFilter === "pending" && !e.deleteRequested) return false;
-      if (statusFilter === "rejected" && !e.deleteRejected) return false;
-      if (statusFilter === "normal" && (e.deleteRequested || e.deleteRejected)) return false;
-      if (q) {
-        const parsed = parseExpenseRemarks(e.remarks);
-        const hay = [
-          e.subCategory || e.sub,
-          e.category,
-          e.source,
-          parsed.note,
-          parsed.employeeName,
-        ]
-          .join(" ")
-          .toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [expenses, categoryFilter, sourceFilter, statusFilter, searchQuery]);
-
-  const totalAmount = filtered.reduce((s, e) => s + e.amount, 0);
-  const pagination = useTablePagination(filtered.length, [
-    categoryFilter,
-    sourceFilter,
-    statusFilter,
-    searchQuery,
-    dateFrom,
-    dateTo,
-  ]);
-  const pageRows = useMemo(() => pagination.paginate(filtered), [filtered, pagination]);
-
-  const filtersActive =
-    categoryFilter !== "all" ||
-    sourceFilter !== "all" ||
-    statusFilter !== "all" ||
-    Boolean(searchQuery.trim()) ||
-    Boolean(dateFrom) ||
-    Boolean(dateTo);
-
-  const clearFilters = () => {
-    setCategoryFilter("all");
-    setSourceFilter("all");
-    setStatusFilter("all");
-    setSearchQuery("");
-    setDateFrom("");
-    setDateTo("");
-  };
+  const totalAmount = expenses.reduce((s, e) => s + e.amount, 0);
+  const pagination = useTablePagination(expenses.length);
+  const pageRows = useMemo(() => pagination.paginate(expenses), [expenses, pagination]);
 
   const patchForm = <K extends keyof ExpenseFormValues>(key: K, value: ExpenseFormValues[K]) => {
     setFieldError(undefined);
@@ -326,7 +266,7 @@ export function Expenses() {
       <div className="grid shrink-0 gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-black/[0.07] bg-white p-3 sm:p-4">
           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Entries</p>
-          <p className="mt-1 text-xl font-black text-[#111118] sm:text-2xl">{filtered.length}</p>
+          <p className="mt-1 text-xl font-black text-[#111118] sm:text-2xl">{expenses.length}</p>
         </div>
         <div className="rounded-2xl border border-black/[0.07] bg-white p-3 sm:col-span-2 sm:p-4">
           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Total</p>
@@ -495,148 +435,12 @@ export function Expenses() {
         </div>
       )}
 
-      <div className="shrink-0 space-y-3 rounded-2xl border border-black/[0.07] bg-white p-3 sm:p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-[180px] flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
-            <input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search note, sub category, employee…"
-              className="h-9 w-full rounded-xl border border-black/[0.08] bg-[#FAF8F2]/60 pl-9 pr-8 text-[12px] outline-none focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/12"
-            />
-            {searchQuery ? (
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-[#9a9a9a]"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            ) : null}
-          </div>
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            title="From date"
-            className={cn(
-              "h-9 rounded-xl border px-2 text-[12px] font-semibold outline-none focus:ring-2 focus:ring-[#D4AF37]/15",
-              dateFrom ? "border-[#D4AF37]/50 bg-[#fffbea]" : "border-black/[0.08] bg-[#FAF8F2]/60",
-            )}
-          />
-          <span className="text-[11px] text-[#9a9a9a]">to</span>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            title="To date"
-            className={cn(
-              "h-9 rounded-xl border px-2 text-[12px] font-semibold outline-none focus:ring-2 focus:ring-[#D4AF37]/15",
-              dateTo ? "border-[#D4AF37]/50 bg-[#fffbea]" : "border-black/[0.08] bg-[#FAF8F2]/60",
-            )}
-          />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-            className={cn(
-              "h-9 rounded-xl border px-2 text-[12px] font-semibold outline-none",
-              statusFilter !== "all"
-                ? "border-[#D4AF37]/50 bg-[#fffbea] text-[#9a7a1e]"
-                : "border-black/[0.08] bg-[#FAF8F2]/60 text-[#6b6b6b]",
-            )}
-          >
-            <option value="all">All status</option>
-            <option value="normal">Normal</option>
-            <option value="pending">Pending delete</option>
-            <option value="rejected">Rejected delete</option>
-          </select>
-          {filtersActive ? (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="inline-flex h-9 items-center gap-1 rounded-xl border border-black/[0.08] px-3 text-[12px] font-semibold text-[#6b6b6b] hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-            >
-              <X className="h-3.5 w-3.5" />
-              Clear
-            </button>
-          ) : null}
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setCategoryFilter("all")}
-            className={cn(
-              "h-9 rounded-xl border px-3 text-[12px] font-semibold transition-all",
-              categoryFilter === "all"
-                ? "border-[#111118] bg-[#111118] text-[#D4AF37]"
-                : "border-black/[0.08] bg-white text-[#6b6b6b]",
-            )}
-          >
-            All categories
-          </button>
-          {EXPENSE_CATEGORIES.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setCategoryFilter(c)}
-              className={cn(
-                "h-9 rounded-xl border px-3 text-[12px] font-semibold transition-all",
-                categoryFilter === c
-                  ? "border-[#111118] bg-[#111118] text-[#D4AF37]"
-                  : "border-black/[0.08] bg-white text-[#6b6b6b]",
-              )}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setSourceFilter("all")}
-            className={cn(
-              "h-9 rounded-xl border px-3 text-[12px] font-semibold transition-all",
-              sourceFilter === "all"
-                ? "border-[#111118] bg-[#111118] text-[#D4AF37]"
-                : "border-black/[0.08] bg-white text-[#6b6b6b]",
-            )}
-          >
-            All sources
-          </button>
-          {EXPENSE_SOURCES.map((s) => {
-            const Icon = SOURCE_ICON[s];
-            return (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setSourceFilter(s)}
-                className={cn(
-                  "inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-[12px] font-semibold transition-all",
-                  sourceFilter === s
-                    ? "border-[#111118] bg-[#111118] text-[#D4AF37]"
-                    : "border-black/[0.08] bg-white text-[#6b6b6b]",
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {s}
-              </button>
-            );
-          })}
-          <span className="ml-auto text-[11px] font-semibold text-[#9a9a9a]">
-            {filtered.length} shown · ₹{totalAmount.toLocaleString("en-IN")}
-          </span>
-        </div>
-      </div>
-
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-black/[0.07] bg-white">
         {loading ? (
           <div className="flex items-center justify-center gap-2 py-16 text-[13px] text-[#9a9a9a]">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading expenses…
           </div>
-        ) : filtered.length === 0 ? (
+        ) : expenses.length === 0 ? (
           <div className="py-16 text-center">
             <Receipt className="mx-auto mb-2 h-8 w-8 text-[#D4AF37]/35" />
             <p className="text-[13px] text-[#9a9a9a]">No expenses yet</p>
@@ -761,12 +565,12 @@ export function Expenses() {
             </div>
           </>
         )}
-        {filtered.length > 0 && (
+        {expenses.length > 0 && (
           <div className="shrink-0">
             <Pagination
               page={pagination.page}
               pageSize={pagination.pageSize}
-              totalRecords={filtered.length}
+              totalRecords={expenses.length}
               onPageChange={pagination.setPage}
               onPageSizeChange={pagination.setPageSize}
             />

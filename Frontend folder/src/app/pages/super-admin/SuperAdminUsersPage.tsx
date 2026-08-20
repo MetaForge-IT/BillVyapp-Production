@@ -75,8 +75,12 @@ export function SuperAdminUsersPage() {
   );
 
   const handleCreate = async () => {
-    if (!form.fullName || !form.email || !form.password || !form.franchiseId || !form.salonId) {
-      toast.error("Fill all required fields");
+    if (!form.fullName || !form.email || !form.password || !form.franchiseId) {
+      toast.error("Fill name, email, password, and franchise");
+      return;
+    }
+    if (form.role === "manager" && !form.salonId) {
+      toast.error("Managers must be assigned to a shop");
       return;
     }
     setSaving(true);
@@ -88,7 +92,7 @@ export function SuperAdminUsersPage() {
         password: form.password,
         role: form.role,
         franchiseId: form.franchiseId,
-        salonId: form.salonId,
+        salonId: form.role === "admin" ? form.salonId || null : form.salonId,
       });
       setForm({
         fullName: "",
@@ -100,7 +104,11 @@ export function SuperAdminUsersPage() {
         salonId: "",
       });
       await reload();
-      toast.success("User created");
+      toast.success(
+        form.role === "admin"
+          ? "Franchise admin created — they can add shops from their dashboard"
+          : "User created",
+      );
     } catch (e) {
       toast.error(getApiErrorMessage(e, "Failed to create user"));
     } finally {
@@ -172,8 +180,11 @@ export function SuperAdminUsersPage() {
             value={form.salonId}
             onChange={(e) => setForm((f) => ({ ...f, salonId: e.target.value }))}
             className="h-10 rounded-xl border border-black/[0.08] px-3 text-sm"
+            disabled={form.role === "admin" && shops.length === 0}
           >
-            <option value="">Select shop</option>
+            <option value="">
+              {form.role === "admin" ? "Shop optional (admin creates shops later)" : "Select shop"}
+            </option>
             {shops.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.label}
