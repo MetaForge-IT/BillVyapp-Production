@@ -2,7 +2,6 @@ import bcrypt from "bcrypt";
 import { prisma } from "../../config/prisma";
 import { AppError, ConflictError, ForbiddenError, NotFoundError } from "../../utils/errors";
 import type { AuthContext } from "../auth/auth.types";
-import { seedServiceCatalogForSalon } from "../services/seed-service-catalog";
 import type { CreateManagerInput, CreateShopInput, UpdateShopAddressInput } from "./my-franchise.validators";
 
 async function resolveAdminFranchiseId(auth: AuthContext): Promise<string> {
@@ -149,8 +148,8 @@ export class MyFranchiseService {
       });
     }
 
-    // Bootstrap Starr Kuts service catalog + membership + packages on every new shop.
-    await seedServiceCatalogForSalon(prisma, shop.id, auth.userId);
+    // New shops start with an empty service menu. Catalog is filled by upload/CRUD
+    // and stays salon-scoped (auth.salonId) so it never leaks across franchises/shops.
 
     return {
       id: shop.id,

@@ -4,11 +4,7 @@ import { MessageSquare, Star } from "lucide-react";
 import { DashboardCard, DashboardCardHeader, SectionLabel } from "./DashboardCard";
 import { useDashboard } from "../useDashboard";
 import { cn } from "../../../components/ui/utils";
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 18 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.48, ease: [0.22, 1, 0.36, 1] } },
-};
+import { DASHBOARD_VIEWPORT, dashboardFadeUp } from "../motion";
 
 function StarRow({ rating }: { rating: number }) {
   return (
@@ -37,7 +33,7 @@ export function RecentFeedbackPanel() {
   return (
     <section aria-label="Recent feedback" className="flex h-full flex-col">
       <SectionLabel>Customer Feedback</SectionLabel>
-      <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="min-h-0 flex-1">
+      <motion.div variants={dashboardFadeUp} initial="hidden" whileInView="show" viewport={DASHBOARD_VIEWPORT} className="min-h-0 flex-1">
         <DashboardCard className="h-full">
           <DashboardCardHeader
             icon={MessageSquare}

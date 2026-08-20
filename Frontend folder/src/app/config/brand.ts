@@ -12,6 +12,12 @@ export const BRAND = {
   copyright: `© ${new Date().getFullYear()} BillVyapp. All rights reserved.`,
 } as const;
 
+/**
+ * Public self-serve signup / “Get Started” CTAs.
+ * Keep false while Super Admin creates franchises + admins; flip to true to restore public registration UI.
+ */
+export const SHOW_PUBLIC_SIGNUP = false;
+
 /** Shared copy for printed / on-screen receipts */
 export const RECEIPT_FOOTER = {
   thankYou: "Thank you for your visit!",

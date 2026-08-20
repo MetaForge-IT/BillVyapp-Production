@@ -71,14 +71,33 @@ export const checkoutSchema = billingBaseSchema.extend({
 
 export const collectPaymentSchema = z
   .object({
-    amount: z.number().positive(),
-    paymentMethod: z.enum(PAYMENT_METHODS),
+    /** Single-payment collect (legacy). Prefer `payments` for split cash+UPI. */
+    amount: z.number().positive().optional(),
+    paymentMethod: z.enum(PAYMENT_METHODS).optional(),
     reference: z.string().max(100).optional(),
     planEnrollmentId: z.string().uuid().optional(),
+    /** Multi-payment collect — each row becomes its own Payment record. */
+    payments: z.array(paymentSchema).min(1).optional(),
   })
-  .refine((data) => data.paymentMethod !== "wallet" || !!data.planEnrollmentId, {
-    message: "planEnrollmentId is required for wallet payments",
-    path: ["planEnrollmentId"],
+  .superRefine((data, ctx) => {
+    if (data.payments && data.payments.length > 0) {
+      return;
+    }
+    if (data.amount == null || data.paymentMethod == null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide either payments[] or amount + paymentMethod",
+        path: ["amount"],
+      });
+      return;
+    }
+    if (data.paymentMethod === "wallet" && !data.planEnrollmentId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "planEnrollmentId is required for wallet payments",
+        path: ["planEnrollmentId"],
+      });
+    }
   });
 
 export const requestRefundSchema = z.object({

@@ -17,10 +17,18 @@ function toSlug(name: string) {
     .slice(0, 100);
 }
 
+const emptyForm = {
+  name: "",
+  adminFullName: "",
+  adminEmail: "",
+  adminPhone: "",
+  adminPassword: "",
+};
+
 export function SuperAdminFranchisesPage() {
   const [rows, setRows] = useState<FranchiseSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [name, setName] = useState("");
+  const [form, setForm] = useState(emptyForm);
   const [creating, setCreating] = useState(false);
 
   const reload = async () => {
@@ -40,14 +48,32 @@ export function SuperAdminFranchisesPage() {
     };
   }, []);
 
+  const canSubmit =
+    form.name.trim().length >= 2 &&
+    form.adminFullName.trim().length >= 2 &&
+    form.adminEmail.trim().includes("@") &&
+    form.adminPassword.length >= 6;
+
   const handleCreate = async () => {
-    if (!name.trim()) return;
+    if (!canSubmit) {
+      toast.error("Franchise name plus admin name, email, and password (min 6) are required");
+      return;
+    }
     setCreating(true);
     try {
-      await createFranchise({ name: name.trim(), slug: toSlug(name.trim()) });
-      setName("");
+      await createFranchise({
+        name: form.name.trim(),
+        slug: toSlug(form.name.trim()),
+        admin: {
+          fullName: form.adminFullName.trim(),
+          email: form.adminEmail.trim(),
+          phone: form.adminPhone.trim() || undefined,
+          password: form.adminPassword,
+        },
+      });
+      setForm(emptyForm);
       await reload();
-      toast.success("Franchise created");
+      toast.success("Franchise and admin created — admin can log in and add shops");
     } catch (e) {
       toast.error(getApiErrorMessage(e, "Failed to create franchise"));
     } finally {
@@ -57,28 +83,64 @@ export function SuperAdminFranchisesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D4AF37]">Platform</p>
-          <h1 className="text-2xl font-bold text-[#111118]">Franchises</h1>
-          <p className="text-sm text-[#6b6b6b]">Brands and their shops across India</p>
-        </div>
-        <div className="flex gap-2">
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D4AF37]">Platform</p>
+        <h1 className="text-2xl font-bold text-[#111118]">Franchises</h1>
+        <p className="text-sm text-[#6b6b6b]">
+          Create a brand and its franchise admin together. That admin then adds shops and managers.
+        </p>
+      </div>
+
+      <div className="rounded-2xl border border-black/[0.07] bg-white p-4 shadow-sm">
+        <p className="mb-3 text-[12px] font-bold uppercase tracking-wider text-[#6b6b6b]">
+          New franchise + admin
+        </p>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="New franchise name (e.g. Lakme)"
-            className="h-10 w-64 rounded-xl border border-black/[0.08] bg-white px-3 text-sm outline-none focus:border-[#D4AF37]/50"
+            value={form.name}
+            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            placeholder="Franchise name (e.g. Lakme)"
+            className="h-10 rounded-xl border border-black/[0.08] bg-white px-3 text-sm outline-none focus:border-[#D4AF37]/50"
+          />
+          <input
+            value={form.adminFullName}
+            onChange={(e) => setForm((f) => ({ ...f, adminFullName: e.target.value }))}
+            placeholder="Admin full name"
+            className="h-10 rounded-xl border border-black/[0.08] bg-white px-3 text-sm outline-none focus:border-[#D4AF37]/50"
+          />
+          <input
+            value={form.adminEmail}
+            onChange={(e) => setForm((f) => ({ ...f, adminEmail: e.target.value }))}
+            placeholder="Admin email"
+            type="email"
+            className="h-10 rounded-xl border border-black/[0.08] bg-white px-3 text-sm outline-none focus:border-[#D4AF37]/50"
+          />
+          <input
+            value={form.adminPhone}
+            onChange={(e) => setForm((f) => ({ ...f, adminPhone: e.target.value }))}
+            placeholder="Admin mobile (optional)"
+            className="h-10 rounded-xl border border-black/[0.08] bg-white px-3 text-sm outline-none focus:border-[#D4AF37]/50"
+          />
+          <input
+            value={form.adminPassword}
+            onChange={(e) => setForm((f) => ({ ...f, adminPassword: e.target.value }))}
+            placeholder="Admin temp password"
+            type="password"
+            className="h-10 rounded-xl border border-black/[0.08] bg-white px-3 text-sm outline-none focus:border-[#D4AF37]/50"
           />
           <button
             type="button"
-            disabled={creating || !name.trim()}
+            disabled={creating || !canSubmit}
             onClick={() => void handleCreate()}
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#111118] px-4 text-sm font-semibold text-[#D4AF37] disabled:opacity-50"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#111118] px-4 text-sm font-semibold text-[#D4AF37] disabled:opacity-50"
           >
-            <Plus className="h-4 w-4" /> Create
+            <Plus className="h-4 w-4" /> {creating ? "Creating…" : "Create franchise + admin"}
           </button>
         </div>
+        <p className="mt-3 text-[11px] text-[#9a9a9a]">
+          No shop is created here. After login, the admin uses their dashboard to add shops (empty
+          service menu) and managers for each shop.
+        </p>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-black/[0.07] bg-white shadow-sm">
@@ -109,7 +171,10 @@ export function SuperAdminFranchisesPage() {
             {rows.map((f) => (
               <tr key={f.id} className="border-b border-black/[0.04] hover:bg-[#FAF8F2]/60">
                 <td className="px-4 py-3">
-                  <Link to={`/super-admin/franchises/${f.id}`} className="flex items-center gap-2 font-semibold text-[#111118] hover:text-[#9a7d20]">
+                  <Link
+                    to={`/super-admin/franchises/${f.id}`}
+                    className="flex items-center gap-2 font-semibold text-[#111118] hover:text-[#9a7d20]"
+                  >
                     <Building2 className="h-4 w-4 text-[#D4AF37]" />
                     {f.name}
                   </Link>

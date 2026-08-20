@@ -35,7 +35,6 @@ import { CouponsSection } from "./CouponsSection";
 import { BulkUploadServices, type BulkServiceRow } from "../components/shared/BulkUploadServices";
 import { ServiceProductLinksModal } from "../components/shared/ServiceProductLinksModal";
 import { useServiceProducts } from "../context/ServiceProductsContext";
-import { useRole } from "../context/RoleContext";
 import { Upload } from "lucide-react";
 import { Pagination } from "../components/shared/Pagination";
 import { PageStatCard } from "../components/shared/PageStatCard";
@@ -101,6 +100,35 @@ function resolveCategoryId(categoryLabel: string, categories: ServiceCategory[])
   return null;
 }
 
+/** Resolve existing category or create a new one for any free-text label. */
+async function ensureCategoryId(
+  categoryLabel: string,
+  categories: ServiceCategory[],
+  onCreated: (cat: ServiceCategory) => void,
+): Promise<string> {
+  const existing = resolveCategoryId(categoryLabel, categories);
+  if (existing) return existing;
+
+  const name = categoryLabel.trim();
+  try {
+    const created = await createServiceCategory({
+      name,
+      description: "",
+      status: "active",
+    });
+    onCreated(created);
+    categories.push(created);
+    return created.id;
+  } catch {
+    // Likely already exists (race / case). Refresh list and resolve again.
+    const refreshed = await fetchServiceCategories();
+    categories.splice(0, categories.length, ...refreshed);
+    const again = resolveCategoryId(name, categories);
+    if (again) return again;
+    throw new Error(`Could not resolve category "${name}"`);
+  }
+}
+
 const emptyForm = {
   displayName: "",
   serviceGroup: "",
@@ -114,7 +142,6 @@ const emptyForm = {
 };
 
 export function Services() {
-  const { role } = useRole();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get("tab");
   const [mainTab, setMainTab] = useState(
@@ -280,10 +307,19 @@ export function Services() {
     const total = rows.length;
     onProgress({ current: 0, total });
 
+    // Mutable working list so newly created categories are reused within the same import
+    const workingCategories = [...categories];
+
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      const categoryId = resolveCategoryId(row.category, categories);
-      if (!categoryId) {
+      let categoryId: string;
+      try {
+        categoryId = await ensureCategoryId(row.category, workingCategories, (created) => {
+          setCategories((prev) =>
+            prev.some((c) => c.id === created.id) ? prev : [...prev, created],
+          );
+        });
+      } catch {
         failed += 1;
         onProgress({ current: i + 1, total });
         continue;
@@ -503,33 +539,29 @@ export function Services() {
           <p className="text-muted-foreground mt-1">Manage services, packages, and coupons</p>
         </div>
         <div className="flex gap-2">
-          {role !== "admin" && (
-            <>
-              <Button
-                variant="outline"
-                className="border-[#d4af37]/50 text-[#9a7a1e] hover:bg-[#d4af37]/08 hover:border-[#d4af37]"
-                onClick={() => { resetCategoryForm(); setShowCategoryManager(true); }}
-              >
-                <Tag className="h-4 w-4 mr-2" />
-                Categories
-              </Button>
-              <Button
-                variant="outline"
-                className="border-[#d4af37]/50 text-[#9a7a1e] hover:bg-[#d4af37]/08 hover:border-[#d4af37]"
-                onClick={() => setShowBulkUpload(true)}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Bulk Upload
-              </Button>
-              <Button
-                className="bg-gradient-to-r from-[#111118] to-[#1a1a1a] hover:from-[#1a1a1a] hover:to-[#D4AF37]/80 shadow-lg shadow-[#D4AF37]/20 text-white"
-                onClick={() => setShowAdd(true)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Service
-              </Button>
-            </>
-          )}
+          <Button
+            variant="outline"
+            className="border-[#d4af37]/50 text-[#9a7a1e] hover:bg-[#d4af37]/08 hover:border-[#d4af37]"
+            onClick={() => { resetCategoryForm(); setShowCategoryManager(true); }}
+          >
+            <Tag className="h-4 w-4 mr-2" />
+            Categories
+          </Button>
+          <Button
+            variant="outline"
+            className="border-[#d4af37]/50 text-[#9a7a1e] hover:bg-[#d4af37]/08 hover:border-[#d4af37]"
+            onClick={() => setShowBulkUpload(true)}
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Bulk Upload
+          </Button>
+          <Button
+            className="bg-gradient-to-r from-[#111118] to-[#1a1a1a] hover:from-[#1a1a1a] hover:to-[#D4AF37]/80 shadow-lg shadow-[#D4AF37]/20 text-white"
+            onClick={() => setShowAdd(true)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Service
+          </Button>
         </div>
       </div>
 

@@ -9,6 +9,7 @@ import {
 } from "react";
 import { fetchDashboard, type DashboardData } from "../../../api/dashboard";
 import { getApiErrorMessage } from "../../../lib/api";
+import { useAuthStore } from "../../../stores/authStore";
 
 const REFRESH_INTERVAL_MS = 60_000;
 
@@ -24,6 +25,8 @@ type DashboardContextValue = {
 const DashboardContext = createContext<DashboardContextValue | null>(null);
 
 export function DashboardProvider({ children }: { children: ReactNode }) {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const authReady = useAuthStore((s) => s.isReady);
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -32,6 +35,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const hasLoadedRef = useRef(false);
 
   const refresh = useCallback(async () => {
+    if (!useAuthStore.getState().accessToken) {
+      setLoading(false);
+      return;
+    }
     if (hasLoadedRef.current) setRefreshing(true);
     setError(null);
     try {
@@ -48,12 +55,22 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (!authReady) return;
+
+    if (!accessToken) {
+      setLoading(false);
+      setData(null);
+      setError(null);
+      hasLoadedRef.current = false;
+      return;
+    }
+
     void refresh();
     const intervalId = window.setInterval(() => {
       void refresh();
     }, REFRESH_INTERVAL_MS);
     return () => window.clearInterval(intervalId);
-  }, [refresh]);
+  }, [authReady, accessToken, refresh]);
 
   return (
     <DashboardContext.Provider

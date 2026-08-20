@@ -1,6 +1,7 @@
 /**
  * Upsert the Starr Kuts service catalog (+ membership / packages) onto a salon.
- * Safe to re-run. Used by prisma seed and by admin shop create.
+ * Safe to re-run. Used by prisma seed for demo/default franchise shops only —
+ * live shop create leaves the menu empty until the franchise uploads services.
  */
 import { readFileSync } from "fs";
 import { join } from "path";

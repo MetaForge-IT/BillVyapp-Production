@@ -84,6 +84,10 @@ export function SuperAdminFranchiseDetailPage() {
         <p className="text-sm text-[#6b6b6b]">
           {data.shops.length} shops · {admins.length} admins · {managers.length} managers
         </p>
+        <p className="mt-1 text-[12px] text-[#9a9a9a]">
+          Preferred flow: franchise admin adds shops and managers from their dashboard. Super Admin
+          shop create here is optional.
+        </p>
       </div>
 
       <section className="space-y-3">

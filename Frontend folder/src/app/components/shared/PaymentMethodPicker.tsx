@@ -1,12 +1,12 @@
 import { QRCodeSVG } from "qrcode.react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Banknote,
+  CheckCircle2,
   CreditCard,
   QrCode,
   Wallet,
-  Phone,
-  X,
+  Split,
 } from "lucide-react";
 import { cn } from "../ui/utils";
 import { BRAND } from "../../config/brand";
@@ -17,7 +17,8 @@ export const UPI_VPA = "starrkuts1ms@fbl";  // this is the UPI ID of the merchan
 export const UPI_PAYEE_NAME = "Marchent Name";
 
 export type PayMethod = "cash" | "card" | "upi" | "wallet" | "split";
-export type SplitPayMethod = Exclude<PayMethod, "split">;
+/** Methods allowed inside a split bill (cash + UPI for V1). */
+export type SplitPayMethod = "cash" | "upi" | "card" | "wallet";
 
 export interface SplitRow {
   method: SplitPayMethod;
@@ -34,7 +35,14 @@ export interface PaymentMethodValue {
   walletProvider: string;
   walletRefId: string;
   splitRows: SplitRow[];
+  /** Split bill: manager confirmed customer paid the UPI portion after scanning QR. */
+  splitUpiConfirmed?: boolean;
 }
+
+export const DEFAULT_SPLIT_ROWS: SplitRow[] = [
+  { method: "cash", amount: "", ref: "" },
+  { method: "upi", amount: "", ref: "" },
+];
 
 export const DEFAULT_PAYMENT_METHOD_VALUE: PaymentMethodValue = {
   method: "cash",
@@ -44,10 +52,8 @@ export const DEFAULT_PAYMENT_METHOD_VALUE: PaymentMethodValue = {
   cardRefId: "",
   walletProvider: "Paytm",
   walletRefId: "",
-  splitRows: [
-    { method: "cash", amount: "", ref: "" },
-    { method: "upi", amount: "", ref: "" },
-  ],
+  splitRows: DEFAULT_SPLIT_ROWS.map((r) => ({ ...r })),
+  splitUpiConfirmed: false,
 };
 
 export function createPaymentMethodValue(
@@ -58,6 +64,32 @@ export function createPaymentMethodValue(
     splitRows: DEFAULT_PAYMENT_METHOD_VALUE.splitRows.map((r) => ({ ...r })),
     ...patch,
   };
+}
+
+/** Checkout payment rows for the API — one row per method, or multiple for split. */
+export function buildBillingPayments(
+  value: PaymentMethodValue,
+  amountDue: number,
+): Array<{ paymentMethod: "cash" | "card" | "upi" | "wallet"; amount: number; reference?: string }> {
+  if (amountDue <= 0) {
+    return [{ paymentMethod: "cash", amount: 0 }];
+  }
+  if (value.method === "split") {
+    return value.splitRows
+      .filter((r) => parseFloat(r.amount) > 0)
+      .map((r) => ({
+        paymentMethod: r.method === "upi" ? ("upi" as const) : ("cash" as const),
+        amount: parseFloat(r.amount),
+        reference: r.ref || undefined,
+      }));
+  }
+  return [
+    {
+      paymentMethod: primaryPayMethod(value),
+      amount: amountDue,
+      reference: paymentMethodReference(value),
+    },
+  ];
 }
 
 export function buildUpiUri(amount: number, note: string) {
@@ -82,6 +114,13 @@ export function buildUpiUri(amount: number, note: string) {
 
 function formatCashDue(amountDue: number): string {
   return Number.isInteger(amountDue) ? String(amountDue) : amountDue.toFixed(2);
+}
+
+/** Split bill always has cash first, UPI second. */
+function ensureSplitRows(rows: SplitRow[]): [SplitRow, SplitRow] {
+  const cash = rows.find((r) => r.method === "cash") ?? { method: "cash", amount: "", ref: "" };
+  const upi = rows.find((r) => r.method === "upi") ?? { method: "upi", amount: "", ref: "" };
+  return [cash, upi];
 }
 
 /** Cash received amount — empty field means exact bill total (same as UPI: ready to pay). */
@@ -132,8 +171,14 @@ export function isPaymentMethodValid(value: PaymentMethodValue, amountDue: numbe
     return resolvedCashReceived(value, amountDue) >= amountDue;
   }
   if (value.method === "split") {
-    const total = value.splitRows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-    return Math.abs(total - amountDue) < 1;
+    const [cash, upi] = ensureSplitRows(value.splitRows);
+    const cashAmt = parseFloat(cash.amount) || 0;
+    const upiAmt = parseFloat(upi.amount) || 0;
+    if (cashAmt <= 0 || upiAmt <= 0) return false;
+    const total = cashAmt + upiAmt;
+    if (Math.abs(total - amountDue) >= 1) return false;
+    if (upiAmt > 0 && !value.splitUpiConfirmed) return false;
+    return true;
   }
   return true;
 }
@@ -143,13 +188,13 @@ const METHOD_OPTIONS: { id: PayMethod; label: string; Icon: typeof Banknote }[] 
   { id: "card", label: "Card", Icon: CreditCard },
   { id: "upi", label: "UPI", Icon: QrCode },
   { id: "wallet", label: "Wallet", Icon: Wallet },
-  { id: "split", label: "Split", Icon: Phone },
+  { id: "split", label: "Split", Icon: Split },
 ];
 
 const WALLET_PROVIDERS = ["Paytm", "Amazon Pay", "PhonePe", "Mobikwik"] as const;
 
-/** Methods accepted at checkout — bills are not settled by wallet or split payments. */
-export const BILL_PAY_METHODS: PayMethod[] = ["cash", "card", "upi"];
+/** Checkout bill methods: cash, UPI, or split (cash + UPI). Card removed from V1 billing. */
+export const BILL_PAY_METHODS: PayMethod[] = ["cash", "upi", "split"];
 
 interface PaymentMethodPickerProps {
   amountDue: number;
@@ -199,7 +244,36 @@ export function PaymentMethodPicker({
     onChange({ ...value, ...partial });
   };
 
-  const setSplitRows = (rows: SplitRow[]) => patch({ splitRows: rows });
+  const updateSplitRow = (kind: "cash" | "upi", partial: Partial<SplitRow>) => {
+    const [cash, upi] = ensureSplitRows(value.splitRows);
+    const resetUpiConfirmed = partial.amount !== undefined ? { splitUpiConfirmed: false } : {};
+
+    if (kind === "cash") {
+      const nextCash = { ...cash, ...partial };
+      let nextUpi = upi;
+      if (partial.amount !== undefined) {
+        const typed = parseFloat(partial.amount);
+        if (Number.isFinite(typed) && typed >= 0 && typed <= amountDue) {
+          const remaining = Math.max(0, Math.round((amountDue - typed) * 100) / 100);
+          nextUpi = { ...upi, amount: remaining > 0 ? String(remaining) : "" };
+        }
+      }
+      onChange({ ...value, ...resetUpiConfirmed, splitRows: [nextCash, nextUpi] });
+      return;
+    }
+    const nextUpi = { ...upi, ...partial };
+    let nextCash = cash;
+    if (partial.amount !== undefined) {
+      const typed = parseFloat(partial.amount);
+      if (Number.isFinite(typed) && typed >= 0 && typed <= amountDue) {
+        const remaining = Math.max(0, Math.round((amountDue - typed) * 100) / 100);
+        nextCash = { ...cash, amount: remaining > 0 ? String(remaining) : "" };
+      }
+    }
+    onChange({ ...value, ...resetUpiConfirmed, splitRows: [nextCash, nextUpi] });
+  };
+
+  const [splitUpiQrOpen, setSplitUpiQrOpen] = useState(false);
 
   const prevDueRef = useRef(amountDue);
   const cashFocusedRef = useRef(false);
@@ -235,6 +309,11 @@ export function PaymentMethodPicker({
   const splitTotal = value.splitRows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
   const splitRemaining = amountDue - splitTotal;
 
+  // Close split UPI QR when leaving split mode or UPI amount cleared
+  useEffect(() => {
+    if (value.method !== "split") setSplitUpiQrOpen(false);
+  }, [value.method]);
+
   // Height-filling kicks in from tablet up; phones still scroll.
   const fillsHeight = fluid && value.method === "upi";
 
@@ -268,6 +347,15 @@ export function PaymentMethodPicker({
                   if (id === "cash") {
                     // Fresh cash selection starts at bill total; manager can edit after
                     patch({ method: id, cashReceived: formatCashDue(amountDue) });
+                    return;
+                  }
+                  if (id === "split") {
+                    patch({
+                      method: id,
+                      splitRows: DEFAULT_SPLIT_ROWS.map((r) => ({ ...r })),
+                      splitUpiConfirmed: false,
+                    });
+                    setSplitUpiQrOpen(false);
                     return;
                   }
                   patch({ method: id });
@@ -470,11 +558,52 @@ export function PaymentMethodPicker({
             </div>
           )}
 
-          {value.method === "split" && (
-            <div className="space-y-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-              <div className="mb-1 flex items-center justify-between">
+          {value.method === "split" && (() => {
+            const [cashRow, upiRow] = ensureSplitRows(value.splitRows);
+            const upiAmount = parseFloat(upiRow.amount) || 0;
+            const splitUpiDone = value.splitUpiConfirmed && upiAmount > 0;
+
+            if (splitUpiQrOpen && upiAmount > 0) {
+              return (
+                <div className="flex flex-col gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] font-bold text-[#111118]">Scan UPI — {formatInr(upiAmount)}</p>
+                    <span className="text-[10px] font-semibold text-gray-500">{UPI_VPA}</span>
+                  </div>
+                  <div className="flex items-center justify-center">
+                    <div className="flex h-56 w-56 items-center justify-center rounded-2xl border border-blue-200 bg-white p-4 shadow-sm sm:h-64 sm:w-64">
+                      <QRCodeSVG
+                        value={buildUpiUri(upiAmount, upiNote ?? `${BRAND.appName} payment`)}
+                        size={480}
+                        level="M"
+                        includeMargin={false}
+                        className="h-full w-full"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-center text-[11px] font-medium text-gray-500">
+                    Scan &amp; Pay via GPay / PhonePe / Paytm
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSplitUpiQrOpen(false);
+                      patch({ splitUpiConfirmed: true });
+                    }}
+                    className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#111118] text-[12px] font-bold text-[#D4AF37] shadow-sm transition-colors hover:bg-[#24242c]"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Done — UPI payment received
+                  </button>
+                </div>
+              );
+            }
+
+            return (
+            <div className="space-y-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+              <div className="flex items-center justify-between">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">
-                  Split — {formatInr(amountDue)}
+                  Split (Cash + UPI) — {formatInr(amountDue)}
                 </p>
                 <span
                   className={cn(
@@ -493,71 +622,65 @@ export function PaymentMethodPicker({
                       : `${formatInr(Math.abs(splitRemaining))} over`}
                 </span>
               </div>
-              {value.splitRows.map((row, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <select
-                    value={row.method}
-                    onChange={(e) =>
-                      setSplitRows(
-                        value.splitRows.map((r, j) =>
-                          j === i ? { ...r, method: e.target.value as SplitPayMethod } : r,
-                        ),
-                      )
-                    }
-                    className="h-9 rounded-lg border border-gray-300 bg-white px-2 text-[11px] font-bold text-[#111] outline-none"
-                  >
-                    <option value="cash">Cash</option>
-                    <option value="upi">UPI</option>
-                    <option value="card">Card</option>
-                    <option value="wallet">Wallet</option>
-                  </select>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-9 w-14 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-[11px] font-bold text-[#111]">
+                    Cash
+                  </span>
                   <input
                     type="number"
-                    value={row.amount}
-                    onChange={(e) =>
-                      setSplitRows(
-                        value.splitRows.map((r, j) =>
-                          j === i ? { ...r, amount: e.target.value } : r,
-                        ),
-                      )
-                    }
+                    inputMode="decimal"
+                    min={0}
+                    step="any"
+                    value={cashRow.amount}
+                    onChange={(e) => updateSplitRow("cash", { amount: e.target.value })}
                     placeholder="Amount"
                     className="h-9 w-24 rounded-lg border border-gray-300 bg-white px-3 text-[12px] font-bold text-[#111] outline-none focus:border-[#d4af37]"
                   />
                   <input
-                    value={row.ref}
-                    onChange={(e) =>
-                      setSplitRows(
-                        value.splitRows.map((r, j) =>
-                          j === i ? { ...r, ref: e.target.value } : r,
-                        ),
-                      )
-                    }
+                    value={cashRow.ref}
+                    onChange={(e) => updateSplitRow("cash", { ref: e.target.value })}
                     placeholder="Ref (optional)"
                     className="h-9 flex-1 rounded-lg border border-gray-300 bg-white px-3 text-[11px] text-[#111] outline-none focus:border-[#d4af37]"
                   />
-                  {value.splitRows.length > 2 && (
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="flex h-9 w-14 shrink-0 items-center justify-center rounded-lg border border-blue-300 bg-blue-50 text-[11px] font-bold text-blue-700">
+                    UPI
+                  </span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    step="any"
+                    value={upiRow.amount}
+                    onChange={(e) => updateSplitRow("upi", { amount: e.target.value })}
+                    placeholder="Amount"
+                    className="h-9 w-24 rounded-lg border border-gray-300 bg-white px-3 text-[12px] font-bold text-[#111] outline-none focus:border-[#d4af37]"
+                  />
+                  {splitUpiDone ? (
+                    <span className="flex h-9 flex-1 items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 text-[11px] font-bold text-green-700">
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                      UPI payment done
+                    </span>
+                  ) : (
                     <button
                       type="button"
-                      onClick={() => setSplitRows(value.splitRows.filter((_, j) => j !== i))}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-red-200 text-red-400 hover:bg-red-50"
+                      disabled={upiAmount <= 0}
+                      onClick={() => setSplitUpiQrOpen(true)}
+                      className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-blue-300 bg-white px-3 text-[11px] font-bold text-blue-700 transition-colors hover:border-blue-400 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      <X className="h-3.5 w-3.5" />
+                      <QrCode className="h-3.5 w-3.5 shrink-0" />
+                      Show QR code
                     </button>
                   )}
                 </div>
-              ))}
-              <button
-                type="button"
-                onClick={() =>
-                  setSplitRows([...value.splitRows, { method: "cash", amount: "", ref: "" }])
-                }
-                className="h-8 w-full rounded-lg border-2 border-dashed border-gray-300 text-[11px] font-bold text-gray-400 transition-all hover:border-[#d4af37] hover:text-[#9a7a1e]"
-              >
-                + Add payment row
-              </button>
+              </div>
             </div>
-          )}
+            );
+          })()}
         </div>
       </div>
     </div>

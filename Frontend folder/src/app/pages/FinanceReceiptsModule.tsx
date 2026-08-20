@@ -37,7 +37,9 @@ import { Badge } from "../components/ui/badge";
 import { Dialog, DialogContent } from "../components/ui/dialog";
 import { SegmentedPillNav } from "../components/layout/SegmentedPillNav";
 import {
+  BILL_PAY_METHODS,
   PaymentMethodPicker,
+  buildBillingPayments,
   createPaymentMethodValue,
   primaryPayMethod,
   paymentMethodReference,
@@ -422,11 +424,13 @@ function PendingTab() {
     }
 
     try {
+      const payments = buildBillingPayments(collectPay, amount);
       await collectPayment(
         collectTarget.id,
         amount,
         primaryPayMethod(collectPay),
         paymentMethodReference(collectPay),
+        payments,
       );
       await refreshReceipts();
       toast.success(
@@ -663,6 +667,7 @@ function PendingTab() {
                     amountDue={collectAmountNum > 0 ? collectAmountNum : collectTarget.due}
                     value={collectPay}
                     onChange={setCollectPay}
+                    methods={BILL_PAY_METHODS}
                     amountFieldLabel="Collect Amount"
                     upiNote={`${BRAND.appName} collect — ${collectTarget.customer}`}
                   />

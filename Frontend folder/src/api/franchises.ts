@@ -133,6 +133,12 @@ export async function createFranchise(payload: {
   name: string;
   slug: string;
   isActive?: boolean;
+  admin: {
+    fullName: string;
+    email: string;
+    phone?: string;
+    password: string;
+  };
 }): Promise<FranchiseSummary> {
   const { data } = await apiClient.post<ApiEnvelope<FranchiseSummary>>("/franchises", payload);
   return data.data;
@@ -168,7 +174,8 @@ export async function createPlatformStaff(payload: {
   password: string;
   role: "admin" | "manager";
   franchiseId: string;
-  salonId: string;
+  /** Required for managers; optional for franchise admins. */
+  salonId?: string | null;
 }) {
   const { data } = await apiClient.post("/franchises/staff", payload);
   return data.data;

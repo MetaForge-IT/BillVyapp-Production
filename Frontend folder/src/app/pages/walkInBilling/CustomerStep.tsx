@@ -4,9 +4,10 @@ import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
 import { cn } from "../../components/ui/utils";
 import { formatDisplayPhone } from "../../../lib/phone";
+import type { Customer } from "../../../api/customers";
 import { ColHeader } from "./ColHeader";
 import type { CustomerGender, LookupStatus } from "./types";
-import { digitsOnly } from "./utils";
+import { digitsOnly, last10 } from "./utils";
 
 interface CustomerStepProps {
   servicesValid: boolean;
@@ -14,6 +15,9 @@ interface CustomerStepProps {
   onPhoneChange: (digits: string) => void;
   phoneError?: string | null;
   lookupStatus: LookupStatus;
+  phoneMatches: Customer[];
+  onSelectMatch: (customer: Customer) => void;
+  isPhoneDebouncing?: boolean;
   customerName: string;
   onCustomerNameChange: (name: string) => void;
   customerGender: CustomerGender;
@@ -29,6 +33,9 @@ export function CustomerStep({
   onPhoneChange,
   phoneError,
   lookupStatus,
+  phoneMatches,
+  onSelectMatch,
+  isPhoneDebouncing = false,
   customerName,
   onCustomerNameChange,
   customerGender,
@@ -37,6 +44,13 @@ export function CustomerStep({
   stylistName,
   onStylistNameChange,
 }: CustomerStepProps) {
+  const showSuggestions =
+    lookupStatus !== "found" &&
+    lookupStatus !== "new" &&
+    phoneDigits.length >= 4 &&
+    phoneDigits.length < 10 &&
+    phoneMatches.length > 0;
+
   return (
     <div
       className={cn(
@@ -49,7 +63,7 @@ export function CustomerStep({
           <p className="text-[12px] font-bold text-[#111118]/30">Select services first</p>
         </div>
       )}
-      <ColHeader num="02" icon={User} title="Customer" desc="Lookup by mobile number" />
+      <ColHeader num="02" icon={User} title="Customer" desc="Lookup by mobile — searches after you pause" />
       <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
         <div>
           <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[#9a9a9a]">
@@ -66,22 +80,53 @@ export function CustomerStep({
                 maxLength={10}
                 value={phoneDigits}
                 onChange={(e) => onPhoneChange(digitsOnly(e.target.value).slice(0, 10))}
-                placeholder="98765 43210"
+                placeholder="Type mobile number…"
                 aria-invalid={Boolean(phoneError)}
+                autoComplete="off"
                 className={cn(
                   "h-11 rounded-xl border-black/[0.08] bg-white pl-9 text-[13px] focus:border-[#D4AF37]/40",
                   phoneError && "border-red-400 focus:border-red-400",
                 )}
               />
+              {showSuggestions && (
+                <div className="absolute inset-x-0 top-full z-30 mt-1 max-h-48 overflow-y-auto rounded-xl border border-black/[0.08] bg-white py-1 shadow-lg">
+                  {phoneMatches.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => onSelectMatch(c)}
+                      className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-[#FFFBEB]"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-[12.5px] font-semibold text-[#111118]">
+                          {c.name}
+                        </span>
+                        <span className="block text-[11px] text-[#9a9a9a]">
+                          {formatDisplayPhone(last10(c.phone))}
+                        </span>
+                      </span>
+                      <Badge className="shrink-0 border border-[#D4AF37]/25 bg-[#D4AF37]/10 text-[9px] font-bold text-[#9a7a1e]">
+                        {c.membershipTier || "Regular"}
+                      </Badge>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           {phoneError && (
             <p className="mt-2 text-[11px] font-medium text-red-500">{phoneError}</p>
           )}
-          {!phoneError && lookupStatus === "loading" && (
+          {!phoneError && (lookupStatus === "loading" || isPhoneDebouncing) && phoneDigits.length >= 4 && (
             <p className="mt-2 flex items-center gap-1.5 text-[11px] text-[#9a9a9a]">
-              <Loader2 className="h-3 w-3 animate-spin" /> Checking customer…
+              <Loader2 className="h-3 w-3 animate-spin" /> Searching customers…
             </p>
+          )}
+          {!phoneError && !isPhoneDebouncing && lookupStatus === "idle" && phoneDigits.length > 0 && phoneDigits.length < 4 && (
+            <p className="mt-2 text-[11px] text-[#9a9a9a]">Enter at least 4 digits to search</p>
+          )}
+          {!phoneError && !isPhoneDebouncing && lookupStatus === "idle" && phoneDigits.length >= 4 && phoneDigits.length < 10 && phoneMatches.length === 0 && (
+            <p className="mt-2 text-[11px] text-[#9a9a9a]">No match yet — keep typing the full number</p>
           )}
           {!phoneError && lookupStatus === "found" && (
             <p className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-[#9a7a1e]">

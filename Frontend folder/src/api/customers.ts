@@ -57,6 +57,14 @@ export async function lookupCustomerByPhone(phone: string): Promise<Customer | n
   return data.data;
 }
 
+/** Debounced typeahead — customers whose phone ends with the typed digits (min 4). */
+export async function searchCustomersByPhone(phone: string): Promise<Customer[]> {
+  const { data } = await apiClient.get<ApiEnvelope<Customer[]>>("/customers/search", {
+    params: { phone },
+  });
+  return data.data ?? [];
+}
+
 export async function createCustomer(payload: CreateCustomerPayload): Promise<Customer> {
   const { data } = await apiClient.post<ApiEnvelope<Customer>>("/customers", payload);
   return data.data;

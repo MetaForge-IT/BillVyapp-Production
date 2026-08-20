@@ -88,15 +88,16 @@ export class CustomersRepository {
     return mapCustomer(customer);
   }
 
-  /** Find by normalized phone — returns null when no match (no 404). */
+  /**
+   * Exact phone lookup (10+ digits). Returns null when no match (no 404).
+   */
   async lookupByPhone(salonId: string, phone: string) {
-    const phoneNormalized = normalizePhone(phone);
-    if (phoneNormalized.replace(/\D/g, "").length < 10) return null;
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 10) return null;
 
-    const digits = phoneNormalized.replace(/\D/g, "");
     const last10 = digits.slice(-10);
     const variants = Array.from(
-      new Set([phoneNormalized, digits, last10, `91${last10}`, `+91${last10}`].filter(Boolean)),
+      new Set([last10, `91${last10}`, `+91${last10}`, digits].filter(Boolean)),
     );
 
     const customer = await prisma.customer.findFirst({
@@ -115,6 +116,40 @@ export class CustomersRepository {
       },
     });
     return customer ? mapCustomer(customer) : null;
+  }
+
+  /** Typeahead: match as the manager types from the start (or last digits). Min 4 digits. */
+  async searchByPhone(salonId: string, phone: string, limit = 8) {
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 4) return [];
+
+    const query = digits.slice(-10);
+    // Stored form is usually 91XXXXXXXXXX — prefix search as user types the 10-digit mobile
+    const withCountryPrefix = `91${query}`;
+
+    const customers = await prisma.customer.findMany({
+      where: {
+        salonId,
+        deletedAt: null,
+        OR: [
+          { phoneNormalized: { startsWith: withCountryPrefix } },
+          { phoneNormalized: { startsWith: query } },
+          { phoneNormalized: { contains: query } },
+          { phoneNormalized: { endsWith: query } },
+          { phone: { contains: query } },
+          { phone: { startsWith: query } },
+          { phone: { endsWith: query } },
+        ],
+      },
+      take: limit,
+      orderBy: { updatedAt: "desc" },
+      include: {
+        currentTier: true,
+        preferences: { include: { favoriteService: { select: { name: true } } } },
+      },
+    });
+
+    return customers.map(mapCustomer);
   }
 
   async create(auth: AuthContext, input: CreateCustomerInput) {

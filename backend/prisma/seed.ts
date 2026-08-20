@@ -1,29 +1,55 @@
 /**
- * Production-safe seed — franchise + platform/franchise admin login accounts +
- * service catalog on every existing franchise shop.
+ * Dev/local seed — franchise + login accounts + Starr Kuts catalog on existing shops.
  *
- * Safe to re-run (upserts by unique keys).
+ * BLOCKED on production/EC2 by default. Accidental `npm run prisma:seed` will exit
+ * without writing anything unless you explicitly set:
+ *   ALLOW_PROD_SEED=true
  *
- * No shops are seeded — franchise admins create shops (and managers) in the app.
- * When a shop already exists (or is created later), the full Starr Kuts service
- * catalog / membership / packages are applied.
+ * Safe to re-run locally (upserts by unique keys).
  *
- * Production login accounts (always upserted):
+ * Production login accounts (upserted when seed is allowed):
  *   Super Admin → superadmin@metaforgeit.com / Metaforge Super Admin / meta@12#IT / 9849154456
  *   Admin       → srinivas@starrkuts.com     / Srinivas Varma       / sri@91#Ad  / 8341539999
- *   Admin       → devteam@metaforgeit.com    / Dev Team             / dev@1234   / 9644925737
+ *   Admin       → harish@starrkuts.com       / harish               / Harish@123 / 8374789348
+ *   Manager     → devteam@metaforgeit.com    / Dev Team             / dev@1234   / 9644925737
  *
  * Run with: npm run prisma:seed
  */
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { seedServiceCatalogForSalon } from "../src/modules/services/seed-service-catalog";
 
 const prisma = new PrismaClient();
 
+function assertSeedAllowed(): void {
+  const nodeEnv = (process.env.NODE_ENV ?? "").toLowerCase();
+  const isProd = nodeEnv === "production";
+  const allow = (process.env.ALLOW_PROD_SEED ?? "").toLowerCase() === "true";
+
+  if (isProd && !allow) {
+    console.error(
+      [
+        "Refusing to run seed: NODE_ENV=production.",
+        "No database changes were made.",
+        "This protects EC2/production from accidental seed runs.",
+        "Only if you intentionally need a one-off prod seed, re-run with:",
+        "  ALLOW_PROD_SEED=true npm run prisma:seed",
+      ].join("\n"),
+    );
+    process.exit(1);
+  }
+
+  if (isProd && allow) {
+    console.warn(
+      "ALLOW_PROD_SEED=true — running seed against production. Proceeding with upserts only.",
+    );
+  }
+}
+
 const FRANCHISE_SLUG = "starr-kuts";
 
-/** Franchise admins — no salon until they create a shop in the app. */
+/** Franchise staff — no salon until they create/link a shop in the app. */
 const FRANCHISE_ADMIN_ACCOUNTS = [
   {
     role: "admin" as const,
@@ -34,6 +60,13 @@ const FRANCHISE_ADMIN_ACCOUNTS = [
   },
   {
     role: "admin" as const,
+    email: "harish@starrkuts.com",
+    fullName: "harish",
+    password: "Harish@123",
+    phone: "8374789348",
+  },
+  {
+    role: "manager" as const,
     email: "devteam@metaforgeit.com",
     fullName: "Dev Team",
     password: "dev@1234",
@@ -52,11 +85,12 @@ export const SUPER_ADMIN_LOGIN_EMAIL = SUPER_ADMIN.email;
 export const ADMIN_LOGIN_EMAIL = "srinivas@starrkuts.com";
 export const DEV_TEAM_LOGIN_EMAIL = "devteam@metaforgeit.com";
 
-async function upsertFranchiseAdmin(params: {
+async function upsertFranchiseUser(params: {
   franchiseId: string;
   email: string;
   password: string;
   fullName: string;
+  role: "admin" | "manager";
   phone?: string;
 }) {
   const passwordHash = await bcrypt.hash(params.password, 10);
@@ -74,7 +108,7 @@ async function upsertFranchiseAdmin(params: {
         email: params.email,
         passwordHash,
         fullName: params.fullName,
-        role: "admin",
+        role: params.role,
         phone: params.phone,
         emailVerifiedAt: new Date(),
         isActive: true,
@@ -89,7 +123,7 @@ async function upsertFranchiseAdmin(params: {
       email: params.email,
       passwordHash,
       fullName: params.fullName,
-      role: "admin",
+      role: params.role,
       phone: params.phone,
       emailVerifiedAt: new Date(),
       isActive: true,
@@ -135,6 +169,8 @@ async function upsertSuperAdmin() {
 }
 
 async function main() {
+  assertSeedAllowed();
+
   // ── Franchise (brand only — no shops) ───────────────────────────────────
   const franchise = await prisma.franchise.upsert({
     where: { slug: FRANCHISE_SLUG },
@@ -149,14 +185,15 @@ async function main() {
   // ── Super Admin (platform) ──────────────────────────────────────────────
   await upsertSuperAdmin();
 
-  // ── Franchise admins (Srinivas + Dev Team) ───────────────────────────────
+  // ── Franchise users (admins + managers) ─────────────────────────────────
   let catalogOwnerId: string | null = null;
   for (const account of FRANCHISE_ADMIN_ACCOUNTS) {
-    const user = await upsertFranchiseAdmin({
+    const user = await upsertFranchiseUser({
       franchiseId: franchise.id,
       email: account.email,
       password: account.password,
       fullName: account.fullName,
+      role: account.role,
       phone: account.phone,
     });
     if (account.email === ADMIN_LOGIN_EMAIL) {
@@ -177,11 +214,32 @@ async function main() {
   const shops = await prisma.salon.findMany({
     where: { franchiseId: franchise.id },
     select: { id: true, name: true, city: true },
+    orderBy: { createdAt: "asc" },
   });
+
+  // Franchise admins/managers with no salonId get linked to the first shop so
+  // Services / settings APIs are not scoped to an empty salon_id.
+  if (shops.length > 0) {
+    const primaryShopId = shops[0].id;
+    const linked = await prisma.user.updateMany({
+      where: {
+        franchiseId: franchise.id,
+        role: { in: ["admin", "manager"] },
+        salonId: null,
+        isActive: true,
+      },
+      data: { salonId: primaryShopId },
+    });
+    if (linked.count > 0) {
+      console.log(
+        `Linked ${linked.count} franchise user(s) to primary shop "${shops[0].name}" (${primaryShopId})`,
+      );
+    }
+  }
 
   if (shops.length === 0) {
     console.log(
-      "No shops under franchise yet — catalog will be applied automatically when an admin creates a shop.",
+      "No shops under franchise yet — catalog will be applied when you re-seed after a shop exists (or upload services).",
     );
   } else {
     for (const shop of shops) {

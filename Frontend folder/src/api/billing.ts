@@ -97,7 +97,16 @@ export async function fetchInvoices(): Promise<InvoiceResponse[]> {
 
 export async function collectInvoicePayment(
   invoiceId: string,
-  payload: { amount: number; paymentMethod: PaymentMethod; reference?: string },
+  payload:
+    | { amount: number; paymentMethod: PaymentMethod; reference?: string; planEnrollmentId?: string }
+    | {
+        payments: Array<{
+          paymentMethod: PaymentMethod;
+          amount: number;
+          reference?: string;
+          planEnrollmentId?: string;
+        }>;
+      },
 ): Promise<InvoiceResponse> {
   const { data } = await apiClient.post<ApiEnvelope<InvoiceResponse>>(
     `/billing/${invoiceId}/collect`,

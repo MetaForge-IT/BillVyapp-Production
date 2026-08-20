@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Loader2, Plus, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useRole } from "../../../context/RoleContext";
+import { DASHBOARD_DURATION, DASHBOARD_EASE } from "../motion";
 import { useDashboard } from "../useDashboard";
 
 export function DashboardHeader() {
@@ -28,7 +29,7 @@ export function DashboardHeader() {
     <motion.header
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: DASHBOARD_DURATION, ease: DASHBOARD_EASE }}
       className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
     >
       <div className="min-w-0">

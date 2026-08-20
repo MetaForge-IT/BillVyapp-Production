@@ -31,9 +31,18 @@ export const authenticate: RequestHandler = asyncHandler(
       });
     }
 
+    let salonId = user.salonId ?? "";
+
+    // Franchise staff with no shop link yet: use the franchise's first shop and persist.
+    // Avoids empty salon_id FK failures on services/categories/settings.
+    if (!salonId && user.franchiseId && user.role !== "super_admin") {
+      const resolved = await authRepository.resolvePrimarySalonId(user.id, user.franchiseId);
+      if (resolved) salonId = resolved;
+    }
+
     (req as AuthenticatedRequest).auth = {
       userId: user.id,
-      salonId: user.salonId ?? "",
+      salonId,
       franchiseId: user.franchiseId,
       role: user.role,
     };

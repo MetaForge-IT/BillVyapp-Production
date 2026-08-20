@@ -3,11 +3,7 @@ import { Link, useNavigate } from "react-router";
 import { Clock, ArrowUpRight, UserPlus } from "lucide-react";
 import { DashboardCard, DashboardCardHeader, SectionLabel } from "./DashboardCard";
 import { useDashboard } from "../useDashboard";
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 18 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.48, ease: [0.22, 1, 0.36, 1] } },
-};
+import { DASHBOARD_VIEWPORT, dashboardFadeUp } from "../motion";
 
 /** Walk-in summary — right panel below main dashboard KPIs / insights. */
 export function WalkInPanel() {
@@ -19,7 +15,7 @@ export function WalkInPanel() {
   return (
     <section aria-label="Walk-in customers" className="flex flex-col">
       <SectionLabel>Walk-ins Today</SectionLabel>
-      <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}>
+      <motion.div variants={dashboardFadeUp} initial="hidden" whileInView="show" viewport={DASHBOARD_VIEWPORT}>
         <DashboardCard>
           <DashboardCardHeader
             icon={Clock}

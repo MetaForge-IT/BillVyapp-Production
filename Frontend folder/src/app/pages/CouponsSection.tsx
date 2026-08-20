@@ -13,7 +13,6 @@ import {
   Tag, Plus, Pencil, Trash2, Search, Send, Copy, Percent, IndianRupee, Users, Ticket,
 } from "lucide-react";
 import { useCoupons, type Coupon, type CouponType, type CouponStatus } from "../context/CouponsContext";
-import { useRole } from "../context/RoleContext";
 import { sendCouponWhatsApp } from "../../api/messaging";
 import { getApiErrorMessage } from "../../lib/api";
 import { toast } from "../components/ui/hot-toast";
@@ -49,7 +48,6 @@ function statusBadge(status: CouponStatus, validTill: string) {
 }
 
 export function CouponsSection() {
-  const { role } = useRole();
   const { coupons, addCoupon, updateCoupon, deleteCoupon } = useCoupons();
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
@@ -158,18 +156,16 @@ export function CouponsSection() {
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#D4AF37]">Promotions & Discounts</p>
           <p className="text-[13px] text-[#9a9a9a]">Create, manage, and send discount coupons to customers</p>
         </div>
-        {role !== "admin" && (
-          <Button
-            className="h-9 rounded-xl bg-[#111118] text-[#D4AF37] hover:bg-[#1a1a1a] shadow-sm"
-            onClick={() => {
-              generateCode();
-              setShowAdd(true);
-            }}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Create Coupon
-          </Button>
-        )}
+        <Button
+          className="h-9 rounded-xl bg-[#111118] text-[#D4AF37] hover:bg-[#1a1a1a] shadow-sm"
+          onClick={() => {
+            generateCode();
+            setShowAdd(true);
+          }}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Create Coupon
+        </Button>
       </div>
 
       {/* Stats */}

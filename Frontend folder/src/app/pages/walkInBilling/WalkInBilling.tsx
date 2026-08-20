@@ -9,17 +9,16 @@ import { useAppointments } from "../../context/AppointmentContext";
 import { useSettings } from "../../context/SettingsContext";
 import { useCoupons } from "../../context/CouponsContext";
 import { fetchServiceCatalog } from "../../../api/services";
-import { createCustomer, lookupCustomerByPhone, type Customer } from "../../../api/customers";
+import { createCustomer, searchCustomersByPhone, type Customer } from "../../../api/customers";
 import { completeCheckout, confirmOnlyCheckout } from "../../../api/billing";
 import { mapApiCatalog, mapToAppointmentService } from "../../../lib/serviceCatalog";
 import { getApiErrorMessage } from "../../../lib/api";
 import { toLocalDateKey } from "../../../lib/appointmentSlotDate";
 import {
+  buildBillingPayments,
   createPaymentMethodValue,
   isPaymentMethodValid,
   paymentMethodLabel,
-  paymentMethodReference,
-  primaryPayMethod,
   type PaymentMethodValue,
 } from "../../components/shared/PaymentMethodPicker";
 import { triggerConfetti } from "../../components/ui/success-animation";
@@ -55,7 +54,9 @@ export function WalkInBilling() {
   const [selectedServices, setSelectedServices] = useState<SelectedService[]>([]);
 
   const [phoneDigits, setPhoneDigits] = useState("");
+  const [debouncedPhone, setDebouncedPhone] = useState("");
   const [lookupStatus, setLookupStatus] = useState<LookupStatus>("idle");
+  const [phoneMatches, setPhoneMatches] = useState<Customer[]>([]);
   const [customerId, setCustomerId] = useState<string | undefined>();
   const [customerName, setCustomerName] = useState("");
   const [customerGender, setCustomerGender] = useState<CustomerGender>("");
@@ -144,57 +145,91 @@ export function WalkInBilling() {
     return { ready: true as const, error: null as string | null, phone: result.phone };
   }, [phoneDigits]);
 
+  // Debounce phone input — search after manager stops typing (~450ms)
   useEffect(() => {
-    if (!phoneValidation.ready) {
+    const timer = window.setTimeout(() => {
+      setDebouncedPhone(last10(phoneDigits));
+    }, 450);
+    return () => window.clearTimeout(timer);
+  }, [phoneDigits]);
+
+  const applyFoundCustomer = useCallback((found: Customer) => {
+    setCustomerId(found.id);
+    setCustomerName(found.name);
+    setCustomerTier(mapTier(found.membershipTier));
+    setLoyaltyAvailable(found.loyaltyPoints ?? 0);
+    setLoyaltyRedeem(0);
+    const g =
+      found.gender === "male" ? "Male" : found.gender === "female" ? "Female" : "Other";
+    setCustomerGender(g);
+    const phone = last10(found.phone);
+    if (phone) setPhoneDigits(phone);
+    setPhoneMatches([]);
+    setLookupStatus("found");
+  }, []);
+
+  const clearFoundCustomer = useCallback(() => {
+    setCustomerId(undefined);
+    setCustomerName("");
+    setCustomerGender("");
+    setCustomerTier("Regular");
+    setLoyaltyAvailable(0);
+    setLoyaltyRedeem(0);
+  }, []);
+
+  useEffect(() => {
+    const digits = debouncedPhone;
+    if (digits.length < 4) {
       setLookupStatus("idle");
-      setCustomerId(undefined);
-      setLoyaltyAvailable(0);
-      setLoyaltyRedeem(0);
+      setPhoneMatches([]);
+      clearFoundCustomer();
       return;
     }
 
-    const phone = phoneValidation.phone;
     let cancelled = false;
     setLookupStatus("loading");
-    setCustomerId(undefined);
-    const timer = window.setTimeout(() => {
-      void lookupCustomerByPhone(phone)
-        .then((found: Customer | null) => {
-          if (cancelled) return;
-          if (found) {
-            setCustomerId(found.id);
-            setCustomerName(found.name);
-            setCustomerTier(mapTier(found.membershipTier));
-            setLoyaltyAvailable(found.loyaltyPoints ?? 0);
-            setLoyaltyRedeem(0);
-            const g =
-              found.gender === "male" ? "Male" : found.gender === "female" ? "Female" : "Other";
-            setCustomerGender(g);
-            setLookupStatus("found");
-          } else {
-            setCustomerId(undefined);
-            setCustomerName("");
-            setCustomerGender("");
-            setCustomerTier("Regular");
-            setLoyaltyAvailable(0);
-            setLoyaltyRedeem(0);
-            setLookupStatus("new");
+
+    void searchCustomersByPhone(digits)
+      .then((matches) => {
+        if (cancelled) return;
+        setPhoneMatches(matches);
+
+        if (digits.length >= 10) {
+          const exact =
+            matches.find((c) => last10(c.phone) === digits) ??
+            (matches.length === 1 ? matches[0] : undefined);
+          if (exact) {
+            applyFoundCustomer(exact);
+            return;
           }
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setCustomerId(undefined);
-            setLookupStatus("new");
-          }
-        });
-    }, 400);
+          clearFoundCustomer();
+          setLookupStatus("new");
+          setPhoneMatches([]);
+          return;
+        }
+
+        // Partial digits — keep suggestion list visible for the manager to pick
+        setLookupStatus("idle");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPhoneMatches([]);
+        if (digits.length >= 10) {
+          clearFoundCustomer();
+          setLookupStatus("new");
+        } else {
+          setLookupStatus("idle");
+        }
+      });
 
     return () => {
       cancelled = true;
-      window.clearTimeout(timer);
     };
-  }, [phoneValidation.ready, phoneValidation.phone]);
+  }, [debouncedPhone, applyFoundCustomer, clearFoundCustomer]);
 
+  const selectPhoneMatch = (customer: Customer) => {
+    applyFoundCustomer(customer);
+  };
   const servicesValid = selectedServices.length > 0;
   const customerValid =
     phoneValidation.ready &&
@@ -364,11 +399,7 @@ export function WalkInBilling() {
       const appt = await createWalkInAppointment(resolvedCustomerId);
       const invoice = await completeCheckout({
         ...buildCheckoutPayload(appt.id, resolvedCustomerId ?? appt.customerId),
-        payments: [{
-          paymentMethod: primaryPayMethod(payMethod),
-          amount: total,
-          reference: paymentMethodReference(payMethod),
-        }],
+        payments: buildBillingPayments(payMethod, total),
         loyaltyPointsEarned: Math.floor(total / 10),
       });
       const payLabel = paymentMethodLabel(payMethod, total);
@@ -434,6 +465,8 @@ export function WalkInBilling() {
     setSelectedServices([]);
     setServiceSearch("");
     setPhoneDigits("");
+    setDebouncedPhone("");
+    setPhoneMatches([]);
     setCustomerId(undefined);
     setCustomerName("");
     setCustomerGender("");
@@ -498,9 +531,20 @@ export function WalkInBilling() {
           <CustomerStep
             servicesValid={servicesValid}
             phoneDigits={phoneDigits}
-            onPhoneChange={setPhoneDigits}
+            onPhoneChange={(digits) => {
+              setPhoneDigits(digits);
+              // Reset selection while typing so stale "found" state doesn't stick
+              if (lookupStatus === "found" || lookupStatus === "new") {
+                setLookupStatus("idle");
+                clearFoundCustomer();
+                setPhoneMatches([]);
+              }
+            }}
             phoneError={phoneValidation.error}
             lookupStatus={lookupStatus}
+            phoneMatches={phoneMatches}
+            onSelectMatch={selectPhoneMatch}
+            isPhoneDebouncing={phoneDigits !== debouncedPhone && last10(phoneDigits).length >= 4}
             customerName={customerName}
             onCustomerNameChange={setCustomerName}
             customerGender={customerGender}

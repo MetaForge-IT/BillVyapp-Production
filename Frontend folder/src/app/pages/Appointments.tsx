@@ -1419,16 +1419,17 @@ export function Appointments() {
 
       <div
         className={cn(
-          "flex h-[calc(100dvh-8rem)] min-h-0 flex-col gap-4 overflow-hidden transition-opacity duration-300 ease-out",
+          "flex h-[calc(100dvh-8rem)] min-h-0 flex-col gap-3 overflow-hidden transition-opacity duration-300 ease-out sm:gap-4",
           billHandoffActive
             ? "h-0 overflow-hidden opacity-0 pointer-events-none"
             : "opacity-100 delay-100",
         )}
       >
+      <div className="shrink-0 space-y-3 sm:space-y-4">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-[#1a1a1a] to-[#d4af37] bg-clip-text text-transparent">
+          <h1 className="whitespace-nowrap text-2xl sm:text-3xl font-bold bg-gradient-to-r from-[#1a1a1a] to-[#d4af37] bg-clip-text text-transparent">
             Appointments
           </h1>
           <p className="text-muted-foreground mt-1 text-sm sm:text-base">Timeline · Calendar</p>
@@ -1576,9 +1577,10 @@ export function Appointments() {
           <span className="text-[11px] text-gray-400 font-medium sm:ml-auto">{filteredAppts.length} result{filteredAppts.length !== 1 ? "s" : ""}</span>
         </div>
       </div>
+      </div>
 
       {/* Main Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="min-h-0 flex-1 gap-4 overflow-hidden">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
         <TabsList className={cn(SEGMENTED_PILL_LIST, "shrink-0")}>
           <TabsTrigger value="timeline" className={SEGMENTED_PILL_TRIGGER}>
             <List className="h-3.5 w-3.5" />
@@ -1590,14 +1592,15 @@ export function Appointments() {
           </TabsTrigger>
         </TabsList>
 
-        {/* â”€â”€ TIMELINE TAB â”€â”€ Default: Detailed Table */}
-        <TabsContent value="timeline" className="min-h-0 space-y-4 overflow-y-auto overscroll-contain pr-1">
+        {/* Timeline tab — list scrolls, pagination pinned */}
+        <TabsContent value="timeline" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden data-[state=inactive]:hidden">
 
           {filteredAppts.length === 0 && (
-            <Card><CardContent className="py-12 text-center text-muted-foreground">No appointments or walk-ins match your filters.</CardContent></Card>
+            <Card className="shrink-0"><CardContent className="py-12 text-center text-muted-foreground">No appointments or walk-ins match your filters.</CardContent></Card>
           )}
-          <Card className="shadow-lg">
-              <CardContent className="p-0">
+          <Card className="flex min-h-0 flex-1 flex-col overflow-hidden shadow-lg">
+              <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                 {/* Tablet/phone: cards expose every field and action without a
                     horizontally scrolling seven-column table. */}
                 <div className="divide-y divide-black/[0.06] lg:hidden">
@@ -1950,6 +1953,8 @@ export function Appointments() {
                     </tbody>
                   </table>
                 </div>
+                </div>
+                <div className="shrink-0 border-t border-black/[0.06] bg-white">
                 <Pagination
                   page={apptsPagination.page}
                   pageSize={apptsPagination.pageSize}
@@ -1957,14 +1962,15 @@ export function Appointments() {
                   onPageChange={apptsPagination.setPage}
                   onPageSizeChange={apptsPagination.setPageSize}
                 />
+                </div>
               </CardContent>
             </Card>
         </TabsContent>
 
 
         {/* â”€â”€ QUEUE TAB â”€â”€ Tabular by default */}
-        <TabsContent value="queue" className="min-h-0 space-y-4 overflow-y-auto overscroll-contain pr-1">
-          <div className="flex items-center gap-3">
+        <TabsContent value="queue" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden data-[state=inactive]:hidden">
+          <div className="flex shrink-0 items-center gap-3">
             <Button variant="outline" size="sm" className="rounded-xl border-[#d4af37]/40 hover:bg-amber-50" onClick={() => { setActiveTab("timeline"); setFilterTypeAndUrl("walk-in"); }}>
               <ArrowLeft className="h-4 w-4 mr-1" /> Back
             </Button>
@@ -1977,9 +1983,9 @@ export function Appointments() {
             </div>
           </div>
           {/* Queue table */}
-          <Card className="shadow-lg">
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
+          <Card className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden shadow-lg">
+            <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
+              <div className="min-h-0 flex-1 overflow-auto overscroll-contain">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-[#FAF8F2]">
@@ -2042,6 +2048,7 @@ export function Appointments() {
                   </tbody>
                 </table>
               </div>
+              <div className="shrink-0 border-t border-black/[0.06] bg-white">
               <Pagination
                 page={queuePagination.page}
                 pageSize={queuePagination.pageSize}
@@ -2049,12 +2056,13 @@ export function Appointments() {
                 onPageChange={queuePagination.setPage}
                 onPageSizeChange={queuePagination.setPageSize}
               />
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* â”€â”€ CALENDAR TAB â”€â”€ */}
-        <TabsContent value="calendar" className="min-h-0 space-y-4 overflow-y-auto overscroll-contain pr-1">
+        {/* Calendar tab */}
+        <TabsContent value="calendar" className="mt-0 min-h-0 flex-1 overflow-y-auto overscroll-contain data-[state=inactive]:hidden">
           {/* Section header */}
           <div className="relative overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-[0_2px_12px_rgba(17,17,24,0.04)]">
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#D4AF37]/60 to-transparent" />
