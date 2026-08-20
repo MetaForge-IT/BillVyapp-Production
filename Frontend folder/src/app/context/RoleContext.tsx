@@ -44,6 +44,19 @@ export function isAdmin(role: UserRole): boolean {
   return role === "admin";
 }
 
+/** Roles that can create vendor bills, POs, and other inventory write actions. */
+export const INVENTORY_OPS_ROLES: ReadonlyArray<UserRole> = [
+  "manager",
+  "inventory",
+  "receptionist",
+  "stylist",
+  "accountant",
+];
+
+export function canManageInventoryOps(role: UserRole): boolean {
+  return INVENTORY_OPS_ROLES.includes(role);
+}
+
 export function isSuperAdmin(role: UserRole): boolean {
   return role === "super_admin";
 }

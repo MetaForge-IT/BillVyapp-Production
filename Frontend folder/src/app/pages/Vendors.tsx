@@ -46,7 +46,7 @@ function mapVendor(vendor: VendorRecord): VendorRow {
   };
 }
 
-export function Vendors() {
+export function Vendors({ onVendorsChanged }: { onVendorsChanged?: () => void } = {}) {
   const { role } = useRole();
   const [vendors, setVendors] = useState<VendorRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,6 +117,7 @@ export function Vendors() {
         status: newVendor.status as "active" | "inactive",
       });
       setVendors((prev) => [...prev, mapVendor(created)]);
+      onVendorsChanged?.();
       setNewVendor({ name: "", contact: "", email: "", phone: "", address: "", category: "", status: "active" });
       setFormErrors({});
       setIsAddVendorOpen(false);
@@ -140,6 +141,7 @@ export function Vendors() {
       const nextStatus = deactivateTarget.status === "active" ? "inactive" : "active";
       const updated = await updateVendor(deactivateTarget.id, { status: nextStatus });
       setVendors((prev) => prev.map((v) => (v.id === updated.id ? mapVendor(updated) : v)));
+      onVendorsChanged?.();
       toast.success(`${deactivateTarget.name} ${nextStatus === "active" ? "reactivated" : "deactivated"}.`);
       setIsDeactivateOpen(false);
       setDeactivateTarget(null);
@@ -178,7 +180,7 @@ export function Vendors() {
       </div>
 
       <div className="flex gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="relative min-w-0 flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search vendors by name, contact, category..."

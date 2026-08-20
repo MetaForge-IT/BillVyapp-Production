@@ -76,11 +76,19 @@ export interface PurchaseOrderRow {
   id: string;
   purchaseId: string;
   supplier: string;
-  items: number;
+  /** Total units ordered across all line items. */
+  totalQuantity: number;
+  /** Number of distinct product lines on the order. */
+  lineCount: number;
   total: string;
   status: "pending" | "shipped" | "delivered";
   date: string;
+  isVendorBill: boolean;
   raw: StockPurchase;
+}
+
+export function purchaseTotalQuantity(purchase: StockPurchase): number {
+  return purchase.items.reduce((sum, item) => sum + item.quantity, 0);
 }
 
 export function mapStockPurchaseToRow(purchase: StockPurchase): PurchaseOrderRow {
@@ -92,10 +100,12 @@ export function mapStockPurchaseToRow(purchase: StockPurchase): PurchaseOrderRow
     id: purchase.poNumber,
     purchaseId: purchase.id,
     supplier: purchase.vendorName,
-    items: purchase.items.length,
+    totalQuantity: purchaseTotalQuantity(purchase),
+    lineCount: purchase.items.length,
     total: formatInr(purchase.totalAmount),
     status,
     date: formatDisplayDate(purchase.orderDate),
+    isVendorBill: purchase.notes.toLowerCase().includes("vendor direct bill"),
     raw: purchase,
   };
 }
