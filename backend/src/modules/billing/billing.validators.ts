@@ -113,3 +113,11 @@ export type CheckoutInput = z.infer<typeof checkoutSchema>;
 export type CollectPaymentInput = z.infer<typeof collectPaymentSchema>;
 export type RequestRefundInput = z.infer<typeof requestRefundSchema>;
 export type ApproveRefundInput = z.infer<typeof approveRefundSchema>;
+
+export const listBillingQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(200).optional().default(50),
+  search: z.string().trim().max(200).optional(),
+});
+
+export type ListBillingQuery = z.infer<typeof listBillingQuerySchema>;

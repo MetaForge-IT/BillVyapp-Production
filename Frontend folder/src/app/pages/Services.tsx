@@ -650,7 +650,7 @@ export function Services() {
                       <option key={c.id} value={c.name}>{c.name} ({categoryCounts[c.id] ?? 0})</option>
                     ))}
                   </select>
-                  <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
+                  <div className="select-chevron-legacy pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
                     <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   </div>
                   {categoryFilter !== "all" && <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-[#d4af37]" />}
@@ -671,7 +671,7 @@ export function Services() {
                     <option value="active">Active ({allServicesFlat.filter(s => s.status === "active").length})</option>
                     <option value="inactive">Inactive ({allServicesFlat.filter(s => s.status === "inactive").length})</option>
                   </select>
-                  <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
+                  <div className="select-chevron-legacy pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
                     <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   </div>
                   {statusFilter !== "all" && <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-[#d4af37]" />}

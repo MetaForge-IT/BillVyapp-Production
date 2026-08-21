@@ -4,15 +4,13 @@ import { Calendar, ChevronRight } from "lucide-react";
 import { DashboardCard, DashboardCardHeader, SectionLabel } from "./DashboardCard";
 import { DASHBOARD_DURATION, DASHBOARD_EASE, DASHBOARD_VIEWPORT, dashboardFadeUp, dashboardItemDelay } from "../motion";
 import { useDashboard } from "../useDashboard";
+import { istDateKey } from "../../../../lib/istDate";
 
 export function TodaySchedule() {
   const navigate = useNavigate();
   const { data } = useDashboard();
   const upcomingAppointments = data?.upcomingAppointments ?? [];
-  const todayKey = (() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  })();
+  const todayKey = istDateKey();
 
   const formatScheduleWhen = (apt: { date?: string; time: string }) => {
     if (!apt.date || apt.date === todayKey) return apt.time;

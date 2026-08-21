@@ -74,6 +74,18 @@ export const enterpriseNavigation: NavSection[] = [
     title: "Finance",
     items: [
       { label: "Revenue Report", href: "/finance?tab=receipts", icon: Wallet, roles: ["admin"] },
+      {
+        label: "Receipts",
+        href: "/finance?tab=receipts&section=sales",
+        icon: Receipt,
+        roles: ["manager"],
+      },
+      {
+        label: "Pending Payments",
+        href: "/finance?tab=receipts&section=pending",
+        icon: ClipboardList,
+        roles: ["manager"],
+      },
       { label: "Expenses", href: "/expenses", icon: Receipt, roles: ["admin", "manager"] },
     ],
   },

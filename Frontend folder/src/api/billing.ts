@@ -1,4 +1,5 @@
 import { apiClient } from "../lib/axios";
+import type { PaginatedResult } from "../lib/pagination";
 
 export type PaymentMethod = "cash" | "card" | "upi" | "wallet";
 
@@ -85,13 +86,29 @@ export async function completeCheckout(
   return data.data;
 }
 
-export async function fetchPendingPayments(): Promise<InvoiceResponse[]> {
-  const { data } = await apiClient.get<ApiEnvelope<InvoiceResponse[]>>("/billing/pending");
+export async function fetchPendingPayments(
+  params: { page?: number; limit?: number; search?: string } = {},
+): Promise<PaginatedResult<InvoiceResponse>> {
+  const { data } = await apiClient.get<ApiEnvelope<PaginatedResult<InvoiceResponse>>>("/billing/pending", {
+    params: {
+      page: params.page,
+      limit: params.limit,
+      search: params.search || undefined,
+    },
+  });
   return data.data;
 }
 
-export async function fetchInvoices(): Promise<InvoiceResponse[]> {
-  const { data } = await apiClient.get<ApiEnvelope<InvoiceResponse[]>>("/billing/invoices");
+export async function fetchInvoices(
+  params: { page?: number; limit?: number; search?: string } = {},
+): Promise<PaginatedResult<InvoiceResponse>> {
+  const { data } = await apiClient.get<ApiEnvelope<PaginatedResult<InvoiceResponse>>>("/billing/invoices", {
+    params: {
+      page: params.page,
+      limit: params.limit,
+      search: params.search || undefined,
+    },
+  });
   return data.data;
 }
 

@@ -9,9 +9,12 @@ import {
 } from "./appointments.constants";
 import type {
   CreateAppointmentInput,
+  ListAppointmentsQuery,
   UpdateAppointmentInput,
   UpdateAppointmentStatusInput,
 } from "./appointments.validators";
+import { toPaginatedResult } from "../../utils/pagination";
+import type { Prisma } from "@prisma/client";
 import { appNotificationGenerator } from "../app-notifications/app-notifications.generator";
 import { notificationService } from "../notifications/notification.service";
 
@@ -182,25 +185,34 @@ function parseScheduledDate(dateStr: string): Date {
 }
 
 export class AppointmentsRepository {
-  async list(salonId: string, scheduledDate?: string) {
-    const where: { salonId: string; scheduledDate?: { gte: Date; lt: Date } } = { salonId };
-    if (scheduledDate) {
-      const day = parseScheduledDate(scheduledDate);
+  async list(salonId: string, query: ListAppointmentsQuery) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 50;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.AppointmentWhereInput = { salonId };
+    if (query.date) {
+      const day = parseScheduledDate(query.date);
       const next = new Date(day);
       next.setDate(next.getDate() + 1);
       where.scheduledDate = { gte: day, lt: next };
     }
 
-    const appointments = await prisma.appointment.findMany({
-      where,
-      include: {
-        customer: { select: { id: true, fullName: true, phone: true } },
-        services: { orderBy: { sortOrder: "asc" } },
-      },
-      orderBy: [{ updatedAt: "desc" }, { scheduledTime: "asc" }],
-    });
+    const [total, appointments] = await prisma.$transaction([
+      prisma.appointment.count({ where }),
+      prisma.appointment.findMany({
+        where,
+        include: {
+          customer: { select: { id: true, fullName: true, phone: true } },
+          services: { orderBy: { sortOrder: "asc" } },
+        },
+        orderBy: [{ updatedAt: "desc" }, { scheduledTime: "asc" }],
+        skip,
+        take: limit,
+      }),
+    ]);
 
-    return appointments.map(mapAppointment);
+    return toPaginatedResult(appointments.map(mapAppointment), total, page, limit);
   }
 
   async create(auth: AuthContext, input: CreateAppointmentInput) {

@@ -2,33 +2,27 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
-  useState,
+  useMemo,
   type ReactNode,
 } from "react";
-import { collectInvoicePayment, fetchPendingPayments } from "../../api/billing";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { collectInvoicePayment } from "../../api/billing";
 import { getApiErrorMessage } from "../../lib/api";
-import { authService } from "../../services/authService";
+import { LIST_WORKING_LIMIT } from "../../lib/pagination";
+import { useAuthStore } from "../../stores/authStore";
+import {
+  fetchPendingPaymentRecords,
+  mapInvoiceToPending,
+  type PendingPayment,
+  type PendingPaymentStatus,
+} from "../lib/billingQueries";
+import { queryKeys } from "../lib/queryKeys";
 
-export type PendingPaymentStatus = "UNPAID" | "PARTIAL";
-
-export interface PendingPayment {
-  id: string;
-  invoiceId: string;
-  customer: string;
-  phone: string;
-  due: number;
-  total: number;
-  paidAmount: number;
-  dueDate: string;
-  services: string[];
-  status: PendingPaymentStatus;
-  appointmentId?: string;
-  createdAt: string;
-}
+export type { PendingPayment, PendingPaymentStatus };
 
 interface PendingPaymentsContextType {
   pendingPayments: PendingPayment[];
+  total: number;
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -49,109 +43,125 @@ interface PendingPaymentsContextType {
 
 const PendingPaymentsContext = createContext<PendingPaymentsContextType | null>(null);
 
+const workingParams = { page: 1, limit: LIST_WORKING_LIMIT };
+
 export function PendingPaymentsProvider({ children }: { children: ReactNode }) {
-  const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: queryKeys.billing.pending(workingParams),
+    queryFn: () => fetchPendingPaymentRecords(workingParams),
+    enabled: Boolean(accessToken),
+  });
+
+  const pendingPayments = query.data?.items ?? [];
+  const total = query.data?.total ?? 0;
+  const loading = query.isLoading || (query.isFetching && !query.data);
+  const error = query.error
+    ? getApiErrorMessage(query.error, "Failed to load pending payments")
+    : null;
 
   const refresh = useCallback(async () => {
-    if (!authService.isAuthenticated()) {
-      setPendingPayments([]);
-      setLoading(false);
+    if (!useAuthStore.getState().accessToken) {
+      queryClient.setQueryData(queryKeys.billing.pending(workingParams), {
+        items: [],
+        page: 1,
+        limit: LIST_WORKING_LIMIT,
+        total: 0,
+        totalPages: 1,
+      });
       return;
     }
+    await queryClient.invalidateQueries({ queryKey: ["billing", "pending"] });
+  }, [queryClient]);
 
-    setLoading(true);
-    setError(null);
-    try {
-      const invoices = await fetchPendingPayments();
-      setPendingPayments(
-        invoices.map((inv) => ({
-          id: inv.id,
-          invoiceId: inv.receiptNumber,
-          customer: inv.customer ?? inv.customerName ?? "",
-          phone: inv.phone ?? inv.customerPhone ?? "",
-          due: inv.balanceAmount,
-          total: inv.totalAmount,
-          paidAmount: inv.paidAmount,
-          dueDate: inv.dueDate ?? new Date().toISOString().slice(0, 10),
-          services: inv.services ?? [],
-          status: inv.paidAmount > 0 ? "PARTIAL" : "UNPAID",
-          appointmentId: inv.appointmentId ?? undefined,
-          createdAt: inv.date ?? new Date().toISOString().slice(0, 10),
-        })),
-      );
-    } catch (err) {
-      setError(getApiErrorMessage(err, "Failed to load pending payments"));
-      setPendingPayments([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const addPendingPayment = useCallback(
+    (payment: Omit<PendingPayment, "id">): PendingPayment => {
+      const created: PendingPayment = { ...payment, id: String(Date.now()) };
+      queryClient.setQueryData(queryKeys.billing.pending(workingParams), (prev: typeof query.data) => {
+        const current = prev ?? {
+          items: [] as PendingPayment[],
+          page: 1,
+          limit: LIST_WORKING_LIMIT,
+          total: 0,
+          totalPages: 1,
+        };
+        const items = [created, ...current.items];
+        return { ...current, items, total: current.total + 1 };
+      });
+      return created;
+    },
+    [queryClient],
+  );
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  const collectPayment = useCallback(
+    async (
+      id: string,
+      amount: number,
+      paymentMethod: "cash" | "card" | "upi" | "wallet",
+      reference?: string,
+      payments?: Array<{
+        paymentMethod: "cash" | "card" | "upi" | "wallet";
+        amount: number;
+        reference?: string;
+      }>,
+    ): Promise<PendingPayment | null> => {
+      try {
+        const updated = await collectInvoicePayment(
+          id,
+          payments && payments.length > 0
+            ? { payments }
+            : { amount, paymentMethod, reference },
+        );
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["billing", "pending"] }),
+          queryClient.invalidateQueries({ queryKey: ["billing", "invoices"] }),
+        ]);
+        return mapInvoiceToPending(updated);
+      } catch (err) {
+        throw new Error(getApiErrorMessage(err, "Failed to collect payment"));
+      }
+    },
+    [queryClient],
+  );
 
-  function addPendingPayment(payment: Omit<PendingPayment, "id">): PendingPayment {
-    const created: PendingPayment = { ...payment, id: String(Date.now()) };
-    setPendingPayments((prev) => [created, ...prev]);
-    return created;
-  }
+  const removePendingPayment = useCallback(
+    (id: string) => {
+      queryClient.setQueryData(queryKeys.billing.pending(workingParams), (prev: typeof query.data) => {
+        if (!prev) return prev;
+        const items = prev.items.filter((p) => p.id !== id);
+        return { ...prev, items, total: Math.max(0, prev.total - 1) };
+      });
+    },
+    [queryClient],
+  );
 
-  async function collectPayment(
-    id: string,
-    amount: number,
-    paymentMethod: "cash" | "card" | "upi" | "wallet",
-    reference?: string,
-    payments?: Array<{
-      paymentMethod: "cash" | "card" | "upi" | "wallet";
-      amount: number;
-      reference?: string;
-    }>,
-  ): Promise<PendingPayment | null> {
-    try {
-      const updated = await collectInvoicePayment(
-        id,
-        payments && payments.length > 0
-          ? { payments }
-          : { amount, paymentMethod, reference },
-      );
-      await refresh();
-      return {
-        id: updated.id,
-        invoiceId: updated.receiptNumber,
-        customer: updated.customer ?? updated.customerName ?? "",
-        phone: updated.phone ?? updated.customerPhone ?? "",
-        due: updated.balanceAmount,
-        total: updated.totalAmount,
-        paidAmount: updated.paidAmount,
-        dueDate: updated.dueDate ?? new Date().toISOString().slice(0, 10),
-        services: updated.services ?? [],
-        status: updated.paidAmount > 0 && updated.balanceAmount > 0 ? "PARTIAL" : "UNPAID",
-        createdAt: updated.date ?? new Date().toISOString().slice(0, 10),
-      };
-    } catch (err) {
-      throw new Error(getApiErrorMessage(err, "Failed to collect payment"));
-    }
-  }
-
-  function removePendingPayment(id: string) {
-    setPendingPayments((prev) => prev.filter((p) => p.id !== id));
-  }
+  const value = useMemo(
+    () => ({
+      pendingPayments,
+      total,
+      loading,
+      error,
+      refresh,
+      addPendingPayment,
+      collectPayment,
+      removePendingPayment,
+    }),
+    [
+      pendingPayments,
+      total,
+      loading,
+      error,
+      refresh,
+      addPendingPayment,
+      collectPayment,
+      removePendingPayment,
+    ],
+  );
 
   return (
-    <PendingPaymentsContext.Provider
-      value={{
-        pendingPayments,
-        loading,
-        error,
-        refresh,
-        addPendingPayment,
-        collectPayment,
-        removePendingPayment,
-      }}
-    >
+    <PendingPaymentsContext.Provider value={value}>
       {children}
     </PendingPaymentsContext.Provider>
   );

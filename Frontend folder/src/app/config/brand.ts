@@ -22,5 +22,5 @@ export const SHOW_PUBLIC_SIGNUP = false;
 export const RECEIPT_FOOTER = {
   thankYou: "Thank you for your visit!",
   revisit: "We look forward to seeing you again.",
-  salonType: "Express Unisex Salon",
+  salonType: "The Starr Kuts Salon",
 } as const;

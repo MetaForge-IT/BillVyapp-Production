@@ -18,8 +18,9 @@ import { getApiErrorMessage } from "../../lib/api";
 import { toast } from "../components/ui/hot-toast";
 import { Pagination } from "../components/shared/Pagination";
 import { useTablePagination } from "../hooks/useTablePagination";
+import { istDateKey } from "../../lib/istDate";
 
-const todayISO = new Date().toISOString().split("T")[0];
+const todayISO = istDateKey();
 
 const emptyForm = {
   code: "",

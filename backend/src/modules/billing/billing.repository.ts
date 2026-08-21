@@ -1,7 +1,8 @@
 import type { Invoice, InvoiceLineItem, Payment, Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma";
 import type { AuthContext } from "../auth/auth.types";
-import type { CheckoutInput, CollectPaymentInput, ConfirmOnlyInput, RequestRefundInput } from "./billing.validators";
+import type { CheckoutInput, CollectPaymentInput, ConfirmOnlyInput, ListBillingQuery, RequestRefundInput } from "./billing.validators";
+import { toPaginatedResult } from "../../utils/pagination";
 import {
   APPOINTMENT_STATUS,
   BILLING_ERROR_CODES,
@@ -10,6 +11,15 @@ import {
   type InvoiceStatus,
 } from "./billing.constants";
 import { AppError } from "../../utils/errors";
+import {
+  addDaysToDateKey,
+  dateKeyToUtcDate,
+  formatDbDateKey,
+  istCalendarDate,
+  istDateKey,
+  istWallClockAsUtcTime,
+  resolveDateInput,
+} from "../../utils/ist";
 import { applyStockChange, MOVEMENT_TYPE, notifyStockChangeResult, type StockChangeResult } from "../inventory/inventory.shared";
 import { appNotificationGenerator } from "../app-notifications/app-notifications.generator";
 import { notificationService } from "../notifications/notification.service";
@@ -157,7 +167,7 @@ function mapInvoice(invoice: InvoiceWithRelations) {
     receiptNumber: invoice.receiptNumber,
     customerId: invoice.customerId,
     appointmentId: invoice.appointmentId,
-    invoiceDate: invoice.invoiceDate.toISOString().slice(0, 10),
+    invoiceDate: formatDbDateKey(invoice.invoiceDate),
     invoiceTime: invoice.invoiceTime.toISOString().slice(11, 19),
     source: invoice.source,
     status: invoice.status,
@@ -173,7 +183,7 @@ function mapInvoice(invoice: InvoiceWithRelations) {
     totalAmount: total,
     paidAmount: paid,
     balanceAmount: balance,
-    dueDate: invoice.dueDate?.toISOString().slice(0, 10) ?? null,
+    dueDate: invoice.dueDate ? formatDbDateKey(invoice.dueDate) : null,
     loyaltyPointsEarned: invoice.loyaltyPointsEarned,
     notes: invoice.notes,
     items: invoice.lineItems.map((line) => ({
@@ -361,8 +371,7 @@ async function applyWalletDeduction(
     });
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = istCalendarDate();
   if (enrollment.expiryDate < today) {
     throw new AppError(400, "This customer's membership has expired", {
       code: BILLING_ERROR_CODES.MEMBERSHIP_EXPIRED,
@@ -710,7 +719,11 @@ export class BillingRepository {
     const customerId = await resolveCustomerId(auth.salonId, input);
     const receiptNumber = await nextReceiptNumber(auth.salonId);
     const now = new Date();
-    const dueDate = input.dueDate ? new Date(input.dueDate) : new Date(now.getTime() + 7 * 86400000);
+    const invoiceDate = istCalendarDate(now);
+    const invoiceTime = istWallClockAsUtcTime(now);
+    const dueDate = input.dueDate
+      ? resolveDateInput(input.dueDate, now)
+      : dateKeyToUtcDate(addDaysToDateKey(istDateKey(now), 7));
 
     const resolvedLines = await resolveBillingLineItems(auth.salonId, input.items);
     const totals = await computeTotalsFromLines(auth.salonId, resolvedLines, input);
@@ -723,8 +736,8 @@ export class BillingRepository {
           customerId,
           appointmentId,
           receiptNumber,
-          invoiceDate: now,
-          invoiceTime: now,
+          invoiceDate,
+          invoiceTime,
           source: input.source,
           status: INVOICE_STATUS.PENDING,
           subtotal: totals.subtotal,
@@ -815,6 +828,8 @@ export class BillingRepository {
     const customerId = await resolveCustomerId(auth.salonId, input);
     const receiptNumber = await nextReceiptNumber(auth.salonId);
     const now = new Date();
+    const invoiceDate = istCalendarDate(now);
+    const invoiceTime = istWallClockAsUtcTime(now);
 
     const resolvedLines = await resolveBillingLineItems(auth.salonId, input.items);
     const totals = await computeTotalsFromLines(auth.salonId, resolvedLines, input);
@@ -834,8 +849,8 @@ export class BillingRepository {
           customerId,
           appointmentId,
           receiptNumber,
-          invoiceDate: now,
-          invoiceTime: now,
+          invoiceDate,
+          invoiceTime,
           source: input.source,
           status: INVOICE_STATUS.PAID,
           subtotal: totals.subtotal,
@@ -943,11 +958,7 @@ export class BillingRepository {
       const amountLabel = Number(invoice.totalAmount).toLocaleString("en-IN", {
         maximumFractionDigits: 0,
       });
-      const dateLabel = new Date(invoice.invoiceDate).toLocaleDateString("en-IN", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      });
+      const dateLabel = formatDbDateKey(new Date(invoice.invoiceDate));
       void notificationService
         .sendPaymentReceived({
           phone: invoice.customer.phone,
@@ -1000,23 +1011,43 @@ export class BillingRepository {
     return mapInvoice(invoice);
   }
 
-  async listPending(auth: AuthContext) {
-    const invoices = await prisma.invoice.findMany({
-      where: {
-        salonId: auth.salonId,
-        status: { in: [INVOICE_STATUS.PENDING, INVOICE_STATUS.PARTIALLY_PAID] },
-        balanceAmount: { gt: 0 },
-        voidedAt: null,
-      },
-      include: {
-        lineItems: true,
-        payments: true,
-        customer: { select: { fullName: true, phone: true } },
-      },
-      orderBy: [{ dueDate: "asc" }, { invoiceDate: "desc" }],
-    });
+  async listPending(auth: AuthContext, query: ListBillingQuery) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 50;
+    const skip = (page - 1) * limit;
 
-    return invoices.map((invoice) => {
+    const where: Prisma.InvoiceWhereInput = {
+      salonId: auth.salonId,
+      status: { in: [INVOICE_STATUS.PENDING, INVOICE_STATUS.PARTIALLY_PAID] },
+      balanceAmount: { gt: 0 },
+      voidedAt: null,
+    };
+
+    if (query.search?.trim()) {
+      const term = query.search.trim();
+      where.OR = [
+        { receiptNumber: { contains: term } },
+        { customer: { fullName: { contains: term } } },
+        { customer: { phone: { contains: term } } },
+      ];
+    }
+
+    const [total, invoices] = await prisma.$transaction([
+      prisma.invoice.count({ where }),
+      prisma.invoice.findMany({
+        where,
+        include: {
+          lineItems: true,
+          payments: true,
+          customer: { select: { fullName: true, phone: true } },
+        },
+        orderBy: [{ dueDate: "asc" }, { invoiceDate: "desc" }],
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    const items = invoices.map((invoice) => {
       const mapped = mapInvoice(invoice);
 
       return {
@@ -1028,25 +1059,46 @@ export class BillingRepository {
         date: mapped.invoiceDate,
       };
     });
+
+    return toPaginatedResult(items, total, page, limit);
   }
 
-  async listInvoices(auth: AuthContext) {
-    const invoices = await prisma.invoice.findMany({
-      where: {
-        salonId: auth.salonId,
-        voidedAt: null,
-        status: { in: ACTIVE_SALE_STATUSES },
-      },
-      include: {
-        lineItems: true,
-        payments: true,
-        customer: { select: { fullName: true, phone: true } },
-      },
-      orderBy: [{ invoiceDate: "desc" }, { createdAt: "desc" }],
-      take: 500,
-    });
+  async listInvoices(auth: AuthContext, query: ListBillingQuery) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 50;
+    const skip = (page - 1) * limit;
 
-    return invoices.map((invoice) => {
+    const where: Prisma.InvoiceWhereInput = {
+      salonId: auth.salonId,
+      voidedAt: null,
+      status: { in: ACTIVE_SALE_STATUSES },
+    };
+
+    if (query.search?.trim()) {
+      const term = query.search.trim();
+      where.OR = [
+        { receiptNumber: { contains: term } },
+        { customer: { fullName: { contains: term } } },
+        { customer: { phone: { contains: term } } },
+      ];
+    }
+
+    const [total, invoices] = await prisma.$transaction([
+      prisma.invoice.count({ where }),
+      prisma.invoice.findMany({
+        where,
+        include: {
+          lineItems: true,
+          payments: true,
+          customer: { select: { fullName: true, phone: true } },
+        },
+        orderBy: [{ invoiceDate: "desc" }, { createdAt: "desc" }],
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    const items = invoices.map((invoice) => {
       const mapped = mapInvoice(invoice);
       const primaryPayment = invoice.payments[0];
 
@@ -1073,6 +1125,8 @@ export class BillingRepository {
           | "none",
       };
     });
+
+    return toPaginatedResult(items, total, page, limit);
   }
 
   async listRefunds(auth: AuthContext) {

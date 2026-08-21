@@ -89,7 +89,7 @@ export function ManagerKpiGrid() {
           : "No open balances",
       icon: Wallet,
       sparkline: data?.kpiMetrics?.find((m) => m.label === "Pending Payments")?.sparkline ?? [{ v: 0 }],
-      href: "/appointments",
+      href: "/finance?tab=receipts&section=pending",
       accent: "#111118",
     },
     {

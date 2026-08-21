@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { fetchSettings, updateSettings as apiUpdateSettings } from "../../api/settings";
 import { getApiErrorMessage } from "../../lib/api";
 import { toast } from "../components/ui/hot-toast";
@@ -314,22 +314,111 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  return (
-    <SettingsContext.Provider value={{
+  const updateSalon = useCallback(
+    (p: Partial<AppSettings["salon"]>) => patch((s) => ({ ...s, salon: { ...s.salon, ...p } }), true),
+    [patch],
+  );
+  const updateWorkingHours = useCallback(
+    (day: string, p: Partial<AppSettings["workingHours"][string]>) =>
+      patch(
+        (s) => ({
+          ...s,
+          workingHours: { ...s.workingHours, [day]: { ...s.workingHours[day], ...p } },
+        }),
+        true,
+      ),
+    [patch],
+  );
+  const setPermission = useCallback(
+    (role: string, mod: string, val: boolean) =>
+      patch((s) => ({
+        ...s,
+        permissions: { ...s.permissions, [role]: { ...s.permissions[role], [mod]: val } },
+      })),
+    [patch],
+  );
+  const setStaffControl = useCallback(
+    (ctrl: string, role: string, val: boolean) =>
+      patch((s) => ({
+        ...s,
+        staffControls: { ...s.staffControls, [ctrl]: { ...s.staffControls[ctrl], [role]: val } },
+      })),
+    [patch],
+  );
+  const updateFinancial = useCallback(
+    (p: Partial<AppSettings["financial"]>) =>
+      patch((s) => ({ ...s, financial: { ...s.financial, ...p } }), true),
+    [patch],
+  );
+  const setDiscountCap = useCallback(
+    (role: string, cap: number) =>
+      patch(
+        (s) => ({
+          ...s,
+          financial: {
+            ...s.financial,
+            discountCaps: { ...s.financial.discountCaps, [role]: cap },
+          },
+        }),
+        true,
+      ),
+    [patch],
+  );
+  const updateNotifications = useCallback(
+    (p: Partial<AppSettings["notifications"]>) =>
+      patch((s) => ({ ...s, notifications: { ...s.notifications, ...p } }), true),
+    [patch],
+  );
+  const updateSecurity = useCallback(
+    (p: Partial<AppSettings["security"]>) =>
+      patch((s) => ({ ...s, security: { ...s.security, ...p } })),
+    [patch],
+  );
+  const setSessionTimeout = useCallback(
+    (role: string, min: number) =>
+      patch((s) => ({
+        ...s,
+        security: {
+          ...s.security,
+          sessionTimeout: { ...s.security.sessionTimeout, [role]: min },
+        },
+      })),
+    [patch],
+  );
+
+  const value = useMemo(
+    () => ({
       settings,
       loading,
       ROLES,
       MODULES,
-      updateSalon: p => patch(s => ({ ...s, salon: { ...s.salon, ...p } }), true),
-      updateWorkingHours: (day, p) => patch(s => ({ ...s, workingHours: { ...s.workingHours, [day]: { ...s.workingHours[day], ...p } } }), true),
-      setPermission: (role, mod, val) => patch(s => ({ ...s, permissions: { ...s.permissions, [role]: { ...s.permissions[role], [mod]: val } } })),
-      setStaffControl: (ctrl, role, val) => patch(s => ({ ...s, staffControls: { ...s.staffControls, [ctrl]: { ...s.staffControls[ctrl], [role]: val } } })),
-      updateFinancial: p => patch(s => ({ ...s, financial: { ...s.financial, ...p } }), true),
-      setDiscountCap: (role, cap) => patch(s => ({ ...s, financial: { ...s.financial, discountCaps: { ...s.financial.discountCaps, [role]: cap } } }), true),
-      updateNotifications: p => patch(s => ({ ...s, notifications: { ...s.notifications, ...p } }), true),
-      updateSecurity: p => patch(s => ({ ...s, security: { ...s.security, ...p } })),
-      setSessionTimeout: (role, min) => patch(s => ({ ...s, security: { ...s.security, sessionTimeout: { ...s.security.sessionTimeout, [role]: min } } })),
-    }}>
+      updateSalon,
+      updateWorkingHours,
+      setPermission,
+      setStaffControl,
+      updateFinancial,
+      setDiscountCap,
+      updateNotifications,
+      updateSecurity,
+      setSessionTimeout,
+    }),
+    [
+      settings,
+      loading,
+      updateSalon,
+      updateWorkingHours,
+      setPermission,
+      setStaffControl,
+      updateFinancial,
+      setDiscountCap,
+      updateNotifications,
+      updateSecurity,
+      setSessionTimeout,
+    ],
+  );
+
+  return (
+    <SettingsContext.Provider value={value}>
       {children}
     </SettingsContext.Provider>
   );

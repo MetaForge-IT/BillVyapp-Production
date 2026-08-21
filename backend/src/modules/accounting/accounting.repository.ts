@@ -1,6 +1,7 @@
 import type { BudgetLine, DayClose, Expense, Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../utils/errors";
+import { formatDbDateKey } from "../../utils/ist";
 import type { AuthContext } from "../auth/auth.types";
 import { ACCOUNTING_ERROR_CODES } from "./accounting.constants";
 import type {
@@ -19,7 +20,7 @@ function toDateOnly(value: string | Date): Date {
 }
 
 function formatDate(value: Date): string {
-  return value.toISOString().slice(0, 10);
+  return formatDbDateKey(value);
 }
 
 function addDays(date: Date, days: number): Date {

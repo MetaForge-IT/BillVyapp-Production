@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   fetchServiceProductLinks,
   replaceServiceProductLinks,
@@ -81,27 +81,37 @@ export function ServiceProductsProvider({ children }: { children: ReactNode }) {
     void refreshLinks();
   }, [refreshLinks]);
 
-  function getLinks(serviceId: string): ServiceProductLink[] {
+  const getLinks = useCallback((serviceId: string): ServiceProductLink[] => {
     return links[serviceId] ?? [];
-  }
+  }, [links]);
 
-  function setLinks(serviceId: string, newLinks: ServiceProductLink[]) {
+  const setLinks = useCallback((serviceId: string, newLinks: ServiceProductLink[]) => {
     void replaceServiceProductLinks(serviceId, toApiPayload(newLinks))
       .then((group) => {
         setLinksState((prev) => ({ ...prev, [serviceId]: group.links.map(mapLink) }));
       })
       .catch((error) => toast.error(getApiErrorMessage(error, "Failed to save product links")));
-  }
+  }, []);
 
-  function removeLink(serviceId: string, sku: string) {
-    const next = (links[serviceId] ?? []).filter((link) => link.sku !== sku);
-    setLinks(serviceId, next);
-  }
+  const removeLink = useCallback((serviceId: string, sku: string) => {
+    setLinksState((prev) => {
+      const next = (prev[serviceId] ?? []).filter((link) => link.sku !== sku);
+      void replaceServiceProductLinks(serviceId, toApiPayload(next))
+        .then((group) => {
+          setLinksState((curr) => ({ ...curr, [serviceId]: group.links.map(mapLink) }));
+        })
+        .catch((error) => toast.error(getApiErrorMessage(error, "Failed to save product links")));
+      return { ...prev, [serviceId]: next };
+    });
+  }, []);
+
+  const value = useMemo(
+    () => ({ links, loading, refreshLinks, getLinks, setLinks, removeLink }),
+    [links, loading, refreshLinks, getLinks, setLinks, removeLink],
+  );
 
   return (
-    <ServiceProductsContext.Provider
-      value={{ links, loading, refreshLinks, getLinks, setLinks, removeLink }}
-    >
+    <ServiceProductsContext.Provider value={value}>
       {children}
     </ServiceProductsContext.Provider>
   );

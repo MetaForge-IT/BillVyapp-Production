@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -16,13 +17,19 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { useReceipts, type ReceiptRecord } from "../context/ReceiptsContext";
+import { useRole } from "../context/RoleContext";
 import { requestRefund } from "../../api/billing";
 import { getApiErrorMessage } from "../../lib/api";
 import { toast } from "../components/ui/hot-toast";
 import { Pagination } from "../components/shared/Pagination";
-import { useTablePagination } from "../hooks/useTablePagination";
+import { FilterSelect } from "../components/shared/FilterSelect";
+import { DEFAULT_PAGE_SIZE } from "../hooks/useTablePagination";
+import { fetchReceiptRecords } from "../lib/billingQueries";
+import { queryKeys } from "../lib/queryKeys";
+import { istDateKey } from "../../lib/istDate";
 import { BRAND, RECEIPT_FOOTER } from "../config/brand";
-import { SalonReceiptBrandHeader, SalonReceiptPaper } from "../components/shared/SalonReceiptBrand";
+import { SalonReceiptBrandHeader, SalonReceiptPaper, useReceiptShopInfo } from "../components/shared/SalonReceiptBrand";
+import { downloadReceiptBill } from "../lib/downloadReceipt";
 import {
   FinanceStatCard,
   FinanceStatGrid,
@@ -75,12 +82,18 @@ const METHOD_OPTIONS = [
 
 /* ── component ───────────────────────────────────────────── */
 export function Receipts() {
-  const { receipts, refresh } = useReceipts();
+  const { refresh } = useReceipts();
+  const { role } = useRole();
+  const isManager = role === "manager";
+  const shopInfo = useReceiptShopInfo();
   const [searchParams, setSearchParams] = useSearchParams();
   const dateParam = searchParams.get("date");
   const [search,       setSearch]       = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [methodFilter, setMethodFilter] = useState("all");
   const [dateFilter,   setDateFilter]   = useState("all");
+  const [listPage, setListPage] = useState(1);
+  const [listPageSize, setListPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [viewReceipt,  setViewReceipt]  = useState<ReceiptRecord | null>(null);
   const [refundReceipt, setRefundReceipt] = useState<ReceiptRecord | null>(null);
   const [refundReason, setRefundReason] = useState("");
@@ -91,11 +104,35 @@ export function Receipts() {
   const [emailMessage, setEmailMessage] = useState("");
   const [emailSent,    setEmailSent]    = useState(false);
 
-  const TODAY = "2026-06-26";
+  const TODAY = istDateKey();
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    setListPage(1);
+  }, [debouncedSearch, listPageSize]);
+
+  const invoiceParams = {
+    page: listPage,
+    limit: listPageSize,
+    search: debouncedSearch || undefined,
+  };
+  const receiptsQuery = useQuery({
+    queryKey: queryKeys.billing.invoices(invoiceParams),
+    queryFn: () => fetchReceiptRecords(invoiceParams),
+  });
+  const receipts = receiptsQuery.data?.items ?? [];
+  const receiptsTotal = receiptsQuery.data?.total ?? 0;
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(receiptsTotal / listPageSize) || 1);
+    if (listPage > maxPage) setListPage(maxPage);
+  }, [receiptsTotal, listPageSize, listPage]);
 
   const filtered = useMemo(() => receipts.filter(r => {
-    const q = search.toLowerCase();
-    const matchSearch  = r.receiptNo.toLowerCase().includes(q) || r.customer.toLowerCase().includes(q) || r.phone.includes(search);
     const matchMethod  = methodFilter === "all" || r.paymentMethod === methodFilter;
     let   matchDate    = true;
     if (dateParam) matchDate = r.date === dateParam;
@@ -104,15 +141,10 @@ export function Receipts() {
       const diff = (new Date(TODAY).getTime() - new Date(r.date).getTime()) / 86400000;
       matchDate = diff >= 0 && diff < 7;
     } else if (dateFilter === "month") matchDate = r.date.startsWith(TODAY.slice(0, 7));
-    return matchSearch && matchMethod && matchDate;
-  }), [search, methodFilter, dateFilter, dateParam, receipts]);
+    return matchMethod && matchDate;
+  }), [methodFilter, dateFilter, dateParam, receipts]);
 
-  const { page, setPage, pageSize, setPageSize, paginate } = useTablePagination(
-    filtered.length,
-    [search, methodFilter, dateFilter, dateParam],
-  );
-  const paginatedReceipts = useMemo(() => paginate(filtered), [filtered, paginate]);
-
+  const paginatedReceipts = filtered;
 
   const totalRevenue = receipts.reduce((s, r) => s + r.total, 0);
   const todayRevenue = receipts.filter(r => r.date === TODAY).reduce((s, r) => s + r.total, 0);
@@ -141,6 +173,30 @@ export function Receipts() {
     setEmailSubject(`Receipt ${r.receiptNo} — ${BRAND.clientName}`);
     setEmailMessage(`Dear ${r.customer},\n\nThank you for visiting ${BRAND.clientName}! Please find your receipt ${r.receiptNo} attached.\n\nTotal Paid: ₹${r.total.toLocaleString()} via ${paymentMethodLabel(r.paymentMethod)}\n\nWe look forward to seeing you again!\n\n${BRAND.clientName} Team`);
     setEmailSent(false);
+  };
+
+  const handleDownloadBill = (r: ReceiptRecord) => {
+    const ok = downloadReceiptBill(
+      {
+        receiptNo: r.receiptNo,
+        date: r.date,
+        time: r.time,
+        customer: r.customer,
+        phone: r.phone,
+        services: r.services,
+        subtotal: r.subtotal,
+        discount: r.discount,
+        gst: r.gst,
+        total: r.total,
+        paymentMethod: r.paymentMethod,
+      },
+      shopInfo,
+    );
+    if (!ok) {
+      toast.error("Could not download the receipt bill");
+      return;
+    }
+    toast.success(`${r.receiptNo} downloaded — use Save as PDF in the print dialog`);
   };
 
   const openRefundRequest = (r: ReceiptRecord) => {
@@ -172,10 +228,10 @@ export function Receipts() {
     r.paymentStatus === "paid" && r.paidAmount > 0 && r.paymentMethod !== "none";
 
   return (
-    <div className="space-y-5">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
 
       {/* ── Page header ── */}
-      <div className="flex items-center gap-3">
+      <div className="flex shrink-0 items-center gap-3">
         <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#D4AF37]/10 border border-[#D4AF37]/20 shrink-0">
           <Receipt className="h-5 w-5 text-[#D4AF37]" />
         </div>
@@ -185,54 +241,58 @@ export function Receipts() {
         </div>
       </div>
 
-      {/* ── Stat cards ── */}
-      <FinanceStatGrid>
-        <FinanceStatCard
-          label="Total Revenue"
-          value={`₹${totalRevenue.toLocaleString()}`}
-          sub="View all receipts"
-          icon={IndianRupee}
-          index={0}
-          onClick={clearFilters}
-        />
-        <FinanceStatCard
-          label="Today's Revenue"
-          value={`₹${todayRevenue.toLocaleString()}`}
-          sub="Filter today's bills"
-          icon={TrendingUp}
-          index={1}
-          onClick={() => { setDateFilter("today"); setMethodFilter("all"); setSearch(""); }}
-        />
-        <FinanceStatCard
-          label="Avg. Bill Value"
-          value={`₹${avgBill.toLocaleString()}`}
-          sub="View this month"
-          icon={FileCheck}
-          index={2}
-          onClick={() => { setDateFilter("month"); setMethodFilter("all"); setSearch(""); }}
-        />
-        <FinanceStatCard
-          label="Total Receipts"
-          value={receipts.length}
-          sub={`All paid · ₹${totalRevenue.toLocaleString()}`}
-          icon={Receipt}
-          index={3}
-          onClick={clearFilters}
-        />
-      </FinanceStatGrid>
+      {/* ── Stat cards (admin Revenue Report only) ── */}
+      {!isManager && (
+        <div className="shrink-0">
+          <FinanceStatGrid>
+            <FinanceStatCard
+              label="Total Revenue"
+              value={`₹${totalRevenue.toLocaleString()}`}
+              sub="View all receipts"
+              icon={IndianRupee}
+              index={0}
+              onClick={clearFilters}
+            />
+            <FinanceStatCard
+              label="Today's Revenue"
+              value={`₹${todayRevenue.toLocaleString()}`}
+              sub="Filter today's bills"
+              icon={TrendingUp}
+              index={1}
+              onClick={() => { setDateFilter("today"); setMethodFilter("all"); setSearch(""); }}
+            />
+            <FinanceStatCard
+              label="Avg. Bill Value"
+              value={`₹${avgBill.toLocaleString()}`}
+              sub="View this month"
+              icon={FileCheck}
+              index={2}
+              onClick={() => { setDateFilter("month"); setMethodFilter("all"); setSearch(""); }}
+            />
+            <FinanceStatCard
+              label="Total Receipts"
+              value={receiptsTotal}
+              sub={`All paid · ₹${totalRevenue.toLocaleString()}`}
+              icon={Receipt}
+              index={3}
+              onClick={clearFilters}
+            />
+          </FinanceStatGrid>
+        </div>
+      )}
 
       {/* ── Filter bar ── */}
-      <div className={financeFilterBar}>
-        <div className="flex items-center gap-3 flex-wrap">
+      <div className={`${financeFilterBar} shrink-0`}>
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
 
           {/* Search */}
-          <div className="relative flex-1 min-w-[200px]">
+          <div className="relative min-w-0 flex-1 sm:min-w-[200px]">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
             <input
               value={search}
               onChange={e => { setSearch(e.target.value); }}
               placeholder="Search by receipt #, customer or phone…"
-              className="w-full h-10 pl-10 pr-9 rounded-xl border border-gray-200 text-[13px] text-[#111] placeholder:text-gray-400 outline-none focus:border-[#d4af37]/60 focus:ring-2 focus:ring-[#d4af37]/10 bg-[#fafafa] transition-all"
+              className="w-full h-10 pl-10 pr-9 rounded-xl border border-gray-200 text-[13px] text-[#111] placeholder:text-gray-400 outline-none focus:border-[#d4af37]/60 focus:ring-2 focus:ring-[#d4af37]/10 bg-white transition-all"
             />
             {search && (
               <button onClick={() => { setSearch(""); }}
@@ -243,106 +303,167 @@ export function Receipts() {
           </div>
 
           {dateParam && (
-            <span className="inline-flex items-center gap-2 rounded-xl border border-[#d4af37]/40 bg-[#fffbea] px-3 py-1.5 text-[12px] font-semibold text-[#9a7d20] shrink-0">
+            <span className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#d4af37]/40 bg-[#fffbea] px-3 py-1.5 text-[12px] font-semibold text-[#9a7d20] shrink-0">
               <CalendarDays className="h-3.5 w-3.5" />
               {new Date(`${dateParam}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
             </span>
           )}
 
-          {/* Period dropdown */}
-          <div className="relative shrink-0">
-            <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#d4af37] pointer-events-none" />
-            <select
+          <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2 sm:flex sm:flex-wrap sm:gap-3">
+            <FilterSelect
               value={dateFilter}
-              onChange={e => { setDateFilter(e.target.value); }}
-              className={`h-10 pl-9 pr-8 rounded-xl border text-[13px] font-semibold appearance-none outline-none cursor-pointer transition-all focus:ring-2 focus:ring-[#d4af37]/20 ${
-                dateFilter !== "all"
-                  ? "border-[#d4af37]/60 bg-[#fffbea] text-[#9a7a1e]"
-                  : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300"
-              }`}
-            >
-              {[
-                { value: "all",   label: "All Time" },
-                { value: "today", label: "Today" },
-                { value: "week",  label: "This Week" },
-                { value: "month", label: "This Month" },
-              ].map(o => {
-                const count = receipts.filter(r => {
-                  if (o.value === "all")   return true;
-                  if (o.value === "today") return r.date === TODAY;
-                  if (o.value === "week")  return (new Date(TODAY).getTime() - new Date(r.date).getTime()) / 86400000 < 7;
-                  if (o.value === "month") return r.date.startsWith(TODAY.slice(0, 7));
-                  return false;
-                }).length;
-                return <option key={o.value} value={o.value}>{o.label} ({count})</option>;
-              })}
-            </select>
-            <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400">
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-            </span>
-            {dateFilter !== "all" && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-[#d4af37]" />}
-          </div>
-
-          {/* Method dropdown */}
-          <div className="relative shrink-0">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#d4af37] pointer-events-none" />
-            <select
+              onValueChange={setDateFilter}
+              icon={CalendarDays}
+              active={dateFilter !== "all"}
+              options={[
+                { value: "all", label: `All Time (${receipts.length})` },
+                {
+                  value: "today",
+                  label: `Today (${receipts.filter((r) => r.date === TODAY).length})`,
+                },
+                {
+                  value: "week",
+                  label: `This Week (${receipts.filter((r) => (new Date(TODAY).getTime() - new Date(r.date).getTime()) / 86400000 < 7).length})`,
+                },
+                {
+                  value: "month",
+                  label: `This Month (${receipts.filter((r) => r.date.startsWith(TODAY.slice(0, 7))).length})`,
+                },
+              ]}
+            />
+            <FilterSelect
               value={methodFilter}
-              onChange={e => { setMethodFilter(e.target.value); }}
-              className={`h-10 pl-9 pr-8 rounded-xl border text-[13px] font-semibold appearance-none outline-none cursor-pointer transition-all focus:ring-2 focus:ring-[#d4af37]/20 ${
-                methodFilter !== "all"
-                  ? "border-[#d4af37]/60 bg-[#fffbea] text-[#9a7a1e]"
-                  : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300"
-              }`}
-            >
-              {[
-                { value: "all",    label: "All Methods" },
-                { value: "cash",   label: "💵 Cash" },
-                { value: "upi",    label: "📱 UPI" },
-                { value: "card",   label: "💳 Card" },
-                { value: "wallet", label: "👛 Wallet" },
-              ].map(o => {
-                const count = o.value === "all" ? receipts.length : receipts.filter(r => r.paymentMethod === o.value).length;
-                return <option key={o.value} value={o.value}>{o.label} ({count})</option>;
-              })}
-            </select>
-            <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400">
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-            </span>
-            {methodFilter !== "all" && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-[#d4af37]" />}
+              onValueChange={setMethodFilter}
+              icon={Filter}
+              active={methodFilter !== "all"}
+              options={[
+                { value: "all", label: `All Methods (${receipts.length})` },
+                { value: "cash", label: `Cash (${receipts.filter((r) => r.paymentMethod === "cash").length})` },
+                { value: "upi", label: `UPI (${receipts.filter((r) => r.paymentMethod === "upi").length})` },
+                { value: "card", label: `Card (${receipts.filter((r) => r.paymentMethod === "card").length})` },
+                { value: "wallet", label: `Wallet (${receipts.filter((r) => r.paymentMethod === "wallet").length})` },
+              ]}
+            />
           </div>
 
         </div>
       </div>
 
       {/* ── Receipt table ── */}
-      <div className={financePanel}>
-        <div className={`${financePanelHeader} border-b border-black/[0.07]`}>
+      <div className={`${financePanel} flex min-h-0 flex-1 flex-col`}>
+        <div className={`${financePanelHeader} shrink-0 border-b border-black/[0.07]`}>
           <div className="flex items-center gap-2">
             <h2 className={financePanelTitle}>Receipt List</h2>
             <span className="text-[11px] font-semibold text-[#9a9a9a] bg-[#FAF8F2] border border-black/[0.07] px-2 py-0.5 rounded-full">{filtered.length}</span>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <Table>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        {/* Phone / tablet: stacked cards — no horizontal scroll */}
+        <div className="divide-y divide-black/[0.06] lg:hidden">
+          {paginatedReceipts.map((r, index) => (
+            <article
+              key={r.id}
+              className={`space-y-3 p-4 sm:p-5 ${index % 2 === 0 ? "bg-white" : "bg-[#FAFAFA]"}`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setViewReceipt(r)}
+                  className="min-w-0 text-left"
+                >
+                  <p className="font-mono text-[13px] font-bold text-[#b8962e]">{r.receiptNo}</p>
+                  <p className="mt-0.5 text-[12px] font-semibold text-[#111118]">{r.customer}</p>
+                  <p className="text-[11px] text-[#9a9a9a]">{r.phone}</p>
+                </button>
+                <div className="shrink-0 text-right">
+                  <p className="text-[15px] font-black tabular-nums text-[#111118]">₹{r.total.toLocaleString()}</p>
+                  <p className="mt-0.5 text-[11px] text-[#9a9a9a]">{r.date}</p>
+                  <p className="text-[11px] text-[#9a9a9a]">{r.time}</p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5">
+                {r.services.map((s, i) => (
+                  <span
+                    key={i}
+                    className="max-w-full truncate text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200"
+                  >
+                    {s}
+                  </span>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between gap-2">
+                <Badge className={`${methodColors[r.paymentMethod]} [&_svg]:text-[#D4AF37]`}>
+                  {methodIcon(r.paymentMethod)}
+                  {paymentMethodLabel(r.paymentMethod)}
+                </Badge>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setViewReceipt(r)}
+                    className="h-8 w-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-400 hover:text-[#111] hover:border-gray-300 transition-all"
+                    aria-label={`View ${r.receiptNo}`}
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadBill(r)}
+                    className="h-8 w-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-400 hover:text-[#D4AF37] hover:border-[#D4AF37]/30 transition-all"
+                    aria-label={`Download ${r.receiptNo}`}
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openEmail(r)}
+                    className="h-8 w-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-400 hover:text-[#D4AF37] hover:border-[#D4AF37]/30 transition-all"
+                    aria-label={`Email ${r.receiptNo}`}
+                  >
+                    <Mail className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+          {filtered.length === 0 && (
+            <div className="flex flex-col items-center gap-2 py-16">
+              <Receipt className="h-8 w-8 text-gray-200" />
+              <p className="text-[13px] font-semibold text-gray-400">No receipts found</p>
+              {hasActiveFilter && (
+                <button type="button" onClick={clearFilters} className="text-[12px] text-[#b8962e] hover:underline">
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Desktop: full table */}
+        <div className="hidden lg:block">
+          <Table containerClassName="overflow-x-visible">
             <TableHeader>
               <TableRow className="bg-gray-50/40 hover:bg-gray-50/40">
                 <TableHead className="text-[11px] font-bold uppercase tracking-wider text-gray-500 pl-5">Receipt #</TableHead>
                 <TableHead className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Date & Time</TableHead>
                 <TableHead className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Customer</TableHead>
-                <TableHead className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Services</TableHead>
+                <TableHead className="text-[11px] font-bold uppercase tracking-wider text-gray-500 min-w-0 max-w-[220px]">Services</TableHead>
                 <TableHead className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Payment</TableHead>
                 <TableHead className="text-[11px] font-bold uppercase tracking-wider text-gray-500 text-right">Amount</TableHead>
                 <TableHead className="text-[11px] font-bold uppercase tracking-wider text-gray-500 text-right pr-5">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedReceipts.map((r, idx) => (
+              {paginatedReceipts.map((r) => (
                 <TableRow key={r.id} className="group hover:bg-[#FAF8F2]/60 transition-colors">
                   <TableCell className="pl-5">
-                    <button onClick={() => setViewReceipt(r)}
-                      className="font-mono text-[13px] font-bold text-[#b8962e] hover:text-[#d4af37] hover:underline underline-offset-2 transition-colors">
+                    <button
+                      type="button"
+                      onClick={() => setViewReceipt(r)}
+                      className="font-mono text-[13px] font-bold text-[#b8962e] hover:text-[#d4af37] hover:underline underline-offset-2 transition-colors"
+                    >
                       {r.receiptNo}
                     </button>
                   </TableCell>
@@ -355,16 +476,22 @@ export function Receipts() {
                       <div className="h-7 w-7 rounded-full bg-[#d4af37]/15 border border-[#d4af37]/25 flex items-center justify-center shrink-0">
                         <span className="text-[11px] font-black text-[#b8962e]">{r.customer[0]}</span>
                       </div>
-                      <div>
-                        <p className="text-[12px] font-semibold text-[#111]">{r.customer}</p>
-                        <p className="text-[11px] text-gray-400">{r.phone}</p>
+                      <div className="min-w-0">
+                        <p className="truncate text-[12px] font-semibold text-[#111]">{r.customer}</p>
+                        <p className="truncate text-[11px] text-gray-400">{r.phone}</p>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="max-w-[220px] whitespace-normal">
                     <div className="flex flex-wrap gap-1">
                       {r.services.map((s, i) => (
-                        <span key={i} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">{s}</span>
+                        <span
+                          key={i}
+                          className="max-w-full truncate text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200"
+                          title={s}
+                        >
+                          {s}
+                        </span>
                       ))}
                     </div>
                   </TableCell>
@@ -375,16 +502,32 @@ export function Receipts() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <span className="text-[14px] font-black text-[#111]">₹{r.total.toLocaleString()}</span>
+                    <span className="text-[14px] font-black tabular-nums text-[#111]">₹{r.total.toLocaleString()}</span>
                   </TableCell>
                   <TableCell className="pr-5">
                     <div className="flex justify-end gap-1">
-                      <button onClick={() => setViewReceipt(r)}
-                        className="h-7 w-7 rounded-lg border border-gray-200 flex items-center justify-center text-gray-400 hover:text-[#111] hover:border-gray-300 transition-all">
+                      <button
+                        type="button"
+                        onClick={() => setViewReceipt(r)}
+                        className="h-7 w-7 rounded-lg border border-gray-200 flex items-center justify-center text-gray-400 hover:text-[#111] hover:border-gray-300 transition-all"
+                        aria-label={`View ${r.receiptNo}`}
+                      >
                         <Eye className="h-3.5 w-3.5" />
                       </button>
-                      <button onClick={() => openEmail(r)}
-                        className="h-7 w-7 rounded-lg border border-gray-200 flex items-center justify-center text-gray-400 hover:text-[#D4AF37] hover:border-[#D4AF37]/30 transition-all">
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadBill(r)}
+                        className="h-7 w-7 rounded-lg border border-gray-200 flex items-center justify-center text-gray-400 hover:text-[#D4AF37] hover:border-[#D4AF37]/30 transition-all"
+                        aria-label={`Download ${r.receiptNo}`}
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openEmail(r)}
+                        className="h-7 w-7 rounded-lg border border-gray-200 flex items-center justify-center text-gray-400 hover:text-[#D4AF37] hover:border-[#D4AF37]/30 transition-all"
+                        aria-label={`Email ${r.receiptNo}`}
+                      >
                         <Mail className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -397,7 +540,11 @@ export function Receipts() {
                     <div className="flex flex-col items-center gap-2">
                       <Receipt className="h-8 w-8 text-gray-200" />
                       <p className="text-[13px] font-semibold text-gray-400">No receipts found</p>
-                      {hasActiveFilter && <button onClick={clearFilters} className="text-[12px] text-[#b8962e] hover:underline">Clear filters</button>}
+                      {hasActiveFilter && (
+                        <button type="button" onClick={clearFilters} className="text-[12px] text-[#b8962e] hover:underline">
+                          Clear filters
+                        </button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -405,14 +552,20 @@ export function Receipts() {
             </TableBody>
           </Table>
         </div>
+        </div>
 
-        <Pagination
-          page={page}
-          pageSize={pageSize}
-          totalRecords={filtered.length}
-          onPageChange={setPage}
-          onPageSizeChange={setPageSize}
-        />
+        <div className="shrink-0 border-t border-black/[0.06]">
+          <Pagination
+            page={listPage}
+            pageSize={listPageSize}
+            totalRecords={receiptsTotal}
+            onPageChange={setListPage}
+            onPageSizeChange={(size) => {
+              setListPageSize(size);
+              setListPage(1);
+            }}
+          />
+        </div>
       </div>
 
       {/* ── View Receipt Modal ── */}
@@ -511,9 +664,9 @@ export function Receipts() {
 
               <div className="grid grid-cols-3 border-t border-black/[0.06] bg-white">
                 {[
-                  { Icon: Printer, label: "Print", action: () => window.print() },
+                  { Icon: Printer, label: "Print", action: () => handleDownloadBill(viewReceipt) },
                   { Icon: Mail, label: "Email", action: () => openEmail(viewReceipt) },
-                  { Icon: Download, label: "Download", action: () => alert(`Download ${viewReceipt.receiptNo}.pdf`) },
+                  { Icon: Download, label: "Download", action: () => handleDownloadBill(viewReceipt) },
                 ].map(({ Icon, label, action }) => (
                   <button
                     key={label}

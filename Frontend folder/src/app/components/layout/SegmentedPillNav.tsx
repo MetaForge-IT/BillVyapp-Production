@@ -10,6 +10,8 @@ import {
 export interface SegmentedPillItem<T extends string = string> {
   id: T;
   label: string;
+  /** Shorter label for narrow screens; falls back to `label` when omitted. */
+  shortLabel?: string;
   icon?: LucideIcon;
   badge?: number;
 }
@@ -29,7 +31,7 @@ export function SegmentedPillNav<T extends string>({
 }: SegmentedPillNavProps<T>) {
   return (
     <div className={cn(SEGMENTED_PILL_LIST, className)} role="tablist">
-      {items.map(({ id, label, icon: Icon, badge }) => {
+      {items.map(({ id, label, shortLabel, icon: Icon, badge }) => {
         const active = value === id;
         return (
           <button
@@ -37,9 +39,10 @@ export function SegmentedPillNav<T extends string>({
             type="button"
             role="tab"
             aria-selected={active}
+            aria-label={label}
             onClick={() => onChange(id)}
             className={cn(
-              "inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-transparent px-4 text-[12px] font-semibold whitespace-nowrap transition-all duration-200",
+              "inline-flex h-9 min-w-0 flex-1 basis-[calc(50%-0.125rem)] items-center justify-center gap-1.5 rounded-xl border border-transparent px-2.5 text-[11px] font-semibold whitespace-nowrap transition-all duration-200 sm:flex-none sm:basis-auto sm:px-4 sm:text-[12px]",
               active
                 ? "bg-[#121212] text-[#D4AF37] shadow-[0_2px_10px_rgba(18,18,18,0.2)]"
                 : "bg-transparent text-[#121212] hover:bg-[rgba(18,18,18,0.04)]",
@@ -53,7 +56,14 @@ export function SegmentedPillNav<T extends string>({
                 )}
               />
             )}
-            {label}
+            {shortLabel ? (
+              <>
+                <span className="truncate sm:hidden">{shortLabel}</span>
+                <span className="hidden truncate sm:inline">{label}</span>
+              </>
+            ) : (
+              <span className="truncate">{label}</span>
+            )}
             {badge !== undefined && badge > 0 && (
               <span
                 className={cn(

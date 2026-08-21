@@ -1,40 +1,70 @@
-import React from "react";
+import { Suspense } from "react";
 import { createBrowserRouter, Navigate } from "react-router";
 import { RequireAuth } from "./components/layout/RequireAuth";
 import { RequireRole } from "./components/layout/RequireRole";
 import { ProtectedAppShell } from "./components/layout/ProtectedAppShell";
+import { AppDataProviders } from "./components/layout/AppDataProviders";
 import { AuthLayout } from "./components/layout/AuthLayout";
 import { PublicHome } from "./components/layout/PublicHome";
+import { RouteFallback } from "./components/layout/RouteFallback";
+import { lazyNamed } from "./lib/lazyNamed";
+
+// Auth pages stay eager — first paint / login should not wait on a chunk.
 import { LandingPage } from "./pages/auth/LandingPage";
 import { LoginPage } from "./pages/auth/LoginPage";
 import { SignUpPage } from "./pages/auth/SignUpPage";
 import { ForgotPasswordPage } from "./pages/auth/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/auth/ResetPasswordPage";
-import { Dashboard } from "./pages/Dashboard";
-import { Appointments } from "./pages/Appointments";
-import { Customers } from "./pages/Customers";
-import { Services } from "./pages/Services";
-import { Finance } from "./pages/Finance";
-import { Expenses } from "./pages/Expenses";
-import { Inventory } from "./pages/Inventory";
-import { Memberships } from "./pages/Memberships";
-import { Feedback } from "./pages/Feedback";
-import { WalkIn } from "./pages/WalkIn";
-import { NewAppointment } from "./pages/NewAppointment";
-import { MyProfile } from "./pages/MyProfile";
-import { HelpSupport } from "./pages/HelpSupport";
-import { Notifications } from "./pages/Notifications";
-import { NewCustomer } from "./pages/NewCustomer";
-import {
-  SuperAdminShell,
-  SuperAdminOverviewPage,
-} from "./pages/super-admin/SuperAdminShell";
-import { SuperAdminFranchisesPage } from "./pages/super-admin/SuperAdminFranchisesPage";
-import { SuperAdminFranchiseDetailPage } from "./pages/super-admin/SuperAdminFranchiseDetailPage";
-import { SuperAdminUsersPage } from "./pages/super-admin/SuperAdminUsersPage";
+
+// Heavy app pages — code-split so only the active route's JS is downloaded.
+const Dashboard = lazyNamed(() => import("./pages/Dashboard"), "Dashboard");
+const Appointments = lazyNamed(() => import("./pages/Appointments"), "Appointments");
+const Customers = lazyNamed(() => import("./pages/Customers"), "Customers");
+const Services = lazyNamed(() => import("./pages/Services"), "Services");
+const Finance = lazyNamed(() => import("./pages/Finance"), "Finance");
+const Expenses = lazyNamed(() => import("./pages/Expenses"), "Expenses");
+const Inventory = lazyNamed(() => import("./pages/Inventory"), "Inventory");
+const Memberships = lazyNamed(() => import("./pages/Memberships"), "Memberships");
+const Feedback = lazyNamed(() => import("./pages/Feedback"), "Feedback");
+const WalkIn = lazyNamed(() => import("./pages/WalkIn"), "WalkIn");
+const NewAppointment = lazyNamed(() => import("./pages/NewAppointment"), "NewAppointment");
+const MyProfile = lazyNamed(() => import("./pages/MyProfile"), "MyProfile");
+const HelpSupport = lazyNamed(() => import("./pages/HelpSupport"), "HelpSupport");
+const Notifications = lazyNamed(() => import("./pages/Notifications"), "Notifications");
+const NewCustomer = lazyNamed(() => import("./pages/NewCustomer"), "NewCustomer");
+
+const SuperAdminShell = lazyNamed(
+  () => import("./pages/super-admin/SuperAdminShell"),
+  "SuperAdminShell",
+);
+const SuperAdminOverviewPage = lazyNamed(
+  () => import("./pages/super-admin/SuperAdminShell"),
+  "SuperAdminOverviewPage",
+);
+const SuperAdminFranchisesPage = lazyNamed(
+  () => import("./pages/super-admin/SuperAdminFranchisesPage"),
+  "SuperAdminFranchisesPage",
+);
+const SuperAdminFranchiseDetailPage = lazyNamed(
+  () => import("./pages/super-admin/SuperAdminFranchiseDetailPage"),
+  "SuperAdminFranchiseDetailPage",
+);
+const SuperAdminUsersPage = lazyNamed(
+  () => import("./pages/super-admin/SuperAdminUsersPage"),
+  "SuperAdminUsersPage",
+);
+
 // Coupons stays gated (redirects to Dashboard) — not restored, not deleted.
 // Employees, Reports/Analytics, Marketing, CEO Dashboard, AI Insights, and
 // Settings were permanently removed from this project (see routes below).
+
+function SuperAdminSuspense() {
+  return (
+    <Suspense fallback={<RouteFallback />}>
+      <SuperAdminShell />
+    </Suspense>
+  );
+}
 
 export const router = createBrowserRouter([
   {
@@ -55,7 +85,7 @@ export const router = createBrowserRouter([
     children: [
       {
         path: "super-admin",
-        Component: SuperAdminShell,
+        element: <SuperAdminSuspense />,
         children: [
           { index: true, Component: SuperAdminOverviewPage },
           { path: "franchises", Component: SuperAdminFranchisesPage },
@@ -73,39 +103,12 @@ export const router = createBrowserRouter([
       // gated, so the full app can be restored by reverting this file.
       // Public `/` is the landing page; app home lives at `/dashboard`.
       { path: "dashboard", Component: Dashboard },
-      { path: "appointments", element: <RequireRole roles={["manager"]}><Appointments /></RequireRole> },
-      { path: "appointments/new", element: <RequireRole roles={["manager"]}><NewAppointment /></RequireRole> },
-      { path: "walk-in", element: <RequireRole roles={["manager"]}><WalkIn /></RequireRole> },
-      { path: "walk-in/bill", Component: () => <Navigate to="/appointments?type=walk-in" replace /> },
-      { path: "walkins", Component: () => <Navigate to="/appointments?type=walk-in" replace /> },
-      { path: "queue", Component: () => <Navigate to="/appointments" replace /> },
-      { path: "customers", Component: Customers },
-      { path: "customers/new", Component: NewCustomer },
-      { path: "finance", element: <RequireRole roles={["admin"]}><Finance /></RequireRole> },
-      { path: "expenses", element: <RequireRole roles={["admin", "manager"]}><Expenses /></RequireRole> },
-      { path: "billing", Component: () => <Navigate to="/finance?tab=receipts" replace /> },
-      { path: "billing/new", Component: () => <Navigate to="/finance?tab=receipts" replace /> },
-      { path: "billing/save", Component: () => <Navigate to="/finance?tab=receipts" replace /> },
-      { path: "invoices", Component: () => <Navigate to="/finance?tab=receipts" replace /> },
-      { path: "payments", Component: () => <Navigate to="/finance?tab=receipts" replace /> },
-      { path: "services", Component: Services },
-      { path: "packages", Component: () => <Navigate to="/services?tab=packages" replace /> },
-      { path: "pricing", Component: () => <Navigate to="/services" replace /> },
       { path: "profile", Component: MyProfile },
       { path: "help", Component: HelpSupport },
       { path: "notifications", Component: Notifications },
-      { path: "inventory", Component: Inventory },
-      { path: "vendors", Component: () => <Navigate to="/inventory?tab=vendors" replace /> },
-      { path: "orders", Component: () => <Navigate to="/inventory?tab=orders" replace /> },
-      { path: "memberships", Component: Memberships },
-      { path: "feedback", Component: Feedback },
 
-      // ── Gated: Coupons is hidden but not deleted ──
+      // Lightweight redirects — no finance/ops providers needed.
       { path: "coupons", Component: () => <Navigate to="/dashboard" replace /> },
-
-      // ── Permanently removed pages: Employees, Reports/Analytics, Marketing,
-      // CEO Dashboard, AI Insights, Settings. Their code no longer exists in
-      // this project — these redirects just catch any stale links/bookmarks.
       { path: "employees", Component: () => <Navigate to="/dashboard" replace /> },
       { path: "attendance", Component: () => <Navigate to="/dashboard" replace /> },
       { path: "incentives", Component: () => <Navigate to="/dashboard" replace /> },
@@ -116,7 +119,35 @@ export const router = createBrowserRouter([
       { path: "settings", Component: () => <Navigate to="/dashboard" replace /> },
       { path: "ceo-dashboard", Component: () => <Navigate to="/dashboard" replace /> },
       { path: "ai-insights", Component: () => <Navigate to="/dashboard" replace /> },
-      // Users, Permissions, Integrations routes removed
+
+      {
+        Component: AppDataProviders,
+        children: [
+      { path: "appointments", element: <RequireRole roles={["manager"]}><Appointments /></RequireRole> },
+      { path: "appointments/new", element: <RequireRole roles={["manager"]}><NewAppointment /></RequireRole> },
+      { path: "walk-in", element: <RequireRole roles={["manager"]}><WalkIn /></RequireRole> },
+      { path: "walk-in/bill", Component: () => <Navigate to="/appointments?type=walk-in" replace /> },
+      { path: "walkins", Component: () => <Navigate to="/appointments?type=walk-in" replace /> },
+      { path: "queue", Component: () => <Navigate to="/appointments" replace /> },
+      { path: "customers", Component: Customers },
+      { path: "customers/new", Component: NewCustomer },
+      { path: "finance", element: <RequireRole roles={["admin", "manager"]}><Finance /></RequireRole> },
+      { path: "expenses", element: <RequireRole roles={["admin", "manager"]}><Expenses /></RequireRole> },
+      { path: "billing", Component: () => <Navigate to="/finance?tab=receipts" replace /> },
+      { path: "billing/new", Component: () => <Navigate to="/finance?tab=receipts" replace /> },
+      { path: "billing/save", Component: () => <Navigate to="/finance?tab=receipts" replace /> },
+      { path: "invoices", Component: () => <Navigate to="/finance?tab=receipts" replace /> },
+      { path: "payments", Component: () => <Navigate to="/finance?tab=receipts" replace /> },
+      { path: "services", Component: Services },
+      { path: "packages", Component: () => <Navigate to="/services?tab=packages" replace /> },
+      { path: "pricing", Component: () => <Navigate to="/services" replace /> },
+      { path: "inventory", Component: Inventory },
+      { path: "vendors", Component: () => <Navigate to="/inventory?tab=vendors" replace /> },
+      { path: "orders", Component: () => <Navigate to="/inventory?tab=orders" replace /> },
+      { path: "memberships", Component: Memberships },
+      { path: "feedback", Component: Feedback },
+        ],
+      },
         ],
       },
     ],

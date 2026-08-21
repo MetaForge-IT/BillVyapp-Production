@@ -11,7 +11,7 @@ import {
 import { Pagination } from "../components/shared/Pagination";
 import { useTablePagination } from "../hooks/useTablePagination";
 import { SEGMENTED_PILL_LIST, SEGMENTED_PILL_TRIGGER } from "../components/layout/segmented-nav";
-import { fetchCustomers } from "../../api/customers";
+import { useCustomersQuery } from "../hooks/useCustomersQuery";
 import { fetchMembershipTiers, type MembershipTier } from "../../api/membership-tiers";
 import { fetchPlanEnrollments, fetchSalonPlans, type SalonPlan } from "../../api/plans";
 import { getApiErrorMessage } from "../../lib/api";
@@ -143,6 +143,7 @@ function buildTierCards(
 }
 
 export function Memberships() {
+  const { reloadCustomers } = useCustomersQuery();
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [membershipPlans, setMembershipPlans] = useState<SalonPlan[]>([]);
@@ -170,7 +171,7 @@ export function Memberships() {
     setLoading(true);
     try {
       const [customers, enrollments, plans, tiers] = await Promise.all([
-        fetchCustomers(),
+        reloadCustomers(),
         fetchPlanEnrollments(),
         fetchSalonPlans(),
         fetchMembershipTiers(),
@@ -234,7 +235,7 @@ export function Memberships() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [reloadCustomers]);
 
   useEffect(() => {
     void loadData();

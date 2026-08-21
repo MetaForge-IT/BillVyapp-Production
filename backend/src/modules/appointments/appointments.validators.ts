@@ -68,3 +68,11 @@ export const updateAppointmentSchema = z
 export type CreateAppointmentInput = z.infer<typeof createAppointmentSchema>;
 export type UpdateAppointmentStatusInput = z.infer<typeof updateAppointmentStatusSchema>;
 export type UpdateAppointmentInput = z.infer<typeof updateAppointmentSchema>;
+
+export const listAppointmentsQuerySchema = z.object({
+  date: z.string().date().optional(),
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(200).optional().default(50),
+});
+
+export type ListAppointmentsQuery = z.infer<typeof listAppointmentsQuerySchema>;

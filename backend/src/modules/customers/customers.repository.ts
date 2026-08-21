@@ -7,9 +7,12 @@ import { INVOICE_STATUS } from "../billing/billing.constants";
 import { CUSTOMER_ERROR_CODES, LOYALTY_TRANSACTION_TYPE } from "./customers.constants";
 import type {
   CreateCustomerInput,
+  ListCustomersQuery,
   RedeemLoyaltyInput,
   UpdateCustomerInput,
 } from "./customers.validators";
+import { toPaginatedResult } from "../../utils/pagination";
+import type { Prisma } from "@prisma/client";
 
 type CustomerWithRelations = Customer & {
   currentTier: MembershipTier | null;
@@ -62,16 +65,44 @@ function normalizePhone(phone: string): string {
 }
 
 export class CustomersRepository {
-  async list(salonId: string) {
-    const customers = await prisma.customer.findMany({
-      where: { salonId, deletedAt: null },
-      include: {
-        currentTier: true,
-        preferences: { include: { favoriteService: { select: { name: true } } } },
-      },
-      orderBy: [{ createdAt: "desc" }],
-    });
-    return customers.map(mapCustomer);
+  async list(salonId: string, query: ListCustomersQuery) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 50;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.CustomerWhereInput = {
+      salonId,
+      deletedAt: null,
+    };
+
+    if (query.status) {
+      where.status = query.status;
+    }
+
+    if (query.search?.trim()) {
+      const term = query.search.trim();
+      where.OR = [
+        { fullName: { contains: term } },
+        { phone: { contains: term } },
+        { email: { contains: term } },
+      ];
+    }
+
+    const [total, customers] = await prisma.$transaction([
+      prisma.customer.count({ where }),
+      prisma.customer.findMany({
+        where,
+        include: {
+          currentTier: true,
+          preferences: { include: { favoriteService: { select: { name: true } } } },
+        },
+        orderBy: [{ createdAt: "desc" }],
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    return toPaginatedResult(customers.map(mapCustomer), total, page, limit);
   }
 
   async getById(salonId: string, customerId: string) {

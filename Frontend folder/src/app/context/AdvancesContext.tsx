@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   createAdvance as apiCreateAdvance,
   deductAdvance as apiDeductAdvance,
@@ -48,7 +48,7 @@ export function AdvancesProvider({ children }: { children: ReactNode }) {
     void refreshAdvances();
   }, [refreshAdvances]);
 
-  async function addAdvance(payload: {
+  const addAdvance = useCallback(async (payload: {
     customer: string;
     phone: string;
     service?: string;
@@ -56,7 +56,7 @@ export function AdvancesProvider({ children }: { children: ReactNode }) {
     bookedFor?: string;
     source?: string;
     customerId?: string;
-  }): Promise<AdvanceRecord | null> {
+  }): Promise<AdvanceRecord | null> => {
     const body: CreateAdvancePayload = {
       customerName: payload.customer,
       phone: payload.phone,
@@ -74,29 +74,39 @@ export function AdvancesProvider({ children }: { children: ReactNode }) {
       toast.error(getApiErrorMessage(error, "Failed to record advance"));
       return null;
     }
-  }
+  }, []);
 
-  function getActiveAdvancesForPhone(phone: string) {
+  const getActiveAdvancesForPhone = useCallback((phone: string) => {
     const normalized = phone.replace(/\D/g, "").slice(-10);
     return advances.filter(
       (advance) =>
         advance.phone.replace(/\D/g, "").slice(-10) === normalized && advance.balance > 0,
     );
-  }
+  }, [advances]);
 
-  async function deductAdvance(id: string, amount: number) {
+  const deductAdvance = useCallback(async (id: string, amount: number) => {
     try {
       const updated = await apiDeductAdvance(id, amount);
       setAdvances((prev) => prev.map((advance) => (advance.id === id ? updated : advance)));
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Failed to apply advance"));
     }
-  }
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      advances,
+      loading,
+      refreshAdvances,
+      addAdvance,
+      getActiveAdvancesForPhone,
+      deductAdvance,
+    }),
+    [advances, loading, refreshAdvances, addAdvance, getActiveAdvancesForPhone, deductAdvance],
+  );
 
   return (
-    <AdvancesContext.Provider
-      value={{ advances, loading, refreshAdvances, addAdvance, getActiveAdvancesForPhone, deductAdvance }}
-    >
+    <AdvancesContext.Provider value={value}>
       {children}
     </AdvancesContext.Provider>
   );

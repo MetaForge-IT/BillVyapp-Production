@@ -3,10 +3,12 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
 } from "react";
+import { useLocation } from "react-router";
 import { fetchDashboard, type DashboardData } from "../../../api/dashboard";
 import { getApiErrorMessage } from "../../../lib/api";
 import { useAuthStore } from "../../../stores/authStore";
@@ -24,7 +26,12 @@ type DashboardContextValue = {
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);
 
+function isDashboardPath(pathname: string) {
+  return pathname === "/dashboard" || pathname.endsWith("/dashboard");
+}
+
 export function DashboardProvider({ children }: { children: ReactNode }) {
+  const location = useLocation();
   const accessToken = useAuthStore((s) => s.accessToken);
   const authReady = useAuthStore((s) => s.isReady);
   const [data, setData] = useState<DashboardData | null>(null);
@@ -32,7 +39,11 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [tabVisible, setTabVisible] = useState(
+    () => typeof document === "undefined" || document.visibilityState === "visible",
+  );
   const hasLoadedRef = useRef(false);
+  const onDashboard = isDashboardPath(location.pathname);
 
   const refresh = useCallback(async () => {
     if (!useAuthStore.getState().accessToken) {
@@ -55,6 +66,14 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const onVisibility = () => {
+      setTabVisible(document.visibilityState === "visible");
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
+
+  useEffect(() => {
     if (!authReady) return;
 
     if (!accessToken) {
@@ -65,17 +84,30 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    void refresh();
+    // One-shot load so sidebar KPIs have data even off-dashboard.
+    if (!hasLoadedRef.current) {
+      void refresh();
+    }
+
+    // Poll only while the dashboard is active and the tab is visible.
+    if (!onDashboard || !tabVisible) return;
+
+    if (hasLoadedRef.current) {
+      void refresh();
+    }
     const intervalId = window.setInterval(() => {
       void refresh();
     }, REFRESH_INTERVAL_MS);
     return () => window.clearInterval(intervalId);
-  }, [authReady, accessToken, refresh]);
+  }, [authReady, accessToken, refresh, onDashboard, tabVisible]);
+
+  const value = useMemo(
+    () => ({ data, loading, error, refreshing, lastUpdated, refresh }),
+    [data, loading, error, refreshing, lastUpdated, refresh],
+  );
 
   return (
-    <DashboardContext.Provider
-      value={{ data, loading, error, refreshing, lastUpdated, refresh }}
-    >
+    <DashboardContext.Provider value={value}>
       {children}
     </DashboardContext.Provider>
   );

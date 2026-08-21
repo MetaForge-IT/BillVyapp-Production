@@ -11,6 +11,7 @@ import { useCoupons } from "../../context/CouponsContext";
 import { fetchServiceCatalog } from "../../../api/services";
 import { createCustomer, searchCustomersByPhone, type Customer } from "../../../api/customers";
 import { completeCheckout, confirmOnlyCheckout } from "../../../api/billing";
+import { usePendingPayments } from "../../context/PendingPaymentsContext";
 import { mapApiCatalog, mapToAppointmentService } from "../../../lib/serviceCatalog";
 import { getApiErrorMessage } from "../../../lib/api";
 import { toLocalDateKey } from "../../../lib/appointmentSlotDate";
@@ -43,9 +44,10 @@ import { validateIndianMobile } from "../../../lib/mobileNumber";
 import { last10, mapTier } from "./utils";
 
 export function WalkInBilling() {
-  const { addAppointment } = useAppointments();
+  const { addAppointment, applyLocalStatus, refresh: refreshAppointments } = useAppointments();
   const { settings } = useSettings();
   const { coupons } = useCoupons();
+  const { refresh: refreshPending } = usePendingPayments();
   const { isDesktop } = useBreakpoint();
 
   const [catalog, setCatalog] = useState<AppointmentService[]>([]);
@@ -416,6 +418,8 @@ export function WalkInBilling() {
       setScanFocus(false);
       triggerConfetti();
       setReceiptOpen(true);
+      applyLocalStatus(appt.id, "completed");
+      void Promise.all([refreshPending(), refreshAppointments()]).catch(() => {});
       toast.success("Payment completed", {
         description: `Receipt ${invoice.receiptNumber} · ₹${total.toLocaleString("en-IN")}`,
       });
@@ -451,8 +455,11 @@ export function WalkInBilling() {
       setReceiptStep("pending");
       setScanFocus(false);
       setReceiptOpen(true);
+      // Confirm-only completes the visit on the server — drop it from Appointments immediately.
+      applyLocalStatus(appt.id, "completed");
+      void Promise.all([refreshPending(), refreshAppointments()]).catch(() => {});
       toast.success("Bill confirmed", {
-        description: `Invoice ${invoice.receiptNumber} · balance ₹${total.toLocaleString("en-IN")}`,
+        description: `Invoice ${invoice.receiptNumber} · balance ₹${total.toLocaleString("en-IN")} · Pending Payments`,
       });
     } catch (err) {
       toast.error(getApiErrorMessage(err, "Failed to confirm bill"));

@@ -1,45 +1,66 @@
+import {
+  addIstDays,
+  formatDbDateKey,
+  istDateKey,
+  istDayRange,
+  startOfIstDay,
+} from "../../utils/ist";
+
+/** @deprecated Prefer startOfIstDay — kept name for call-site compatibility. */
 export function startOfLocalDay(date = new Date()): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  return startOfIstDay(date);
 }
 
 export function localDayRange(date: Date): { gte: Date; lt: Date } {
-  const gte = startOfLocalDay(date);
-  return { gte, lt: addDays(gte, 1) };
+  return istDayRange(date);
 }
 
+/** Serialize `@db.Date` (UTC midnight calendar day) to YYYY-MM-DD. */
 export function formatDateKey(date: Date): string {
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(date.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return formatDbDateKey(date);
 }
 
+/** IST calendar YYYY-MM-DD for an instant (payments, “today”, trends). */
 export function localDateKey(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return istDateKey(date);
 }
 
 export function addDays(date: Date, days: number): Date {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
+  return addIstDays(date, days);
 }
 
 export function startOfMonth(date = new Date()): Date {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
+  const key = istDateKey(date);
+  const [y, m] = key.split("-").map(Number);
+  const monthStartKey = `${y}-${String(m).padStart(2, "0")}-01`;
+  return startOfIstDay(new Date(`${monthStartKey}T12:00:00+05:30`));
 }
 
 export function startOfWeek(date = new Date()): Date {
-  const start = startOfLocalDay(date);
-  const day = start.getDay();
+  const start = startOfIstDay(date);
+  const label = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kolkata",
+    weekday: "short",
+  }).format(date);
+  const map: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+  };
+  const day = map[label] ?? 1;
   const diff = day === 0 ? -6 : 1 - day;
   return addDays(start, diff);
 }
 
 export function dayShortLabel(date: Date): string {
-  return date.toLocaleDateString("en-US", { weekday: "short" });
+  return date.toLocaleDateString("en-US", {
+    timeZone: "Asia/Kolkata",
+    weekday: "short",
+  });
 }
 
 export function formatInr(amount: number): string {
@@ -52,7 +73,7 @@ export function percentChange(current: number, previous: number): { text: string
       ? { text: "+100%", positive: true }
       : { text: "0%", positive: true };
   }
-  const pct = ((current - previous) / previous) * 100;
+  const pct = ((current / previous) - 1) * 100;
   const rounded = Math.round(pct * 10) / 10;
   return {
     text: `${rounded >= 0 ? "+" : ""}${rounded}%`,
@@ -67,6 +88,7 @@ export function initialsFromName(name: string): string {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
+/** Appointment `@db.Time` values are stored as UTC time-of-day matching IST wall clock. */
 export function formatTime12h(date: Date): string {
   const hours = date.getUTCHours();
   const minutes = date.getUTCMinutes();

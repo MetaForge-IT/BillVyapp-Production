@@ -12,6 +12,7 @@ import { toast } from "../ui/hot-toast";
 import { createStockPurchase, type StockPurchase } from "../../../api/stock-purchases";
 import type { VendorRecord } from "../../../api/vendors";
 import { getApiErrorMessage } from "../../../lib/api";
+import { istDateKey } from "../../../lib/istDate";
 import { formatInr, parseInr, purchaseTotalQuantity } from "../../../lib/inventoryMappers";
 import type { Product } from "../../context/ProductsContext";
 import { Dialog, DialogContent } from "../ui/dialog";
@@ -173,7 +174,7 @@ export function VendorDirectBillDialog({
       const payLabel = paymentNote.trim() || "Not specified";
       const purchase = await createStockPurchase({
         vendorId: vendor.id,
-        orderDate: new Date().toISOString().slice(0, 10),
+        orderDate: istDateKey(),
         notes: [
           notes.trim() || null,
           `Vendor direct bill · Paid via ${payLabel}`,

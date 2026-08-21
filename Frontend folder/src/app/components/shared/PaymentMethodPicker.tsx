@@ -204,6 +204,11 @@ interface PaymentMethodPickerProps {
   methods?: PayMethod[];
   /** Label for the amount field in cash panel. */
   amountFieldLabel?: string;
+  /**
+   * Collect-pending layout: stack cash fields vertically and hide the redundant
+   * third “bill amount” column (amount is already chosen above the picker).
+   */
+  collectMode?: boolean;
   /** Note embedded in UPI QR. */
   upiNote?: string;
   /** Show the "Payment Method" header + due badge. */
@@ -229,6 +234,7 @@ export function PaymentMethodPicker({
   onChange,
   methods = ["cash", "card", "upi", "wallet", "split"],
   amountFieldLabel = "Bill Amount",
+  collectMode = false,
   upiNote,
   showHeader = true,
   hideMethodTabs = false,
@@ -376,11 +382,15 @@ export function PaymentMethodPicker({
 
         <div className={cn("p-4", fillsHeight && "md:flex md:min-h-0 md:flex-1 md:flex-col")}>
           {value.method === "cash" && (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className={cn("grid gap-3", collectMode ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-3")}>
               <div>
-                <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Amount Received</p>
+                <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">
+                  Amount Received
+                </p>
                 <div className="relative">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[12px] font-bold text-[#9a9a9a]">₹</span>
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[12px] font-bold text-[#9a9a9a]">
+                    ₹
+                  </span>
                   <input
                     type="number"
                     inputMode="decimal"
@@ -403,25 +413,59 @@ export function PaymentMethodPicker({
                   />
                 </div>
               </div>
-              <div>
-                <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Change to Return</p>
-                <div
-                  className={cn(
-                    "flex h-10 items-center rounded-lg border px-3 text-[13px] font-black tabular-nums",
-                    cashChange >= 0
-                      ? "border-[#00C896]/35 bg-[#00C896]/5 text-[#00C896]"
-                      : "border-red-200 bg-red-50 text-red-600",
-                  )}
-                >
-                  {cashChange >= 0 ? formatInr(cashChange) : "Insufficient"}
+              {collectMode ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">
+                      Change to Return
+                    </p>
+                    <div
+                      className={cn(
+                        "flex h-10 items-center rounded-lg border px-3 text-[13px] font-black tabular-nums",
+                        cashChange >= 0
+                          ? "border-[#00C896]/35 bg-[#00C896]/5 text-[#00C896]"
+                          : "border-red-200 bg-red-50 text-red-600",
+                      )}
+                    >
+                      {cashChange >= 0 ? formatInr(cashChange) : "Insufficient"}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">
+                      {amountFieldLabel}
+                    </p>
+                    <div className="flex h-10 items-center rounded-lg border border-[#D4AF37]/30 bg-[#FFFBEB] px-3 text-[14px] font-black tabular-nums text-[#9a7a1e]">
+                      {formatInr(amountDue)}
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">{amountFieldLabel}</p>
-                <div className="flex h-10 items-center rounded-lg border border-[#D4AF37]/30 bg-[#FFFBEB] px-3 text-[14px] font-black tabular-nums text-[#9a7a1e]">
-                  {formatInr(amountDue)}
-                </div>
-              </div>
+              ) : (
+                <>
+                  <div>
+                    <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">
+                      Change to Return
+                    </p>
+                    <div
+                      className={cn(
+                        "flex h-10 items-center rounded-lg border px-3 text-[13px] font-black tabular-nums",
+                        cashChange >= 0
+                          ? "border-[#00C896]/35 bg-[#00C896]/5 text-[#00C896]"
+                          : "border-red-200 bg-red-50 text-red-600",
+                      )}
+                    >
+                      {cashChange >= 0 ? formatInr(cashChange) : "Insufficient"}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">
+                      {amountFieldLabel}
+                    </p>
+                    <div className="flex h-10 items-center rounded-lg border border-[#D4AF37]/30 bg-[#FFFBEB] px-3 text-[14px] font-black tabular-nums text-[#9a7a1e]">
+                      {formatInr(amountDue)}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
 

@@ -1,21 +1,16 @@
 import type { AuthContext } from "../auth/auth.types";
 import { BadRequestError } from "../../utils/errors";
+import { addDaysToDateKey, istDateKey } from "../../utils/ist";
 import { appointmentsRepository } from "./appointments.repository";
 import type {
   CreateAppointmentInput,
+  ListAppointmentsQuery,
   UpdateAppointmentInput,
   UpdateAppointmentStatusInput,
 } from "./appointments.validators";
 
 /** Returning: last 7 days + any future. New customers: today + any future (no past dates). */
 const APPOINTMENT_PAST_DAYS_LIMIT = 7;
-
-function toLocalDateKey(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
 
 function assertScheduledDateAllowed(
   scheduledDate: string,
@@ -25,10 +20,7 @@ function assertScheduledDateAllowed(
     throw new BadRequestError("Invalid scheduled date");
   }
   const allowPastDays = options?.allowPastDays ?? 0;
-  const now = new Date();
-  const minDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  minDate.setDate(minDate.getDate() - allowPastDays);
-  const minKey = toLocalDateKey(minDate);
+  const minKey = addDaysToDateKey(istDateKey(), -allowPastDays);
 
   if (scheduledDate < minKey) {
     if (allowPastDays === 0) {
@@ -43,8 +35,8 @@ function assertScheduledDateAllowed(
 }
 
 export class AppointmentsService {
-  list(auth: AuthContext, scheduledDate?: string) {
-    return appointmentsRepository.list(auth.salonId, scheduledDate);
+  list(auth: AuthContext, query: ListAppointmentsQuery) {
+    return appointmentsRepository.list(auth.salonId, query);
   }
 
   create(auth: AuthContext, input: CreateAppointmentInput) {
