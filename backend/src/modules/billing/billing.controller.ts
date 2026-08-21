@@ -4,6 +4,7 @@ import { asyncHandler } from "../../utils/asyncHandler";
 import type { AuthenticatedRequest } from "../auth/auth.controller";
 import { billingService } from "./billing.service";
 import type { CheckoutInput, CollectPaymentInput, ConfirmOnlyInput, ApproveRefundInput, RequestRefundInput } from "./billing.validators";
+import { listBillingQuerySchema } from "./billing.validators";
 
 export class BillingController {
   confirmOnly = asyncHandler(async (req: Request, res: Response): Promise<void> => {
@@ -30,7 +31,8 @@ export class BillingController {
 
   listPending = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const auth = (req as AuthenticatedRequest).auth;
-    const invoices = await billingService.listPending(auth);
+    const query = listBillingQuerySchema.parse(req.query);
+    const invoices = await billingService.listPending(auth, query);
 
     sendSuccess(res, {
       message: "Pending payments retrieved",
@@ -52,7 +54,8 @@ export class BillingController {
 
   listInvoices = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const auth = (req as AuthenticatedRequest).auth;
-    const invoices = await billingService.listInvoices(auth);
+    const query = listBillingQuerySchema.parse(req.query);
+    const invoices = await billingService.listInvoices(auth, query);
 
     sendSuccess(res, {
       message: "Invoices retrieved",

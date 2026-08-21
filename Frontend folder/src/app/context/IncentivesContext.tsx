@@ -8,6 +8,7 @@ import {
   type EarnedIncentive,
   type ServiceIncentiveSettings,
 } from "../types/serviceIncentive";
+import { APP_TIMEZONE, istDateKey } from "../../lib/istDate";
 
 function resolveSettingsKey(
   serviceName: string,
@@ -101,8 +102,12 @@ export function IncentivesProvider({ children }: { children: ReactNode }) {
       defaultStaff?: string;
     }) => {
       const now = new Date();
-      const date = now.toISOString().slice(0, 10);
-      const time = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+      const date = istDateKey(now);
+      const time = now.toLocaleTimeString("en-IN", {
+        timeZone: APP_TIMEZONE,
+        hour: "2-digit",
+        minute: "2-digit",
+      });
       const newRecords: EarnedIncentive[] = [];
 
       for (const item of items) {

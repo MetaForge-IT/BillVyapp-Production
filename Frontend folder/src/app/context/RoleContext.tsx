@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { authService } from "../../services/authService";
 import { getAccessToken, useAuthStore } from "../../stores/authStore";
 import {
@@ -213,20 +213,23 @@ export function RoleProvider({ children }: { children: ReactNode }) {
 
   const firstName = firstNameFrom(fullName);
 
+  const value = useMemo(
+    () => ({
+      role,
+      setRole,
+      isReady,
+      fullName,
+      firstName,
+      shopName,
+      shopBranchLabel,
+      shopAddress,
+      franchiseName,
+    }),
+    [role, isReady, fullName, firstName, shopName, shopBranchLabel, shopAddress, franchiseName],
+  );
+
   return (
-    <RoleContext.Provider
-      value={{
-        role,
-        setRole,
-        isReady,
-        fullName,
-        firstName,
-        shopName,
-        shopBranchLabel,
-        shopAddress,
-        franchiseName,
-      }}
-    >
+    <RoleContext.Provider value={value}>
       {children}
     </RoleContext.Provider>
   );

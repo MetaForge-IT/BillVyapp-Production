@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   createCoupon as apiCreateCoupon,
   deleteCoupon as apiDeleteCoupon,
@@ -66,7 +66,7 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
     void refreshCoupons();
   }, [refreshCoupons]);
 
-  const addCoupon: CouponsContextType["addCoupon"] = (c) => {
+  const addCoupon = useCallback<CouponsContextType["addCoupon"]>((c) => {
     const payload: CreateCouponPayload = {
       code: c.code,
       title: c.title,
@@ -84,32 +84,35 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
     void apiCreateCoupon(payload)
       .then((created) => setCoupons((prev) => [mapCoupon(created), ...prev]))
       .catch((error) => toast.error(getApiErrorMessage(error, "Failed to create coupon")));
-  };
+  }, []);
 
-  const updateCoupon: CouponsContextType["updateCoupon"] = (id, patch) => {
+  const updateCoupon = useCallback<CouponsContextType["updateCoupon"]>((id, patch) => {
     void apiUpdateCoupon(id, patch)
       .then((updated) =>
         setCoupons((prev) => prev.map((coupon) => (coupon.id === id ? mapCoupon(updated) : coupon))),
       )
       .catch((error) => toast.error(getApiErrorMessage(error, "Failed to update coupon")));
-  };
+  }, []);
 
-  const deleteCoupon: CouponsContextType["deleteCoupon"] = (id) => {
+  const deleteCoupon = useCallback<CouponsContextType["deleteCoupon"]>((id) => {
     void apiDeleteCoupon(id)
       .then(() => setCoupons((prev) => prev.filter((coupon) => coupon.id !== id)))
       .catch((error) => toast.error(getApiErrorMessage(error, "Failed to delete coupon")));
-  };
+  }, []);
 
-  const recordSend: CouponsContextType["recordSend"] = (_id, _customerId, customerName, channel) => {
+  const recordSend = useCallback<CouponsContextType["recordSend"]>((_id, _customerId, customerName, channel) => {
     toast.success(`Coupon delivery queued`, {
       description: `${channel === "whatsapp" ? "WhatsApp" : "SMS"} to ${customerName}`,
     });
-  };
+  }, []);
+
+  const value = useMemo(
+    () => ({ coupons, loading, refreshCoupons, addCoupon, updateCoupon, deleteCoupon, recordSend }),
+    [coupons, loading, refreshCoupons, addCoupon, updateCoupon, deleteCoupon, recordSend],
+  );
 
   return (
-    <CouponsContext.Provider
-      value={{ coupons, loading, refreshCoupons, addCoupon, updateCoupon, deleteCoupon, recordSend }}
-    >
+    <CouponsContext.Provider value={value}>
       {children}
     </CouponsContext.Provider>
   );

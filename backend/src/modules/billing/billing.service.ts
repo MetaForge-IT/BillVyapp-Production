@@ -1,6 +1,6 @@
 import type { AuthContext } from "../auth/auth.types";
 import { billingRepository } from "./billing.repository";
-import type { CheckoutInput, CollectPaymentInput, ConfirmOnlyInput, RequestRefundInput } from "./billing.validators";
+import type { CheckoutInput, CollectPaymentInput, ConfirmOnlyInput, ListBillingQuery, RequestRefundInput } from "./billing.validators";
 
 export class BillingService {
   confirmOnly(auth: AuthContext, input: ConfirmOnlyInput) {
@@ -11,16 +11,16 @@ export class BillingService {
     return billingRepository.checkout(auth, input);
   }
 
-  listPending(auth: AuthContext) {
-    return billingRepository.listPending(auth);
+  listPending(auth: AuthContext, query: ListBillingQuery) {
+    return billingRepository.listPending(auth, query);
   }
 
   collectPayment(auth: AuthContext, invoiceId: string, input: CollectPaymentInput) {
     return billingRepository.collectPayment(auth, invoiceId, input);
   }
 
-  listInvoices(auth: AuthContext) {
-    return billingRepository.listInvoices(auth);
+  listInvoices(auth: AuthContext, query: ListBillingQuery) {
+    return billingRepository.listInvoices(auth, query);
   }
 
   listRefunds(auth: AuthContext) {

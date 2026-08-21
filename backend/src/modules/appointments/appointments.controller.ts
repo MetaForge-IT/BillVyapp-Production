@@ -8,13 +8,13 @@ import type {
   UpdateAppointmentInput,
   UpdateAppointmentStatusInput,
 } from "./appointments.validators";
+import { listAppointmentsQuerySchema } from "./appointments.validators";
 
 export class AppointmentsController {
   list = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const auth = (req as AuthenticatedRequest).auth;
-    const scheduledDate =
-      typeof req.query.date === "string" ? req.query.date : undefined;
-    const appointments = await appointmentsService.list(auth, scheduledDate);
+    const query = listAppointmentsQuerySchema.parse(req.query);
+    const appointments = await appointmentsService.list(auth, query);
     sendSuccess(res, { message: "Appointments retrieved", data: appointments });
   });
 

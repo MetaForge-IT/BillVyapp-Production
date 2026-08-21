@@ -5,6 +5,7 @@ import { Badge } from "../components/ui/badge";
 import { IndianRupee, Plus, Coins } from "lucide-react";
 import { Pagination } from "../components/shared/Pagination";
 import { useTablePagination } from "../hooks/useTablePagination";
+import { istDateKey } from "../../lib/istDate";
 
 const DENOMINATIONS = [
   { label:"₹500", value:500 }, { label:"₹200", value:200 }, { label:"₹100", value:100 },
@@ -15,8 +16,7 @@ const DENOMINATIONS = [
 interface DenomRecord { id: number; date: string; expected: number; counted: number; diff: number; by: string; }
 
 export function AccountingCashDenomination() {
-  const now = new Date();
-  const todayStr = now.toISOString().split("T")[0];
+  const todayStr = istDateKey();
   const [showDialog, setShowDialog] = useState(false);
   const [counts, setCounts]     = useState<Record<number,string>>({});
   const [remarks, setRemarks]   = useState("");

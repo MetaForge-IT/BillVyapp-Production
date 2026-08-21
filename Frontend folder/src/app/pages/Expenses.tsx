@@ -178,7 +178,7 @@ export function Expenses() {
     const busy = actionId === e.id;
     if (admin && e.deleteRequested) {
       return (
-        <div className={cn("flex items-center gap-1.5", compact ? "" : "justify-end")}>
+        <div className={cn("flex flex-wrap items-center gap-1.5", compact ? "" : "justify-end")}>
           <button
             type="button"
             disabled={isClosed || busy}
@@ -234,10 +234,13 @@ export function Expenses() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 p-3 sm:gap-5 sm:p-5 md:p-6">
-      <div className="flex shrink-0 flex-wrap items-start justify-between gap-3">
+    <div className="flex h-[calc(100dvh-8rem)] min-h-0 flex-col gap-3 overflow-hidden sm:gap-4">
+      <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-xl font-bold tracking-tight text-[#111118] sm:text-2xl">Expenses</h1>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#D4AF37]">
+            Finance
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-[#111118] sm:text-3xl">Expenses</h1>
           <p className="mt-1 text-[12px] text-[#6b6b6b] sm:text-[13px]">
             Track salon expenses — every entry needs a note.
           </p>
@@ -250,43 +253,43 @@ export function Expenses() {
             setFieldError(undefined);
             setShowForm((v) => !v);
           }}
-          className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-[#111118] px-3.5 text-[12px] font-bold text-[#D4AF37] transition-opacity disabled:opacity-40 sm:h-11 sm:px-4 sm:text-[13px]"
+          className="inline-flex h-10 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-[#111118] px-3.5 text-[12px] font-bold text-[#D4AF37] transition-opacity disabled:opacity-40 sm:h-11 sm:w-auto sm:px-4 sm:text-[13px]"
         >
           <Plus className="h-4 w-4" />
-          Add Expense
+          {showForm ? "Close Form" : "Add Expense"}
         </button>
       </div>
 
       {isClosed && (
-        <div className="shrink-0 rounded-xl border border-[#D4AF37]/30 bg-[#FAF8F2] px-4 py-3 text-[12px] text-[#6b6b6b]">
+        <div className="shrink-0 rounded-xl border border-[#D4AF37]/30 bg-[#FAF8F2] px-3 py-2.5 text-[12px] text-[#6b6b6b] sm:px-4 sm:py-3">
           Today is closed — expenses are read-only until the next open day.
         </div>
       )}
 
-      <div className="grid shrink-0 gap-3 sm:grid-cols-3">
+      <div className="grid shrink-0 grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3">
         <div className="rounded-2xl border border-black/[0.07] bg-white p-3 sm:p-4">
           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Entries</p>
           <p className="mt-1 text-xl font-black text-[#111118] sm:text-2xl">{expenses.length}</p>
         </div>
         <div className="rounded-2xl border border-black/[0.07] bg-white p-3 sm:col-span-2 sm:p-4">
           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Total</p>
-          <p className="mt-1 text-xl font-black text-[#111118] sm:text-2xl">
+          <p className="mt-1 truncate text-xl font-black tabular-nums text-[#111118] sm:text-2xl">
             ₹{totalAmount.toLocaleString("en-IN")}
           </p>
         </div>
       </div>
 
       {showForm && !isClosed && (
-        <div className="shrink-0 space-y-4 rounded-2xl border border-[#D4AF37]/30 bg-[#faf8f2] p-3 sm:p-5">
+        <div className="max-h-[min(48dvh,28rem)] shrink-0 space-y-3 overflow-y-auto overscroll-contain rounded-2xl border border-[#D4AF37]/30 bg-[#faf8f2] p-3 sm:max-h-[min(42dvh,26rem)] sm:space-y-4 sm:p-5">
           <div className="flex items-center gap-2">
-            <Wallet className="h-4 w-4 text-[#D4AF37]" />
-            <div>
+            <Wallet className="h-4 w-4 shrink-0 text-[#D4AF37]" />
+            <div className="min-w-0">
               <p className="text-[13px] font-bold text-[#111118]">New Expense</p>
               <p className="text-[11px] text-[#6b6b6b]">Note is compulsory</p>
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
             <label className="space-y-1.5">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#6b6b6b]">Date *</span>
               <input
@@ -294,7 +297,7 @@ export function Expenses() {
                 value={form.date}
                 onChange={(e) => patchForm("date", e.target.value)}
                 className={cn(
-                  "h-10 w-full rounded-xl border bg-white px-3 text-[13px] outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/15",
+                  "h-10 w-full min-w-0 rounded-xl border bg-white px-3 text-[13px] outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/15",
                   fieldError === "date" ? "border-red-400" : "border-black/[0.08]",
                 )}
               />
@@ -305,7 +308,7 @@ export function Expenses() {
                 value={form.category}
                 onChange={(e) => patchForm("category", e.target.value as ExpenseCategory)}
                 className={cn(
-                  "h-10 w-full rounded-xl border bg-white px-3 text-[13px] outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/15",
+                  "h-10 w-full min-w-0 rounded-xl border bg-white px-3 text-[13px] outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/15",
                   fieldError === "category" ? "border-red-400" : "border-black/[0.08]",
                 )}
               >
@@ -316,7 +319,7 @@ export function Expenses() {
                 ))}
               </select>
             </label>
-            <label className="space-y-1.5 sm:col-span-2 md:col-span-1">
+            <label className="space-y-1.5 min-[480px]:col-span-2 lg:col-span-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#6b6b6b]">
                 Sub Category *
               </span>
@@ -325,13 +328,13 @@ export function Expenses() {
                 onChange={(e) => patchForm("subCategory", e.target.value)}
                 placeholder="e.g. Electricity, Shampoo, Staff advance"
                 className={cn(
-                  "h-10 w-full rounded-xl border bg-white px-3 text-[13px] outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/15",
+                  "h-10 w-full min-w-0 rounded-xl border bg-white px-3 text-[13px] outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/15",
                   fieldError === "subCategory" ? "border-red-400" : "border-black/[0.08]",
                 )}
               />
             </label>
             {form.category === "Payroll" && (
-              <label className="space-y-1.5 sm:col-span-2 md:col-span-1">
+              <label className="space-y-1.5 min-[480px]:col-span-2 lg:col-span-1">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#6b6b6b]">
                   Employee Name{" "}
                   <span className="font-medium normal-case tracking-normal text-[#9a9a9a]">(optional)</span>
@@ -341,7 +344,7 @@ export function Expenses() {
                   onChange={(e) => patchForm("employeeName", e.target.value)}
                   placeholder="e.g. Rahul Verma"
                   className={cn(
-                    "h-10 w-full rounded-xl border bg-white px-3 text-[13px] outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/15",
+                    "h-10 w-full min-w-0 rounded-xl border bg-white px-3 text-[13px] outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/15",
                     fieldError === "employeeName" ? "border-red-400" : "border-black/[0.08]",
                   )}
                 />
@@ -361,7 +364,7 @@ export function Expenses() {
                   onChange={(e) => patchForm("amount", e.target.value)}
                   placeholder="0"
                   className={cn(
-                    "h-10 w-full rounded-xl border bg-white pl-7 pr-3 text-[13px] font-bold outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/15",
+                    "h-10 w-full min-w-0 rounded-xl border bg-white pl-7 pr-3 text-[13px] font-bold outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/15",
                     fieldError === "amount" ? "border-red-400" : "border-black/[0.08]",
                   )}
                 />
@@ -373,7 +376,7 @@ export function Expenses() {
             <span className="text-[10px] font-bold uppercase tracking-wider text-[#6b6b6b]">
               Paid via *
             </span>
-            <div className="flex gap-1.5 rounded-xl border border-black/[0.08] bg-white p-1">
+            <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-black/[0.08] bg-white p-1">
               {EXPENSE_SOURCES.map((s) => {
                 const Icon = SOURCE_ICON[s];
                 return (
@@ -382,14 +385,14 @@ export function Expenses() {
                     type="button"
                     onClick={() => patchForm("source", s)}
                     className={cn(
-                      "flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg text-[11px] font-bold transition-all",
+                      "flex h-9 min-w-0 items-center justify-center gap-1 rounded-lg px-1 text-[11px] font-bold transition-all sm:gap-1.5",
                       form.source === s
                         ? "bg-[#111118] text-[#D4AF37]"
                         : "text-[#6b6b6b] hover:text-[#111118]",
                     )}
                   >
-                    <Icon className="h-3.5 w-3.5" />
-                    {s}
+                    <Icon className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{s}</span>
                   </button>
                 );
               })}
@@ -414,7 +417,7 @@ export function Expenses() {
             <span className="text-[10px] text-[#9a9a9a]">{form.note.trim().length}/500</span>
           </label>
 
-          <div className="flex flex-wrap justify-end gap-2">
+          <div className="flex flex-col-reverse gap-2 min-[400px]:flex-row min-[400px]:flex-wrap min-[400px]:justify-end">
             <button
               type="button"
               onClick={() => setShowForm(false)}
@@ -426,7 +429,7 @@ export function Expenses() {
               type="button"
               disabled={saving}
               onClick={() => void submit()}
-              className="inline-flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#C9A227] px-5 text-[12px] font-bold text-[#111118] disabled:opacity-40"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#C9A227] px-5 text-[12px] font-bold text-[#111118] disabled:opacity-40"
             >
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
               {saving ? "Saving…" : "Save Expense"}
@@ -447,13 +450,13 @@ export function Expenses() {
           </div>
         ) : (
           <>
-            {/* Phone: card list */}
-            <div className="divide-y divide-black/[0.05] overflow-y-auto md:hidden">
+            {/* Phone + tablet: card list (no horizontal scroll) */}
+            <div className="min-h-0 flex-1 divide-y divide-black/[0.05] overflow-y-auto overscroll-contain lg:hidden">
               {pageRows.map((e) => {
                 const parsed = parseExpenseRemarks(e.remarks);
                 const SourceIcon = SOURCE_ICON[(e.source as ExpenseSource) || "Cash"] ?? Banknote;
                 return (
-                  <article key={e.id} className="space-y-2.5 p-4">
+                  <article key={e.id} className="space-y-2.5 p-3.5 sm:p-4">
                     <div className="flex items-start gap-3">
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#D4AF37]/25 bg-[#FFFBEB]">
                         <SourceIcon className="h-4 w-4 text-[#D4AF37]" />
@@ -470,7 +473,7 @@ export function Expenses() {
                         ₹{e.amount.toLocaleString("en-IN")}
                       </p>
                     </div>
-                    <div className="flex flex-wrap gap-1.5 pl-12">
+                    <div className="flex flex-wrap gap-1.5 pl-0 sm:pl-12">
                       <span className="rounded-full bg-[#f4f2ed] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#6b6b6b]">
                         {e.category}
                       </span>
@@ -481,38 +484,38 @@ export function Expenses() {
                       )}
                     </div>
                     {parsed.note ? (
-                      <p className="pl-12 text-[12px] leading-snug text-[#6b6b6b]">{parsed.note}</p>
+                      <p className="text-[12px] leading-snug text-[#6b6b6b] sm:pl-12">{parsed.note}</p>
                     ) : null}
                     {e.deleteRequested ? (
-                      <p className="pl-12 text-[11px] font-semibold text-amber-700">
+                      <p className="text-[11px] font-semibold text-amber-700 sm:pl-12">
                         Delete requested
                         {e.deleteRequestedByName ? ` by ${e.deleteRequestedByName}` : ""} — awaiting admin
                       </p>
                     ) : e.deleteRejected && !admin ? (
-                      <p className="pl-12 text-[11px] font-semibold text-red-700">
+                      <p className="text-[11px] font-semibold text-red-700 sm:pl-12">
                         Delete rejected by admin
                         {e.deleteRejectedByName ? ` (${e.deleteRejectedByName})` : ""}
                       </p>
                     ) : null}
-                    <div className="flex justify-end pl-12">{renderActions(e)}</div>
+                    <div className="flex flex-wrap justify-end gap-2 sm:pl-12">{renderActions(e)}</div>
                   </article>
                 );
               })}
             </div>
 
-            {/* Tablet + desktop: table */}
-            <div className="hidden min-h-0 flex-1 overflow-auto md:block">
-              <table className="w-full min-w-[720px] text-sm">
+            {/* Desktop: table */}
+            <div className="hidden min-h-0 flex-1 overflow-auto overscroll-contain lg:block">
+              <table className="w-full text-sm">
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b border-black/[0.06] bg-[#FAF8F2]">
-                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#6b6b6b] lg:px-4">Date</th>
-                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#6b6b6b] lg:px-4">Category</th>
-                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#6b6b6b] lg:px-4">Sub Category</th>
-                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#6b6b6b] lg:px-4">Employee</th>
-                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#6b6b6b] lg:px-4">Source</th>
-                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#6b6b6b] lg:px-4">Note</th>
-                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#6b6b6b] lg:px-4">Amount</th>
-                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#6b6b6b] lg:px-4">Actions</th>
+                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#6b6b6b] xl:px-4">Date</th>
+                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#6b6b6b] xl:px-4">Category</th>
+                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#6b6b6b] xl:px-4">Sub Category</th>
+                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#6b6b6b] xl:px-4">Employee</th>
+                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#6b6b6b] xl:px-4">Source</th>
+                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#6b6b6b] xl:px-4">Note</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#6b6b6b] xl:px-4">Amount</th>
+                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#6b6b6b] xl:px-4">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -526,28 +529,28 @@ export function Expenses() {
                           index % 2 === 0 ? "bg-white" : "bg-[#FAFAFA]",
                         )}
                       >
-                        <td className="whitespace-nowrap px-3 py-3 text-[12px] tabular-nums text-[#111118] lg:px-4">
+                        <td className="whitespace-nowrap px-3 py-3 text-[12px] tabular-nums text-[#111118] xl:px-4">
                           {formatDisplayDate(e.date)}
                         </td>
-                        <td className="px-3 py-3 lg:px-4">
+                        <td className="px-3 py-3 xl:px-4">
                           <span className="rounded-full bg-[#f4f2ed] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#6b6b6b]">
                             {e.category}
                           </span>
                         </td>
-                        <td className="max-w-[10rem] truncate px-3 py-3 text-[13px] font-semibold text-[#111118] lg:max-w-[14rem] lg:px-4">
+                        <td className="max-w-[10rem] truncate px-3 py-3 text-[13px] font-semibold text-[#111118] xl:max-w-[14rem] xl:px-4">
                           {e.subCategory || e.sub}
                         </td>
-                        <td className="max-w-[8rem] truncate px-3 py-3 text-[12px] text-[#6b6b6b] lg:px-4">
+                        <td className="max-w-[8rem] truncate px-3 py-3 text-[12px] text-[#6b6b6b] xl:px-4">
                           {parsed.employeeName || "—"}
                         </td>
-                        <td className="px-3 py-3 text-[12px] text-[#6b6b6b] lg:px-4">{e.source}</td>
-                        <td className="max-w-[12rem] truncate px-3 py-3 text-[12px] text-[#6b6b6b] lg:max-w-[16rem] lg:px-4" title={parsed.note}>
+                        <td className="px-3 py-3 text-[12px] text-[#6b6b6b] xl:px-4">{e.source}</td>
+                        <td className="max-w-[12rem] truncate px-3 py-3 text-[12px] text-[#6b6b6b] xl:max-w-[16rem] xl:px-4" title={parsed.note}>
                           {parsed.note || "—"}
                         </td>
-                        <td className="whitespace-nowrap px-3 py-3 text-right text-[13px] font-bold tabular-nums text-[#111118] lg:px-4">
+                        <td className="whitespace-nowrap px-3 py-3 text-right text-[13px] font-bold tabular-nums text-[#111118] xl:px-4">
                           ₹{e.amount.toLocaleString("en-IN")}
                         </td>
-                        <td className="px-3 py-3 lg:px-4">
+                        <td className="px-3 py-3 xl:px-4">
                           <div className="flex flex-col items-start gap-1">
                             {renderActions(e, true)}
                             {e.deleteRequested && admin ? (
@@ -566,7 +569,7 @@ export function Expenses() {
           </>
         )}
         {expenses.length > 0 && (
-          <div className="shrink-0">
+          <div className="shrink-0 border-t border-black/[0.06]">
             <Pagination
               page={pagination.page}
               pageSize={pagination.pageSize}

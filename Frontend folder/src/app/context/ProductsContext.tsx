@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from "react";
@@ -161,20 +162,23 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
     return applyStockChangeByProduct(product, qty, type, ref, note);
   }, [products, applyStockChangeByProduct]);
 
+  const value = useMemo(
+    () => ({
+      products,
+      stockLog,
+      loading,
+      error,
+      refresh,
+      setProducts,
+      setStockLog,
+      deductBySku,
+      deductByName,
+    }),
+    [products, stockLog, loading, error, refresh, deductBySku, deductByName],
+  );
+
   return (
-    <ProductsContext.Provider
-      value={{
-        products,
-        stockLog,
-        loading,
-        error,
-        refresh,
-        setProducts,
-        setStockLog,
-        deductBySku,
-        deductByName,
-      }}
-    >
+    <ProductsContext.Provider value={value}>
       {children}
     </ProductsContext.Provider>
   );

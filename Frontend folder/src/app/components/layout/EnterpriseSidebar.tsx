@@ -37,7 +37,9 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
         label: "Today's Revenue",
         value: placeholder ?? formatCompactInr(revenue),
         icon: TrendingUp,
-        to: "/finance?tab=receipts&section=sales",
+        to: role === "manager"
+          ? "/finance?tab=receipts&section=pending"
+          : "/finance?tab=receipts&section=sales",
         accent: "#D4AF37",
       },
       {
@@ -55,7 +57,7 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
         accent: "#D4AF37",
       },
     ];
-  }, [kpis, data, loading]);
+  }, [kpis, data, loading, role]);
 
   const filteredNav = useMemo(
     () =>
@@ -412,16 +414,6 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
           })}
         </ul>
       </nav>
-
-      {/* ── Services footer tag ── */}
-      {!collapsed && (
-        <div className="relative z-10 shrink-0 mx-3 mb-2 flex items-center gap-2 rounded-lg border border-white/[0.05] bg-white/[0.02] px-2.5 py-2">
-          <Scissors className="h-3 w-3 text-[#D4AF37]/70 shrink-0" />
-          <p className="text-[9px] text-white/40 leading-snug">
-            <span className="text-white/60 font-semibold">42 services</span> active · GST billing enabled
-          </p>
-        </div>
-      )}
 
       <SidebarProfileSection collapsed={collapsed} onNavigate={onNavigate} />
     </div>

@@ -82,4 +82,5 @@ export const quickActions: QuickAction[] = [
   { label: "New Appointment", description: "Book a future slot", icon: CalendarPlus, href: "/appointments/new" },
   { label: "Add Customer", description: "Register a new client", icon: UserPlus, href: "/customers/new" },
   { label: "View Schedule", description: "Today's appointments", icon: Calendar, href: "/appointments" },
+  { label: "Receipts", description: "View & download paid bills", icon: Wallet, href: "/finance?tab=receipts&section=sales" },
 ];

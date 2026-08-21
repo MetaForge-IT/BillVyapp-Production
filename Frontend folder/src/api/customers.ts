@@ -1,4 +1,5 @@
 import { apiClient } from "../lib/axios";
+import type { ListQueryParams, PaginatedResult } from "../lib/pagination";
 
 export interface Customer {
   id: string;
@@ -44,8 +45,21 @@ interface ApiEnvelope<T> {
   data: T;
 }
 
-export async function fetchCustomers(): Promise<Customer[]> {
-  const { data } = await apiClient.get<ApiEnvelope<Customer[]>>("/customers");
+export type FetchCustomersParams = ListQueryParams & {
+  status?: "active" | "inactive";
+};
+
+export async function fetchCustomers(
+  params: FetchCustomersParams = {},
+): Promise<PaginatedResult<Customer>> {
+  const { data } = await apiClient.get<ApiEnvelope<PaginatedResult<Customer>>>("/customers", {
+    params: {
+      page: params.page,
+      limit: params.limit,
+      search: params.search || undefined,
+      status: params.status,
+    },
+  });
   return data.data;
 }
 

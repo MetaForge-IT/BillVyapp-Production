@@ -1,6 +1,12 @@
 import { prisma } from "../../config/prisma";
 import { STOCK_STATUS } from "../inventory/inventory.shared";
 import {
+  addIstDays,
+  APP_TIMEZONE,
+  istDateKey,
+  startOfIstDay,
+} from "../../utils/ist";
+import {
   NOTIFICATION_CATEGORY,
   NOTIFICATION_REFERENCE_TYPE,
 } from "./app-notifications.constants";
@@ -12,6 +18,7 @@ function formatInr(amount: number): string {
 
 function formatTime(date: Date): string {
   return date.toLocaleTimeString("en-IN", {
+    timeZone: APP_TIMEZONE,
     hour: "2-digit",
     minute: "2-digit",
     hour12: true,
@@ -20,19 +27,18 @@ function formatTime(date: Date): string {
 
 function formatDate(date: Date): string {
   return date.toLocaleDateString("en-IN", {
+    timeZone: APP_TIMEZONE,
     day: "numeric",
     month: "short",
   });
 }
 
 function startOfLocalDay(date = new Date()): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  return startOfIstDay(date);
 }
 
 function addDays(date: Date, days: number): Date {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
+  return addIstDays(date, days);
 }
 
 export class AppNotificationGenerator {
@@ -231,7 +237,7 @@ export class AppNotificationGenerator {
     customerName: string;
   }) {
     const today = startOfLocalDay();
-    const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const key = istDateKey(today);
 
     await appNotificationsRepository.createIfUnreadExists({
       salonId: params.salonId,

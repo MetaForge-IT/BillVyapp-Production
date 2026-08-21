@@ -22,3 +22,12 @@ export const redeemLoyaltySchema = z.object({
 export type CreateCustomerInput = z.infer<typeof createCustomerSchema>;
 export type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>;
 export type RedeemLoyaltyInput = z.infer<typeof redeemLoyaltySchema>;
+
+export const listCustomersQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(200).optional().default(50),
+  search: z.string().trim().max(200).optional(),
+  status: z.enum(["active", "inactive"]).optional(),
+});
+
+export type ListCustomersQuery = z.infer<typeof listCustomersQuerySchema>;

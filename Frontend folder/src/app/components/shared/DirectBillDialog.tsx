@@ -12,10 +12,11 @@ import {
 } from "lucide-react";
 import { toast } from "../ui/hot-toast";
 import { confirmOnlyCheckout, completeCheckout } from "../../../api/billing";
-import { fetchCustomers, type Customer } from "../../../api/customers";
+import type { Customer } from "../../../api/customers";
 import { fetchServiceCatalog } from "../../../api/services";
 import { getApiErrorMessage } from "../../../lib/api";
 import { formatInr, parseInr } from "../../../lib/inventoryMappers";
+import { addDaysToDateKey, istDateKey } from "../../../lib/istDate";
 import { mapApiCatalog, type CatalogService } from "../../../lib/serviceCatalog";
 import { BRAND } from "../../config/brand";
 import { useAdvances } from "../../context/AdvancesContext";
@@ -23,6 +24,7 @@ import { useCoupons } from "../../context/CouponsContext";
 import { useIncentives } from "../../context/IncentivesContext";
 import { usePendingPayments } from "../../context/PendingPaymentsContext";
 import { useProducts } from "../../context/ProductsContext";
+import { useCustomersQuery } from "../../hooks/useCustomersQuery";
 import { useReceipts } from "../../context/ReceiptsContext";
 import { Badge } from "../ui/badge";
 import { Dialog, DialogContent } from "../ui/dialog";
@@ -104,8 +106,8 @@ export function DirectBillDialog({
   const { recordBillingIncentives } = useIncentives();
   const { refresh: refreshReceipts } = useReceipts();
   const { refresh: refreshPending } = usePendingPayments();
+  const { customers } = useCustomersQuery({ enabled: open });
 
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [services, setServices] = useState<CatalogService[]>([]);
   const [customerMode, setCustomerMode] = useState<"search" | "new">("search");
   const [customerSearch, setCustomerSearch] = useState("");
@@ -160,10 +162,9 @@ export function DirectBillDialog({
   useEffect(() => {
     if (!open) return;
     reset();
-    void Promise.all([
-      fetchCustomers().then(setCustomers),
-      fetchServiceCatalog().then((rows) => setServices(mapApiCatalog(rows))),
-    ]).catch((error) => toast.error(getApiErrorMessage(error, "Failed to load billing data")));
+    void fetchServiceCatalog()
+      .then((rows) => setServices(mapApiCatalog(rows)))
+      .catch((error) => toast.error(getApiErrorMessage(error, "Failed to load billing data")));
   }, [open]);
 
   const loadLoyalty = (phone: string, rows = customers) => {
@@ -349,7 +350,7 @@ export function DirectBillDialog({
     gstRate: gstEnabled ? gstRate : 0,
     gstAmount: gst,
     totalAmount: grandTotal,
-    dueDate: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+    dueDate: addDaysToDateKey(istDateKey(), 7),
   });
 
   const validate = () => {

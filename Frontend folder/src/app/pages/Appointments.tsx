@@ -7,14 +7,16 @@ import { useAdvances } from "../context/AdvancesContext";
 import { useCoupons } from "../context/CouponsContext";
 import { confirmOnlyCheckout, completeCheckout } from "../../api/billing";
 import { createFeedback } from "../../api/feedback";
-import { fetchCustomers, type Customer } from "../../api/customers";
+import type { Customer } from "../../api/customers";
 import { authService } from "../../services/authService";
 import type { Appointment as ApiAppointment, ApptStatus } from "../../api/appointments";
 import { fetchServiceCatalog } from "../../api/services";
 import { getApiErrorMessage } from "../../lib/api";
+import { addDaysToDateKey, istDateKey, istDateParts } from "../../lib/istDate";
 import { useIncentives } from "../context/IncentivesContext";
 import { useProducts } from "../context/ProductsContext";
 import { useServiceProducts } from "../context/ServiceProductsContext";
+import { useCustomersQuery } from "../hooks/useCustomersQuery";
 import { parseInr, formatInr } from "../../lib/inventoryMappers";
 import { formatDisplayPhone } from "../../lib/phone";
 import { ProductCorrectionModal } from "../components/shared/ProductCorrectionModal";
@@ -334,7 +336,8 @@ export function Appointments() {
     refresh: refreshAppointments,
   } = useAppointments();
   const { addReceipt, refresh: refreshReceipts } = useReceipts();
-  const { addPendingPayment, refresh: refreshPending } = usePendingPayments();
+  const { addPendingPayment, refresh: refreshPending, pendingPayments } = usePendingPayments();
+  const { customers: cachedCustomers, reloadCustomers } = useCustomersQuery();
   const { recordBillingIncentives } = useIncentives();
   const { deductBySku, products: retailProducts, refresh: refreshProducts } = useProducts();
   const { getLinks: getServiceProductLinks } = useServiceProducts();
@@ -343,6 +346,10 @@ export function Appointments() {
   const [loyaltyAvailable, setLoyaltyAvailable] = useState(0);
   const [billedByName, setBilledByName] = useState("");
   const [appointments, setAppointments] = useState<Appointment[]>(APPOINTMENTS);
+
+  useEffect(() => {
+    void refreshPending();
+  }, [refreshPending]);
 
   useEffect(() => {
     void authService.getCurrentUser().then((user) => {
@@ -356,7 +363,7 @@ export function Appointments() {
       return;
     }
     try {
-      const customers = await fetchCustomers();
+      const customers = cachedCustomers.length > 0 ? cachedCustomers : await reloadCustomers();
       const normalized = phone.replace(/\D/g, "").slice(-10);
       const match = customers.find(
         (c) => c.phone.replace(/\D/g, "").slice(-10) === normalized,
@@ -368,6 +375,9 @@ export function Appointments() {
   };
 
   useEffect(() => {
+    const pendingIds = new Set(
+      pendingPayments.map((p) => p.appointmentId).filter((id): id is string => Boolean(id)),
+    );
     const rows = ctxAppointments.map((a) => {
       const services =
         a.services && a.services.length > 0
@@ -386,7 +396,8 @@ export function Appointments() {
         service: services.length > 0 ? services.join(", ") : a.service,
         services,
         serviceLines: a.serviceLines,
-        status: a.status as AppointmentStatus,
+        // Confirm-only unpaid visits are completed for floor purposes
+        status: (pendingIds.has(a.id) ? "completed" : a.status) as AppointmentStatus,
         type: (a.type === "walk-in" ? "walk-in" : "appointment") as const,
         date: a.date,
         scheduledDate: a.scheduledDate,
@@ -394,11 +405,16 @@ export function Appointments() {
       };
     });
     setAppointments(rows);
-  }, [ctxAppointments]);
+  }, [ctxAppointments, pendingPayments]);
 
   useEffect(() => {
+    const pendingIds = new Set(
+      pendingPayments.map((p) => p.appointmentId).filter((id): id is string => Boolean(id)),
+    );
     const walkInRows = ctxAppointments
       .filter((a) => a.type === "walk-in")
+      // Confirm-only bills are collected from Pending Payments — keep them off the floor queue
+      .filter((a) => a.status !== "completed" && !pendingIds.has(a.id))
       .map((a) => {
         const services =
           a.services && a.services.length > 0
@@ -422,7 +438,7 @@ export function Appointments() {
         };
       });
     setWalkins(walkInRows);
-  }, [ctxAppointments]);
+  }, [ctxAppointments, pendingPayments]);
   const [walkins, setWalkins] = useState<Walkin[]>(WALKINS);
   const [queue, setQueue] = useState<any[]>(QUEUE);
   const [editAppt, setEditAppt] = useState<Appointment | null>(null);
@@ -435,27 +451,12 @@ export function Appointments() {
   const [billingOpen, setBillingOpen] = useState(false);
   const billAutoOpenedRef = useRef<string | null>(null);
   const billRefreshTriedRef = useRef(false);
-  const [directBillCustomers, setDirectBillCustomers] = useState<Customer[]>([]);
+  const directBillCustomers = cachedCustomers;
   const [billingTarget, setBillingTarget] = useState<BillingTarget | null>(null);
   const [isDirectBill, setIsDirectBill] = useState(false);
   const [directCustomerSearch, setDirectCustomerSearch] = useState("");
   const [directCustomerMode, setDirectCustomerMode] = useState<"search" | "new">("search");
   const [directCustomerSelected, setDirectCustomerSelected] = useState(false);
-
-  useEffect(() => {
-    if (!billingOpen || !isDirectBill) return;
-    let cancelled = false;
-    fetchCustomers()
-      .then((rows) => {
-        if (!cancelled) setDirectBillCustomers(rows);
-      })
-      .catch(() => {
-        if (!cancelled) setDirectBillCustomers([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [billingOpen, isDirectBill]);
 
   const [billingItems, setBillingItems] = useState<{
     type: "service" | "product";
@@ -521,9 +522,9 @@ export function Appointments() {
   const [walkinDeleteConfirm, setWalkinDeleteConfirm] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [correctionAppt, setCorrectionAppt] = useState<{ id: string; service: string } | null>(null);
-  const [selectedCalDate, setSelectedCalDate] = useState<number | null>(() => new Date().getDate());
-  const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
-  const [calYear, setCalYear] = useState(() => new Date().getFullYear());
+  const [selectedCalDate, setSelectedCalDate] = useState<number | null>(() => istDateParts().day);
+  const [calMonth, setCalMonth] = useState(() => istDateParts().month);
+  const [calYear, setCalYear] = useState(() => istDateParts().year);
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
   const dateParam = searchParams.get("date");
@@ -540,12 +541,7 @@ export function Appointments() {
     }, { replace: true });
   };
 
-  const toDateKey = (d: Date) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-  };
+  const toDateKey = (d: Date) => istDateKey(d);
 
   const setViewDate = (d: Date) => {
     setCurrentDate(d);
@@ -633,9 +629,19 @@ export function Appointments() {
 
   const formatDate = (d: Date) => d.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
+  const pendingAppointmentIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const p of pendingPayments) {
+      if (p.appointmentId) ids.add(p.appointmentId);
+    }
+    return ids;
+  }, [pendingPayments]);
+
   const normalizedAppointmentSearch = searchQuery.trim().toLowerCase();
   const appointmentSearchDigits = searchQuery.replace(/\D/g, "");
   const filteredAppts = sortAppointmentQueue(appointments.filter(a => {
+    // Confirm-only / unpaid invoices belong in Pending Payments — not the floor board
+    if (pendingAppointmentIds.has(a.id)) return false;
     const isFocused = Boolean(focusAppointmentId && a.id === focusAppointmentId);
     const normalizedPhone = a.phone.replace(/\D/g, "");
     const matchSearch =
@@ -1158,7 +1164,7 @@ export function Appointments() {
     gstRate: gstEnabled ? gstRate : 0,
     gstAmount: billGst,
     totalAmount: grand,
-    dueDate: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+    dueDate: addDaysToDateKey(istDateKey(), 7),
   });
 
   const buildReceiptSnapshot = (
@@ -2102,9 +2108,10 @@ export function Appointments() {
                   variant="outline"
                   className="ml-1 h-9 rounded-xl border-[#D4AF37]/30 text-[12px] font-semibold text-[#B8962E] hover:bg-[#D4AF37]/10"
                   onClick={() => {
-                    setCalMonth(new Date().getMonth());
-                    setCalYear(new Date().getFullYear());
-                    setSelectedCalDate(new Date().getDate());
+                    const today = istDateParts();
+                    setCalMonth(today.month);
+                    setCalYear(today.year);
+                    setSelectedCalDate(today.day);
                   }}
                 >
                   Today
@@ -2126,7 +2133,8 @@ export function Appointments() {
                 </div>
                 <div className="grid grid-cols-7 gap-1.5">
                   {calendarDays.map((day, i) => {
-                    const isToday = day === new Date().getDate() && calMonth === new Date().getMonth() && calYear === new Date().getFullYear();
+                    const today = istDateParts();
+                    const isToday = day === today.day && calMonth === today.month && calYear === today.year;
                     const isSelected = day === selectedCalDate;
                     const dayStats = apptsByDay[day];
                     const count = dayStats?.total ?? 0;
@@ -3803,7 +3811,7 @@ export function Appointments() {
 
       {/* __ RECEIPT MODAL __ */}
       <Dialog open={receiptOpen} onOpenChange={v => { if (!v) setReceiptOpen(false); }}>
-        <DialogContent className="sm:max-w-[400px] p-0 border-0 shadow-2xl overflow-hidden rounded-2xl bg-white">
+        <DialogContent className="overflow-hidden rounded-2xl border-0 bg-white p-0 shadow-2xl sm:max-w-[380px] [&>button:last-of-type]:z-20">
           <DialogTitle className="sr-only">
             {receiptStep === "pending"
               ? "Appointment confirmed"
@@ -3864,7 +3872,7 @@ export function Appointments() {
                   </div>
                 </div>
                 <p className="text-[12px] text-center text-[#6b6b6b]">
-                  Added to Pending Payments. Collect the balance anytime from Finance → Pending Payments.
+                  Added to Pending Payments. Collect anytime from Pending Payments (sidebar).
                 </p>
                 <button
                   type="button"
@@ -3881,110 +3889,73 @@ export function Appointments() {
               <motion.div key="success"
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 0.96 }}
                 transition={{ duration: 0.25 }}
-                className="relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-100 px-6 py-8 flex flex-col items-center gap-4">
+                className="relative flex flex-col items-center gap-2.5 overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-100 px-5 py-5">
 
-                {/* bg blobs */}
-                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ duration: 1.2 }}
-                  className="pointer-events-none absolute -top-20 -left-20 h-64 w-64 rounded-full bg-green-200/40 blur-3xl" />
-                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ duration: 1.2, delay: 0.1 }}
-                  className="pointer-events-none absolute -bottom-20 -right-20 h-64 w-64 rounded-full bg-[#d4af37]/20 blur-3xl" />
+                <div className="pointer-events-none absolute -top-16 -left-16 h-40 w-40 rounded-full bg-green-200/35 blur-3xl" />
+                <div className="pointer-events-none absolute -bottom-16 -right-16 h-40 w-40 rounded-full bg-[#d4af37]/15 blur-3xl" />
 
-                {/* Icon */}
                 <motion.div className="relative"
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ type: "spring", stiffness: 380, damping: 16, delay: 0.05 }}>
-                  <motion.div className="absolute inset-0 rounded-full bg-green-400/35"
-                    animate={{ scale: [1, 1.75, 1], opacity: [0.6, 0, 0.6] }}
-                    transition={{ duration: 2, repeat: Infinity }} />
-                  <motion.div className="absolute inset-0 rounded-full bg-green-300/25"
-                    animate={{ scale: [1, 2.3, 1], opacity: [0.4, 0, 0.4] }}
-                    transition={{ duration: 2, repeat: Infinity, delay: 0.3 }} />
-                  <div className="relative h-24 w-24 rounded-full bg-gradient-to-br from-green-400 to-green-600 shadow-2xl shadow-green-400/50 flex items-center justify-center">
-                    <motion.div
-                      initial={{ scale: 0, rotate: -30 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ type: "spring", stiffness: 500, damping: 20, delay: 0.2 }}>
-                      <CheckCircle2 className="h-12 w-12 text-white drop-shadow-lg" />
-                    </motion.div>
+                  <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-green-400 to-green-600 shadow-lg shadow-green-400/40">
+                    <CheckCircle2 className="h-7 w-7 text-white" />
                   </div>
                 </motion.div>
 
-                {/* Heading */}
-                <motion.div className="text-center relative z-10"
-                  initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: 0.22 }}>
-                  <h2 className="text-2xl font-black text-green-600">Payment Successful!</h2>
-                  <p className="text-sm text-gray-400 mt-1">Transaction completed successfully</p>
-                </motion.div>
+                <div className="relative z-10 text-center">
+                  <h2 className="text-lg font-black text-green-600">Payment Successful!</h2>
+                </div>
 
-                {/* Dark invoice card */}
-                <motion.div className="w-full rounded-2xl bg-gradient-to-br from-[#111118] to-[#1e1e2a] p-5 shadow-2xl shadow-black/25 relative z-10"
-                  initial={{ opacity: 0, y: 20, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ duration: 0.4, delay: 0.32 }}>
-                  <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10">
-                        <img src={BRAND.clientLogo} alt="" className="h-5 w-5 object-contain" />
+                <motion.div className="relative z-10 w-full rounded-xl bg-gradient-to-br from-[#111118] to-[#1e1e2a] p-3.5 shadow-xl"
+                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.2 }}>
+                  <div className="mb-2 flex items-center justify-between border-b border-white/10 pb-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10">
+                        <img src={BRAND.clientLogo} alt="" className="h-4 w-4 object-contain" />
                       </div>
-                      <span className="text-[15px] font-black text-[#d4af37] tracking-wide">{BRAND.clientName}</span>
+                      <span className="truncate text-[13px] font-black text-[#d4af37]">{BRAND.clientName}</span>
                     </div>
-                    <span className="text-[11px] font-mono text-[#d4af37]/70">{receiptData?.invoiceNo}</span>
+                    <span className="shrink-0 font-mono text-[10px] text-[#d4af37]/70">{receiptData?.invoiceNo}</span>
                   </div>
-                  <div className="space-y-2 text-[13px]">
+                  <div className="space-y-1.5 text-[12px]">
                     {[
                       ["Customer", receiptData?.customer ?? ""],
-                      ["Items", `${receiptData?.items.length ?? 0} item${(receiptData?.items.length ?? 0) !== 1 ? "s" : ""}`],
-                      ["Payment via", receiptData?.paymentMethod ?? ""],
-                    ].map(([label, value], i) => (
-                      <motion.div key={label}
-                        initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.28, delay: 0.42 + i * 0.07 }}
-                        className="flex justify-between">
-                        <span className="text-gray-400">{label}</span>
-                        <span className="font-semibold text-white capitalize">{value}</span>
-                      </motion.div>
+                      ["Payment", receiptData?.paymentMethod ?? ""],
+                    ].map(([label, value]) => (
+                      <div key={label} className="flex justify-between gap-2">
+                        <span className="shrink-0 text-gray-400">{label}</span>
+                        <span className="truncate font-semibold capitalize text-white">{value}</span>
+                      </div>
                     ))}
-                    <motion.div className="flex justify-between items-center border-t border-white/10 pt-3 mt-1"
-                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.68 }}>
-                      <span className="text-gray-300 font-bold text-[14px]">Amount Paid</span>
-                      <motion.span className="text-2xl font-black text-[#d4af37]"
-                        initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 18, delay: 0.74 }}>
-                        {formatInr(receiptData?.grandTotal ?? 0)}
-                      </motion.span>
-                    </motion.div>
+                    <div className="flex items-center justify-between border-t border-white/10 pt-2">
+                      <span className="font-bold text-gray-300">Paid</span>
+                      <span className="text-xl font-black text-[#d4af37]">{formatInr(receiptData?.grandTotal ?? 0)}</span>
+                    </div>
                   </div>
                 </motion.div>
 
-                {/* Loyalty */}
-                <motion.div className="w-full flex items-center gap-3 rounded-xl bg-green-50 border border-green-200 px-4 py-3 relative z-10"
-                  initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.35, delay: 0.78 }}>
-                  <motion.div className="h-8 w-8 rounded-lg bg-green-100 flex items-center justify-center shrink-0"
-                    animate={{ rotate: [0, -15, 15, -10, 10, 0] }} transition={{ duration: 0.6, delay: 1.1 }}>
-                    <Star className="h-4 w-4 text-green-600 fill-green-500" />
-                  </motion.div>
-                  <p className="text-[13px] font-semibold text-green-700">
-                    +{receiptData?.loyaltyEarned} loyalty points earned for {receiptData?.customer}!
-                  </p>
-                </motion.div>
+                {(receiptData?.loyaltyEarned ?? 0) > 0 && (
+                  <div className="relative z-10 flex w-full items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2">
+                    <Star className="h-3.5 w-3.5 shrink-0 fill-green-500 text-green-600" />
+                    <p className="truncate text-[11px] font-semibold text-green-700">
+                      +{receiptData?.loyaltyEarned} loyalty pts for {receiptData?.customer}
+                    </p>
+                  </div>
+                )}
 
-                {/* Customer feedback */}
-                <motion.div
-                  className="w-full rounded-xl border border-[#D4AF37]/25 bg-[#fffdf7] px-4 py-4 relative z-10"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35, delay: 0.84 }}
-                >
-                  <p className="text-center text-[11px] font-bold uppercase tracking-widest text-gray-400">
-                    How was the experience?
-                  </p>
-                  <p className="mt-1 text-center text-[13px] font-semibold text-[#111118]">
-                    Rate this visit for {receiptData?.customer}
-                  </p>
+                <div className="relative z-10 w-full rounded-xl border border-[#D4AF37]/25 bg-[#fffdf7] px-3 py-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] font-semibold text-[#111118]">
+                      Rate visit <span className="font-medium text-[#9a9a9a]">(optional)</span>
+                    </p>
+                    <p className="min-w-[2.5rem] text-right text-[11px] font-medium text-[#9a7d20]">
+                      {feedbackRating > 0 ? `${feedbackRating}/5` : ""}
+                    </p>
+                  </div>
                   <div
-                    className="mt-3 flex items-center justify-center gap-2"
+                    className="mt-1.5 flex items-center justify-center gap-1"
                     onMouseLeave={() => setFeedbackHover(0)}
                   >
                     {[1, 2, 3, 4, 5].map((star) => {
@@ -3997,11 +3968,11 @@ export function Appointments() {
                           disabled={feedbackSubmitting}
                           onMouseEnter={() => setFeedbackHover(star)}
                           onClick={() => setFeedbackRating(star)}
-                          className="rounded-lg p-1 transition-transform hover:scale-110 disabled:opacity-60"
+                          className="rounded-md p-0.5 transition-transform hover:scale-110 disabled:opacity-60"
                         >
                           <Star
                             className={cn(
-                              "h-8 w-8 transition-colors",
+                              "h-7 w-7 transition-colors",
                               active
                                 ? "fill-[#D4AF37] text-[#D4AF37]"
                                 : "fill-none text-gray-300",
@@ -4011,50 +3982,41 @@ export function Appointments() {
                       );
                     })}
                   </div>
-                  {feedbackRating > 0 && (
-                    <p className="mt-2 text-center text-[12px] font-medium text-[#9a7d20]">
-                      {feedbackRating} / 5 selected
-                    </p>
-                  )}
-                </motion.div>
+                </div>
 
-                {/* Action buttons */}
-                <motion.div className="w-full space-y-2.5 relative z-10"
-                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35, delay: 0.88 }}>
-                  {/* Send row */}
-                  <p className="text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">Send Receipt to Customer</p>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.96 }}
+                <div className="relative z-10 w-full space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
                       onClick={() => {
                         const msg = encodeURIComponent(`Dear ${receiptData?.customer}, ${formatInr(receiptData?.grandTotal ?? 0)} received at ${BRAND.clientName}. Invoice: ${receiptData?.invoiceNo}. Thank you!`);
                         window.open(`sms:?body=${msg}`, "_blank");
                       }}
-                      className="flex items-center justify-center gap-2 h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-bold transition-colors shadow-lg shadow-blue-200">
-                      <Phone className="h-4 w-4" /> Send via SMS
-                    </motion.button>
-                    <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.96 }}
+                      className="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-blue-600 text-[12px] font-bold text-white transition-colors hover:bg-blue-700"
+                    >
+                      <Phone className="h-3.5 w-3.5" /> SMS
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => {
                         const msg = encodeURIComponent(`Hi ${receiptData?.customer} 👋\n\nYour payment of *${formatInr(receiptData?.grandTotal ?? 0)}* at *${BRAND.clientName}* has been received.\n\n🧾 Invoice: ${receiptData?.invoiceNo}\n\nThank you for visiting us! ✨`);
                         window.open(`https://wa.me/?text=${msg}`, "_blank");
                       }}
-                      className="flex items-center justify-center gap-2 h-11 rounded-xl text-white text-[13px] font-bold transition-colors shadow-lg shadow-green-200"
-                      style={{ background: "linear-gradient(135deg, #25D366, #128C7E)" }}>
-                      <Send className="h-4 w-4" /> WhatsApp
-                    </motion.button>
+                      className="flex h-9 items-center justify-center gap-1.5 rounded-xl text-[12px] font-bold text-white"
+                      style={{ background: "linear-gradient(135deg, #25D366, #128C7E)" }}
+                    >
+                      <Send className="h-3.5 w-3.5" /> WhatsApp
+                    </button>
                   </div>
-
-                  {/* Submit feedback → Dashboard */}
-                  <motion.button
-                    whileHover={{ scale: feedbackSubmitting ? 1 : 1.02 }}
-                    whileTap={{ scale: feedbackSubmitting ? 1 : 0.97 }}
+                  <button
+                    type="button"
                     disabled={feedbackSubmitting}
                     onClick={() => void submitReceiptFeedbackAndGoDashboard()}
-                    className="w-full flex items-center justify-center gap-2 h-11 rounded-xl bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d] text-[13px] font-bold text-white hover:shadow-xl transition-all disabled:opacity-60"
+                    className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d] text-[13px] font-bold text-white transition-all hover:shadow-lg disabled:opacity-60"
                   >
                     {feedbackSubmitting ? "Saving feedback…" : "Done"}
-                  </motion.button>
-                </motion.div>
+                  </button>
+                </div>
               </motion.div>
             )}
 

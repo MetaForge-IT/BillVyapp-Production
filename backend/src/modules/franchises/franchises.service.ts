@@ -1,6 +1,12 @@
 import bcrypt from "bcrypt";
 import { prisma } from "../../config/prisma";
 import { AppError, ConflictError, NotFoundError } from "../../utils/errors";
+import {
+  addDaysToDateKey,
+  dateKeyToUtcDate,
+  formatDbDateKey,
+  istDateKey,
+} from "../../utils/ist";
 import { REVENUE_STATUSES } from "../dashboard/dashboard.constants";
 import type {
   CreateFranchiseInput,
@@ -17,43 +23,38 @@ function slugifyFallback(name: string): string {
     .slice(0, 100);
 }
 
-/** Local calendar date key YYYY-MM-DD */
-function toDateKey(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function startOfLocalDay(d = new Date()): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-
-function addLocalDays(d: Date, days: number): Date {
-  const next = new Date(d);
-  next.setDate(next.getDate() + days);
-  return next;
-}
-
 export type RevenueRange = "today" | "7d" | "30d" | "mtd";
 
 function resolveRevenueWindow(range: RevenueRange): { from: Date; toExclusive: Date; days: number } {
-  const today = startOfLocalDay();
-  const toExclusive = addLocalDays(today, 1);
+  const todayKey = istDateKey();
+  const toExclusive = dateKeyToUtcDate(addDaysToDateKey(todayKey, 1));
 
   if (range === "today") {
-    return { from: today, toExclusive, days: 1 };
+    return { from: dateKeyToUtcDate(todayKey), toExclusive, days: 1 };
   }
   if (range === "7d") {
-    return { from: addLocalDays(today, -6), toExclusive, days: 7 };
+    return {
+      from: dateKeyToUtcDate(addDaysToDateKey(todayKey, -6)),
+      toExclusive,
+      days: 7,
+    };
   }
   if (range === "mtd") {
-    const from = new Date(today.getFullYear(), today.getMonth(), 1);
-    const days = Math.max(1, Math.round((today.getTime() - from.getTime()) / 86_400_000) + 1);
-    return { from, toExclusive, days };
+    const [y, m] = todayKey.split("-").map(Number);
+    const fromKey = `${y}-${String(m).padStart(2, "0")}-01`;
+    const days = Math.max(
+      1,
+      Math.round(
+        (dateKeyToUtcDate(todayKey).getTime() - dateKeyToUtcDate(fromKey).getTime()) / 86_400_000,
+      ) + 1,
+    );
+    return { from: dateKeyToUtcDate(fromKey), toExclusive, days };
   }
-  // 30d default
-  return { from: addLocalDays(today, -29), toExclusive, days: 30 };
+  return {
+    from: dateKeyToUtcDate(addDaysToDateKey(todayKey, -29)),
+    toExclusive,
+    days: 30,
+  };
 }
 
 export class FranchisesService {
@@ -172,11 +173,12 @@ export class FranchisesService {
     const byFranchise = [...franchiseMap.values()].sort((a, b) => b.revenue - a.revenue);
 
     const dailyMap = new Map<string, number>();
+    const fromKey = formatDbDateKey(from);
     for (let i = 0; i < days; i++) {
-      dailyMap.set(toDateKey(addLocalDays(from, i)), 0);
+      dailyMap.set(addDaysToDateKey(fromKey, i), 0);
     }
     for (const inv of dailyRows) {
-      const key = toDateKey(new Date(inv.invoiceDate));
+      const key = formatDbDateKey(new Date(inv.invoiceDate));
       if (!dailyMap.has(key)) continue;
       dailyMap.set(key, (dailyMap.get(key) ?? 0) + Math.round(Number(inv.amountPaid)));
     }
@@ -188,8 +190,8 @@ export class FranchisesService {
 
     return {
       range,
-      from: toDateKey(from),
-      to: toDateKey(addLocalDays(toExclusive, -1)),
+      from: fromKey,
+      to: addDaysToDateKey(formatDbDateKey(toExclusive), -1),
       totals: {
         revenue: totalRevenue,
         billed: totalBilled,

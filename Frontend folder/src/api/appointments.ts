@@ -1,4 +1,5 @@
 import { apiClient } from "../lib/axios";
+import type { ListQueryParams, PaginatedResult } from "../lib/pagination";
 
 export type ApptStatus =
   | "confirmed"
@@ -79,9 +80,19 @@ interface ApiEnvelope<T> {
   data: T;
 }
 
-export async function fetchAppointments(date?: string): Promise<Appointment[]> {
-  const { data } = await apiClient.get<ApiEnvelope<Appointment[]>>("/appointments", {
-    params: date ? { date } : undefined,
+export type FetchAppointmentsParams = ListQueryParams & {
+  date?: string;
+};
+
+export async function fetchAppointments(
+  params: FetchAppointmentsParams = {},
+): Promise<PaginatedResult<Appointment>> {
+  const { data } = await apiClient.get<ApiEnvelope<PaginatedResult<Appointment>>>("/appointments", {
+    params: {
+      date: params.date,
+      page: params.page,
+      limit: params.limit,
+    },
   });
   return data.data;
 }

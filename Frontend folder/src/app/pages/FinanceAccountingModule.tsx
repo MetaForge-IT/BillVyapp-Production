@@ -27,6 +27,7 @@ import {
   type ExpenseCategory,
 } from "../../api/accounting";
 import { isAdmin, useRole } from "../context/RoleContext";
+import { istDateKey } from "../../lib/istDate";
 import {
   FinanceStatCard,
   FinanceStatGrid,
@@ -40,7 +41,7 @@ import {
   financeProgressFill,
 } from "./finance/finance-ui";
 
-const TODAY = new Date().toISOString().slice(0, 10);
+const TODAY = istDateKey();
 
 function useAccountingOverview(date = TODAY) {
   const [overview, setOverview] = useState<AccountingOverview | null>(null);

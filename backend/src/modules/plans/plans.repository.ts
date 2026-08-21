@@ -2,6 +2,7 @@ import type { CustomerPlanEnrollment, SalonPlan, SalonPlanService, Service } fro
 import { prisma } from "../../config/prisma";
 import type { AuthContext } from "../auth/auth.types";
 import { AppError } from "../../utils/errors";
+import { formatDbDateKey, istCalendarDate } from "../../utils/ist";
 import { ENROLLMENT_STATUS, PLANS_ERROR_CODES } from "./plans.constants";
 import type { CreatePlanInput, EnrollCustomerInput, UpdatePlanInput } from "./plans.validators";
 
@@ -34,12 +35,11 @@ function computeEnrollmentStatus(
     "expiryDate" | "servicesTotal" | "servicesUsed" | "walletTotal" | "walletUsed" | "status"
   >,
 ): string {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const expiry = new Date(enrollment.expiryDate);
-  expiry.setHours(0, 0, 0, 0);
+  const today = istCalendarDate();
+  const expiryKey = formatDbDateKey(new Date(enrollment.expiryDate));
+  const todayKey = formatDbDateKey(today);
 
-  if (expiry < today) return ENROLLMENT_STATUS.EXPIRED;
+  if (expiryKey < todayKey) return ENROLLMENT_STATUS.EXPIRED;
 
   const walletTotal = Number(enrollment.walletTotal);
   const walletUsed = Number(enrollment.walletUsed);

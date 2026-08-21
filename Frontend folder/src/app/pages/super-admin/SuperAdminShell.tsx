@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Link, NavLink, Outlet, Navigate } from "react-router";
 import { Building2, LayoutDashboard, LogOut, Store, Users } from "lucide-react";
 import { RoleProvider, useRole } from "../../context/RoleContext";
@@ -7,6 +7,7 @@ import { getAccessToken } from "../../../stores/authStore";
 import { BRAND } from "../../config/brand";
 import { cn } from "../../components/ui/utils";
 import { SuperAdminRevenuePanel } from "./SuperAdminRevenuePanel";
+import { RouteFallback } from "../../components/layout/RouteFallback";
 
 const nav = [
   { to: "/super-admin", label: "Overview", icon: LayoutDashboard, end: true },
@@ -99,7 +100,9 @@ function SuperAdminShellInner() {
         </div>
       </aside>
       <main className="min-w-0 flex-1 overflow-auto p-6 md:p-8">
-        <Outlet />
+        <Suspense fallback={<RouteFallback />}>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   );

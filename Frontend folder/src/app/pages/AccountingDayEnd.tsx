@@ -4,12 +4,12 @@ import { Badge } from "../components/ui/badge";
 import { Calendar, CheckCircle2, History, Lock } from "lucide-react";
 import { Pagination } from "../components/shared/Pagination";
 import { useTablePagination } from "../hooks/useTablePagination";
+import { istDateKey } from "../../lib/istDate";
 
 interface ClosingRecord { id: number; date: string; status: string; closedAt: string; by: string; }
 
 export function AccountingDayEnd() {
-  const now = new Date();
-  const todayStr = now.toISOString().split("T")[0];
+  const todayStr = istDateKey();
   const [closingDate, setClosingDate] = useState(todayStr);
   const [started, setStarted] = useState(false);
   const [confirmed, setConfirmed] = useState(false);

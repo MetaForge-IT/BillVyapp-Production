@@ -48,7 +48,7 @@ export type ExistingProduct = {
 type RowMode = "new" | "restock" | "ambiguous";
 type RowStatus = "valid" | "warning" | "error";
 
-type ParsedRow = {
+export type ParsedRow = {
   index: number;
   raw: Record<string, string>;
   data: Partial<BulkProductRow>;

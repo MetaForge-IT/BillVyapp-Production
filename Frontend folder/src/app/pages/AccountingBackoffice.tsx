@@ -3,13 +3,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { Badge } from "../components/ui/badge";
 import { Download, FileText, Search, TrendingDown, TrendingUp } from "lucide-react";
+import { istDateKey, istDateParts } from "../../lib/istDate";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const YEARS  = ["2024","2025","2026"];
 
 export function AccountingBackoffice() {
-  const now = new Date();
-  const todayStr = now.toISOString().split("T")[0];
+  const todayStr = istDateKey();
+  const { year: istYear } = istDateParts();
 
   const [subTab, setSubTab] = useState<"daily"|"history"|"profitloss"|"comparison">("daily");
   const [reconcileDate, setReconcileDate] = useState(todayStr);
@@ -26,7 +27,7 @@ export function AccountingBackoffice() {
   const [historyFrom, setHistoryFrom]   = useState("2026-06-01");
   const [historyTo, setHistoryTo]       = useState(todayStr);
   const [plMonth, setPlMonth]           = useState(MONTHS[now.getMonth()]);
-  const [plYear, setPlYear]             = useState(String(now.getFullYear()));
+  const [plYear, setPlYear]             = useState(String(istYear));
 
   const soft = { services:80, productSales:0, openingBalance:0, cashFromSales:80, totalCash:80, gpayUPI:0, card:42, sumUp:0, totalCollection:42 };
   const fmt = (n: number) => `₹${n.toLocaleString("en-IN",{minimumFractionDigits:2})}`;

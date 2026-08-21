@@ -2,13 +2,14 @@ import type { AuthContext } from "../auth/auth.types";
 import { customersRepository } from "./customers.repository";
 import type {
   CreateCustomerInput,
+  ListCustomersQuery,
   RedeemLoyaltyInput,
   UpdateCustomerInput,
 } from "./customers.validators";
 
 export class CustomersService {
-  list(auth: AuthContext) {
-    return customersRepository.list(auth.salonId);
+  list(auth: AuthContext, query: ListCustomersQuery) {
+    return customersRepository.list(auth.salonId, query);
   }
 
   getById(auth: AuthContext, customerId: string) {

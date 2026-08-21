@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
@@ -18,7 +18,8 @@ import {
 } from "lucide-react";
 import { Pagination } from "../components/shared/Pagination";
 import { useTablePagination } from "../hooks/useTablePagination";
-import { fetchInvoices, type InvoiceResponse } from "../../api/billing";
+import { useReceipts, type ReceiptRecord } from "../context/ReceiptsContext";
+import { istDateKey } from "../../lib/istDate";
 
 interface Invoice {
   id: string;
@@ -36,26 +37,26 @@ interface Invoice {
   paymentMethod?: string;
 }
 
-
-function mapApiInvoice(inv: InvoiceResponse): Invoice {
-  const statusRaw = (inv.paymentStatus || inv.status || "").toLowerCase();
+function mapReceiptToInvoice(r: ReceiptRecord): Invoice {
   let status: Invoice["status"] = "pending";
-  if (statusRaw === "paid" || inv.paymentStatus === "PAID") status = "paid";
-  else if (statusRaw === "overdue") status = "overdue";
+  if (r.paymentStatus === "paid") status = "paid";
+  else if (r.dueDate && r.dueDate < istDateKey() && r.balanceAmount > 0) {
+    status = "overdue";
+  }
   return {
-    id: inv.id,
-    invoiceNo: inv.receiptNumber || inv.receiptNo || inv.id,
-    date: inv.date || new Date().toISOString().slice(0, 10),
-    dueDate: inv.dueDate || inv.date || "",
-    customer: inv.customer || "Walk-in",
-    phone: inv.phone || "",
-    services: inv.services || [],
-    subtotal: inv.subtotal ?? inv.totalAmount ?? 0,
-    discount: inv.discount ?? 0,
-    gst: inv.gst ?? 0,
-    total: inv.total ?? inv.totalAmount ?? 0,
+    id: r.id,
+    invoiceNo: r.receiptNo,
+    date: r.date,
+    dueDate: r.dueDate || r.date,
+    customer: r.customer || "Walk-in",
+    phone: r.phone || "",
+    services: r.services || [],
+    subtotal: r.subtotal,
+    discount: r.discount,
+    gst: r.gst,
+    total: r.total,
     status,
-    paymentMethod: inv.paymentMethod,
+    paymentMethod: r.paymentMethod === "none" ? undefined : r.paymentMethod,
   };
 }
 
@@ -68,8 +69,8 @@ function statusBadge(status: Invoice["status"]) {
 }
 
 export function Invoices() {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { receipts, loading } = useReceipts();
+  const invoices = useMemo(() => receipts.map(mapReceiptToInvoice), [receipts]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
@@ -90,23 +91,6 @@ export function Invoices() {
   const [exportFrom, setExportFrom] = useState("");
   const [exportTo, setExportTo] = useState("");
 
-  useEffect(() => {
-    let cancelled = false;
-    fetchInvoices()
-      .then((data) => {
-        if (!cancelled) setInvoices(data.map(mapApiInvoice));
-      })
-      .catch(() => {
-        if (!cancelled) setInvoices([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   const filtered = useMemo(() => {
     return invoices.filter((inv) => {
       const matchesSearch =
@@ -116,7 +100,7 @@ export function Invoices() {
       const matchesStatus = statusFilter === "all" || inv.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [search, statusFilter]);
+  }, [invoices, search, statusFilter]);
 
   const { page, setPage, pageSize, setPageSize, paginate } = useTablePagination(
     filtered.length,

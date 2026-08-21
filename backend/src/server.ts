@@ -1,3 +1,4 @@
+import "./bootstrap-timezone";
 import { createApp } from "./app";
 import { connectRedis, disconnectPrisma, disconnectRedis, env } from "./config";
 import { initSentry, Sentry } from "./config/sentry";

@@ -8,11 +8,13 @@ import type {
   RedeemLoyaltyInput,
   UpdateCustomerInput,
 } from "./customers.validators";
+import { listCustomersQuerySchema } from "./customers.validators";
 
 export class CustomersController {
   list = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const auth = (req as AuthenticatedRequest).auth;
-    const customers = await customersService.list(auth);
+    const query = listCustomersQuerySchema.parse(req.query);
+    const customers = await customersService.list(auth, query);
     sendSuccess(res, { message: "Customers retrieved", data: customers });
   });
 

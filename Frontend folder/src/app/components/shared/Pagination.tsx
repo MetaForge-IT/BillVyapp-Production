@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { PAGE_SIZE_OPTIONS } from "../../hooks/useTablePagination";
 import { cn } from "../ui/utils";
 
@@ -79,7 +79,7 @@ export function Pagination({
             <select
               value={pageSize}
               onChange={(e) => onPageSizeChange(Number(e.target.value))}
-              className="h-8 min-w-[3.25rem] appearance-none rounded-xl border border-[rgba(18,18,18,0.12)] bg-white pl-3 pr-8 text-[12px] font-semibold text-[#121212] transition-all hover:border-[#D4AF37]/40 focus:border-[#D4AF37]/60 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/15"
+              className="h-8 min-w-[3.5rem] rounded-xl border border-[rgba(18,18,18,0.12)] bg-white pl-2.5 text-[12px] font-semibold text-[#121212] transition-all hover:border-[#D4AF37]/40 focus:border-[#D4AF37]/60 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/15"
               aria-label="Records per page"
             >
               {PAGE_SIZE_OPTIONS.map((size) => (
@@ -88,7 +88,6 @@ export function Pagination({
                 </option>
               ))}
             </select>
-            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#6B6B6B]" />
           </div>
           <span className="text-[11px] font-medium text-[#6B6B6B]">/ page</span>
         </div>

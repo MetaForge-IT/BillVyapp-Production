@@ -1,20 +1,18 @@
+import { addDaysToDateKey, istDateKey } from "./istDate";
+
 /** Returning customers may book past appointments within this many calendar days (inclusive of today). */
 export const APPOINTMENT_PAST_DAYS_LIMIT = 7;
 
 export type AppointmentSlotCustomerKind = "new" | "returning";
 
-/** Local calendar date as YYYY-MM-DD. */
+/** IST calendar date as YYYY-MM-DD (salon timezone — not browser/host local). */
 export function toLocalDateKey(date: Date = new Date()): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return istDateKey(date);
 }
 
 export function addLocalDays(date: Date, days: number): Date {
-  const next = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  next.setDate(next.getDate() + days);
-  return next;
+  const key = addDaysToDateKey(istDateKey(date), days);
+  return new Date(`${key}T12:00:00+05:30`);
 }
 
 /**
@@ -28,7 +26,7 @@ export function getAppointmentSlotMinDate(
   now: Date = new Date(),
 ): string {
   if (kind === "new") return toLocalDateKey(now);
-  return toLocalDateKey(addLocalDays(now, -APPOINTMENT_PAST_DAYS_LIMIT));
+  return addDaysToDateKey(toLocalDateKey(now), -APPOINTMENT_PAST_DAYS_LIMIT);
 }
 
 export function isAppointmentSlotDateAllowed(
