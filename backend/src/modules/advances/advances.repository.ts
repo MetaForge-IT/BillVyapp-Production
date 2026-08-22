@@ -1,5 +1,6 @@
 import type { CustomerAdvance } from "@prisma/client";
 import { prisma } from "../../config/prisma";
+import { MAX_PAGE_LIMIT } from "../../utils/pagination";
 import { AppError } from "../../utils/errors";
 import type { AuthContext } from "../auth/auth.types";
 import { ADVANCE_ERROR_CODES } from "./advances.constants";
@@ -31,7 +32,7 @@ export class AdvancesRepository {
     const advances = await prisma.customerAdvance.findMany({
       where: { salonId },
       orderBy: { createdAt: "desc" },
-      take: 500,
+      take: MAX_PAGE_LIMIT,
     });
     return advances.map(mapAdvance);
   }

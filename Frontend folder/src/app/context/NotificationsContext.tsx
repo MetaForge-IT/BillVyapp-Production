@@ -16,7 +16,7 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
 } from "../../api/notifications";
-import { getApiErrorMessage } from "../../lib/api";
+import { getApiErrorMessage, ApiError } from "../../lib/api";
 import { useAuthStore } from "../../stores/authStore";
 import type { AppNotification, NotificationCategory } from "../components/layout/header/types";
 
@@ -50,8 +50,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     category?: NotificationCategory;
     silent?: boolean;
   }) => {
-    if (!useAuthStore.getState().accessToken) {
+    const sessionOk = await useAuthStore.getState().ensureFreshAccessToken();
+    if (!sessionOk) {
       setLoading(false);
+      setNotifications([]);
+      setUnreadCount(0);
       return;
     }
     try {
@@ -66,6 +69,12 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       setUnreadCount(count);
       setError(null);
     } catch (err) {
+      if (err instanceof ApiError && err.statusCode === 401) {
+        setNotifications([]);
+        setUnreadCount(0);
+        setError(null);
+        return;
+      }
       const message = getApiErrorMessage(err, "Failed to load notifications");
       setError(message);
       if (!opts?.silent) {

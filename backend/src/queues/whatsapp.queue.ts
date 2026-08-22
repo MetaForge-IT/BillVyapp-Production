@@ -94,6 +94,28 @@ export async function enqueueWhatsAppText(
   return { queued: true, jobId: String(job.id) };
 }
 
+export async function enqueueWhatsAppOtp(
+  payload: SendWhatsAppOtpInput,
+): Promise<{ queued: true; jobId: string } | { queued: false }> {
+  const q = getWhatsAppQueue();
+  if (!q) return { queued: false };
+
+  const job = await q.add(
+    "send-otp",
+    { kind: "otp", payload },
+    {
+      priority: 1,
+      attempts: 3,
+      backoff: { type: "exponential", delay: 1_500 },
+      removeOnComplete: { count: 100 },
+      removeOnFail: { count: 200 },
+    },
+  );
+
+  logger.info("WhatsApp OTP queued", { jobId: job.id });
+  return { queued: true, jobId: String(job.id) };
+}
+
 export async function closeWhatsAppQueue(): Promise<void> {
   if (!queue) return;
   await queue.close();

@@ -2,7 +2,7 @@ import type { Invoice, InvoiceLineItem, Payment, Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma";
 import type { AuthContext } from "../auth/auth.types";
 import type { CheckoutInput, CollectPaymentInput, ConfirmOnlyInput, ListBillingQuery, RequestRefundInput } from "./billing.validators";
-import { toPaginatedResult } from "../../utils/pagination";
+import { MAX_PAGE_LIMIT, toPaginatedResult } from "../../utils/pagination";
 import {
   APPOINTMENT_STATUS,
   BILLING_ERROR_CODES,
@@ -12,24 +12,74 @@ import {
 } from "./billing.constants";
 import { AppError } from "../../utils/errors";
 import {
+  resolveKpiSalonIds,
+  resolveListSalonIds,
+  salonIdFilter,
+} from "../../utils/salonScope";
+import {
   addDaysToDateKey,
   dateKeyToUtcDate,
   formatDbDateKey,
+  formatDbTimeKey,
+  formatWallClockTime12h,
   istCalendarDate,
   istDateKey,
+  istDayRange,
   istWallClockAsUtcTime,
   resolveDateInput,
 } from "../../utils/ist";
 import { applyStockChange, MOVEMENT_TYPE, notifyStockChangeResult, type StockChangeResult } from "../inventory/inventory.shared";
 import { appNotificationGenerator } from "../app-notifications/app-notifications.generator";
 import { notificationService } from "../notifications/notification.service";
+import { logger } from "../../utils/logger";
 import { LOYALTY_TRANSACTION_TYPE } from "../customers/customers.constants";
 
 type InvoiceWithRelations = Invoice & {
-  lineItems: InvoiceLineItem[];
-  payments: Payment[];
+  lineItems?: InvoiceLineItem[];
+  payments?: Payment[];
   customer?: { fullName: string; phone?: string | null };
 };
+
+function invoiceListInclude(detail: boolean): Prisma.InvoiceInclude {
+  const customer = { select: { fullName: true, phone: true } };
+  return {
+    customer,
+    lineItems: detail
+      ? true
+      : {
+          select: {
+            itemName: true,
+            lineTotal: true,
+            quantity: true,
+            unitPrice: true,
+            lineType: true,
+            lineDiscount: true,
+          },
+        },
+    payments: detail
+      ? true
+      : {
+          take: 1,
+          orderBy: { paidAt: "desc" as const },
+          select: {
+            publicId: true,
+            paymentMethod: true,
+            amount: true,
+            reference: true,
+            paidAt: true,
+          },
+        },
+  };
+}
+
+function mapLineItemsSummary(lineItems: InvoiceLineItem[] | undefined) {
+  return (lineItems ?? []).map((line) => ({
+    name: line.itemName,
+    amount: Number(line.lineTotal),
+    quantity: line.quantity,
+    unitPrice: Number(line.unitPrice),
+  }));
+}
 
 function normalizePhone(phone: string): string {
   const digits = phone.replace(/\D/g, "");
@@ -168,7 +218,7 @@ function mapInvoice(invoice: InvoiceWithRelations) {
     customerId: invoice.customerId,
     appointmentId: invoice.appointmentId,
     invoiceDate: formatDbDateKey(invoice.invoiceDate),
-    invoiceTime: invoice.invoiceTime.toISOString().slice(11, 19),
+    invoiceTime: formatDbTimeKey(invoice.invoiceTime),
     source: invoice.source,
     status: invoice.status,
     paymentStatus: invoice.status,
@@ -186,7 +236,7 @@ function mapInvoice(invoice: InvoiceWithRelations) {
     dueDate: invoice.dueDate ? formatDbDateKey(invoice.dueDate) : null,
     loyaltyPointsEarned: invoice.loyaltyPointsEarned,
     notes: invoice.notes,
-    items: invoice.lineItems.map((line) => ({
+    items: (invoice.lineItems ?? []).map((line) => ({
       lineType: line.lineType,
       itemName: line.itemName,
       quantity: line.quantity,
@@ -194,12 +244,12 @@ function mapInvoice(invoice: InvoiceWithRelations) {
       lineDiscount: Number(line.lineDiscount),
       lineTotal: Number(line.lineTotal),
     })),
-    payments: invoice.payments.map((p) => ({
-      id: p.publicId,
+    payments: (invoice.payments ?? []).map((p) => ({
+      id: p.publicId ?? "",
       paymentMethod: p.paymentMethod,
-      amount: Number(p.amount),
-      reference: p.reference,
-      paidAt: p.paidAt.toISOString(),
+      amount: Number(p.amount ?? 0),
+      reference: p.reference ?? null,
+      paidAt: p.paidAt instanceof Date ? p.paidAt.toISOString() : new Date().toISOString(),
     })),
   };
 }
@@ -417,8 +467,11 @@ async function applyWalletDeduction(
   };
 }
 
-async function nextReceiptNumber(salonId: string): Promise<string> {
-  const settings = await prisma.salonFinancialSettings.findUnique({
+async function nextReceiptNumber(
+  tx: Prisma.TransactionClient,
+  salonId: string,
+): Promise<string> {
+  const settings = await tx.salonFinancialSettings.findUnique({
     where: { salonId },
     select: { receiptPrefix: true, nextReceiptSequence: true },
   });
@@ -428,7 +481,7 @@ async function nextReceiptNumber(salonId: string): Promise<string> {
   const receiptNumber = `${prefix}-${String(sequence).padStart(4, "0")}`;
 
   if (settings) {
-    await prisma.salonFinancialSettings.update({
+    await tx.salonFinancialSettings.update({
       where: { salonId },
       data: { nextReceiptSequence: sequence + 1 },
     });
@@ -535,17 +588,70 @@ async function resolveBillingLineItems(
   salonId: string,
   items: ConfirmOnlyInput["items"],
 ): Promise<ResolvedLineItem[]> {
+  const productIds = [
+    ...new Set(
+      items
+        .filter((item) => item.lineType === "product" && item.productId)
+        .map((item) => item.productId as string),
+    ),
+  ];
+  const productNames = [
+    ...new Set(
+      items
+        .filter((item) => item.lineType === "product" && !item.productId)
+        .map((item) => item.itemName),
+    ),
+  ];
+  const serviceIds = [
+    ...new Set(
+      items
+        .filter((item) => item.lineType === "service" && item.serviceId)
+        .map((item) => item.serviceId as string),
+    ),
+  ];
+  const serviceNames = [
+    ...new Set(
+      items
+        .filter((item) => item.lineType === "service" && !item.serviceId)
+        .map((item) => item.itemName),
+    ),
+  ];
+
+  const [productsById, productsByName, servicesById, servicesByName] = await Promise.all([
+    productIds.length
+      ? prisma.product.findMany({
+          where: { id: { in: productIds }, salonId, deletedAt: null, isActive: true },
+        })
+      : [],
+    productNames.length
+      ? prisma.product.findMany({
+          where: { salonId, name: { in: productNames }, deletedAt: null, isActive: true },
+        })
+      : [],
+    serviceIds.length
+      ? prisma.service.findMany({
+          where: { id: { in: serviceIds }, salonId, isActive: true, deletedAt: null },
+        })
+      : [],
+    serviceNames.length
+      ? prisma.service.findMany({
+          where: { salonId, name: { in: serviceNames }, isActive: true, deletedAt: null },
+        })
+      : [],
+  ]);
+
+  const productIdMap = new Map(productsById.map((product) => [product.id, product]));
+  const productNameMap = new Map(productsByName.map((product) => [product.name, product]));
+  const serviceIdMap = new Map(servicesById.map((service) => [service.id, service]));
+  const serviceNameMap = new Map(servicesByName.map((service) => [service.name, service]));
+
   const resolved: ResolvedLineItem[] = [];
 
   for (const item of items) {
     if (item.lineType === "product") {
       const dbProduct = item.productId
-        ? await prisma.product.findFirst({
-            where: { id: item.productId, salonId, deletedAt: null, isActive: true },
-          })
-        : await prisma.product.findFirst({
-            where: { salonId, name: item.itemName, deletedAt: null, isActive: true },
-          });
+        ? productIdMap.get(item.productId)
+        : productNameMap.get(item.itemName);
 
       if (!dbProduct) {
         throw new AppError(400, `Product "${item.itemName}" is not available for billing`, {
@@ -582,12 +688,8 @@ async function resolveBillingLineItems(
     }
 
     const dbService = item.serviceId
-      ? await prisma.service.findFirst({
-          where: { id: item.serviceId, salonId, isActive: true, deletedAt: null },
-        })
-      : await prisma.service.findFirst({
-          where: { salonId, name: item.itemName, isActive: true, deletedAt: null },
-        });
+      ? serviceIdMap.get(item.serviceId)
+      : serviceNameMap.get(item.itemName);
 
     if (!dbService) {
       throw new AppError(400, `Service "${item.itemName}" is not available for billing`, {
@@ -710,6 +812,60 @@ async function recordCouponRedemption(
   });
 }
 
+function applyListInvoiceDateFilter(
+  where: Prisma.InvoiceWhereInput,
+  query: ListBillingQuery,
+): void {
+  if (query.date) {
+    const day = dateKeyToUtcDate(query.date);
+    const next = dateKeyToUtcDate(addDaysToDateKey(query.date, 1));
+    where.invoiceDate = { gte: day, lt: next };
+    return;
+  }
+
+  if (query.dateFrom || query.dateTo) {
+    where.invoiceDate = {
+      ...(query.dateFrom ? { gte: dateKeyToUtcDate(query.dateFrom) } : {}),
+      ...(query.dateTo ? { lt: dateKeyToUtcDate(addDaysToDateKey(query.dateTo, 1)) } : {}),
+    };
+  }
+}
+
+function buildListInvoicesWhere(
+  salonWhere: ReturnType<typeof salonIdFilter>,
+  query: ListBillingQuery,
+): Prisma.InvoiceWhereInput {
+  const base: Prisma.InvoiceWhereInput = {
+    ...salonWhere,
+    voidedAt: null,
+    status: { in: ACTIVE_SALE_STATUSES },
+  };
+
+  applyListInvoiceDateFilter(base, query);
+
+  if (query.paymentMethod) {
+    base.payments = { some: { paymentMethod: query.paymentMethod } };
+  }
+
+  if (query.search?.trim()) {
+    const term = query.search.trim();
+    return {
+      AND: [
+        base,
+        {
+          OR: [
+            { receiptNumber: { contains: term } },
+            { customer: { fullName: { contains: term } } },
+            { customer: { phone: { contains: term } } },
+          ],
+        },
+      ],
+    };
+  }
+
+  return base;
+}
+
 export class BillingRepository {
   async confirmOnly(auth: AuthContext, input: ConfirmOnlyInput) {
     const appointmentId = await assertAppointmentCheckoutReady(
@@ -717,7 +873,6 @@ export class BillingRepository {
       input.appointmentId,
     );
     const customerId = await resolveCustomerId(auth.salonId, input);
-    const receiptNumber = await nextReceiptNumber(auth.salonId);
     const now = new Date();
     const invoiceDate = istCalendarDate(now);
     const invoiceTime = istWallClockAsUtcTime(now);
@@ -730,6 +885,8 @@ export class BillingRepository {
     const lineItems = buildLineItems(resolvedLines);
 
     const invoice = await prisma.$transaction(async (tx) => {
+      const receiptNumber = await nextReceiptNumber(tx, auth.salonId);
+
       const created = await tx.invoice.create({
         data: {
           salonId: auth.salonId,
@@ -826,7 +983,6 @@ export class BillingRepository {
       input.appointmentId,
     );
     const customerId = await resolveCustomerId(auth.salonId, input);
-    const receiptNumber = await nextReceiptNumber(auth.salonId);
     const now = new Date();
     const invoiceDate = istCalendarDate(now);
     const invoiceTime = istWallClockAsUtcTime(now);
@@ -843,6 +999,8 @@ export class BillingRepository {
     }
 
     const { invoice, stockResults, walletDeductions } = await prisma.$transaction(async (tx) => {
+      const receiptNumber = await nextReceiptNumber(tx, auth.salonId);
+
       const created = await tx.invoice.create({
         data: {
           salonId: auth.salonId,
@@ -966,7 +1124,12 @@ export class BillingRepository {
           invoiceNo: invoice.receiptNumber,
           dateLabel,
         })
-        .catch(() => {});
+        .catch((error) => {
+          logger.warn("Payment receipt WhatsApp failed", {
+            receiptNumber: invoice.receiptNumber,
+            reason: error instanceof Error ? error.message : "unknown",
+          });
+        });
     }
 
     for (const payment of invoice.payments) {
@@ -1015,6 +1178,7 @@ export class BillingRepository {
     const page = query.page ?? 1;
     const limit = query.limit ?? 50;
     const skip = (page - 1) * limit;
+    const detail = query.detail ?? false;
 
     const where: Prisma.InvoiceWhereInput = {
       salonId: auth.salonId,
@@ -1036,11 +1200,7 @@ export class BillingRepository {
       prisma.invoice.count({ where }),
       prisma.invoice.findMany({
         where,
-        include: {
-          lineItems: true,
-          payments: true,
-          customer: { select: { fullName: true, phone: true } },
-        },
+        include: invoiceListInclude(detail),
         orderBy: [{ dueDate: "asc" }, { invoiceDate: "desc" }],
         skip,
         take: limit,
@@ -1049,14 +1209,23 @@ export class BillingRepository {
 
     const items = invoices.map((invoice) => {
       const mapped = mapInvoice(invoice);
+      const lineItems = mapLineItemsSummary(invoice.lineItems);
+      const primaryPayment = invoice.payments?.[0];
 
       return {
         ...mapped,
-        customer: invoice.customer.fullName,
-        phone: invoice.customer.phone,
-        services: invoice.lineItems.map((line) => line.itemName),
+        customer: invoice.customer?.fullName ?? "",
+        phone: invoice.customer?.phone ?? "",
+        services: lineItems.map((line) => line.name),
+        lineItems,
         receiptNo: mapped.receiptNumber,
         date: mapped.invoiceDate,
+        paymentMethod: (primaryPayment?.paymentMethod ?? "none") as
+          | "cash"
+          | "card"
+          | "upi"
+          | "wallet"
+          | "none",
       };
     });
 
@@ -1067,31 +1236,17 @@ export class BillingRepository {
     const page = query.page ?? 1;
     const limit = query.limit ?? 50;
     const skip = (page - 1) * limit;
+    const detail = query.detail ?? false;
 
-    const where: Prisma.InvoiceWhereInput = {
-      salonId: auth.salonId,
-      voidedAt: null,
-      status: { in: ACTIVE_SALE_STATUSES },
-    };
-
-    if (query.search?.trim()) {
-      const term = query.search.trim();
-      where.OR = [
-        { receiptNumber: { contains: term } },
-        { customer: { fullName: { contains: term } } },
-        { customer: { phone: { contains: term } } },
-      ];
-    }
+    const salonIds = await resolveListSalonIds(auth, query.salonId);
+    const salonWhere = salonIdFilter(salonIds);
+    const where = buildListInvoicesWhere(salonWhere, query);
 
     const [total, invoices] = await prisma.$transaction([
       prisma.invoice.count({ where }),
       prisma.invoice.findMany({
         where,
-        include: {
-          lineItems: true,
-          payments: true,
-          customer: { select: { fullName: true, phone: true } },
-        },
+        include: invoiceListInclude(detail),
         orderBy: [{ invoiceDate: "desc" }, { createdAt: "desc" }],
         skip,
         take: limit,
@@ -1100,20 +1255,18 @@ export class BillingRepository {
 
     const items = invoices.map((invoice) => {
       const mapped = mapInvoice(invoice);
-      const primaryPayment = invoice.payments[0];
+      const lineItems = mapLineItemsSummary(invoice.lineItems);
+      const primaryPayment = invoice.payments?.[0];
 
       return {
         ...mapped,
-        customer: invoice.customer.fullName,
-        phone: invoice.customer.phone,
-        services: invoice.lineItems.map((line) => line.itemName),
+        customer: invoice.customer?.fullName ?? "",
+        phone: invoice.customer?.phone ?? "",
+        services: lineItems.map((line) => line.name),
+        lineItems,
         receiptNo: mapped.receiptNumber,
         date: mapped.invoiceDate,
-        time: new Date(`1970-01-01T${mapped.invoiceTime}Z`).toLocaleTimeString("en-IN", {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true,
-        }),
+        time: formatWallClockTime12h(mapped.invoiceTime),
         discount: mapped.discountAmount,
         gst: mapped.gstAmount,
         total: mapped.totalAmount,
@@ -1129,6 +1282,41 @@ export class BillingRepository {
     return toPaginatedResult(items, total, page, limit);
   }
 
+  async getInvoicesSummary(auth: AuthContext) {
+    const salonIds = await resolveKpiSalonIds(auth);
+    const salonWhere = salonIdFilter(salonIds);
+
+    const baseWhere: Prisma.InvoiceWhereInput = {
+      ...salonWhere,
+      voidedAt: null,
+      status: { in: ACTIVE_SALE_STATUSES },
+    };
+
+    const todayRange = istDayRange();
+
+    const [allTime, todayPayments] = await Promise.all([
+      prisma.invoice.aggregate({
+        where: baseWhere,
+        _sum: { totalAmount: true },
+        _count: { id: true },
+      }),
+      prisma.payment.aggregate({
+        where: {
+          paidAt: { gte: todayRange.gte, lt: todayRange.lt },
+          invoice: { ...salonWhere, voidedAt: null },
+        },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    const totalRevenue = Number(allTime._sum.totalAmount ?? 0);
+    const todayRevenue = Math.round(Number(todayPayments._sum.amount ?? 0));
+    const totalReceipts = allTime._count.id;
+    const avgBill = totalReceipts > 0 ? Math.round(totalRevenue / totalReceipts) : 0;
+
+    return { totalRevenue, todayRevenue, totalReceipts, avgBill };
+  }
+
   async listRefunds(auth: AuthContext) {
     const invoices = await prisma.invoice.findMany({
       where: {
@@ -1140,13 +1328,11 @@ export class BillingRepository {
         ],
       },
       include: {
-        lineItems: true,
-        payments: true,
-        customer: { select: { fullName: true, phone: true } },
+        ...invoiceListInclude(true),
         updatedBy: { select: { fullName: true } },
       },
       orderBy: [{ updatedAt: "desc" }, { voidedAt: "desc" }, { invoiceDate: "desc" }],
-      take: 500,
+      take: MAX_PAGE_LIMIT,
     });
 
     return invoices.map((invoice) => mapRefundRecord(invoice));

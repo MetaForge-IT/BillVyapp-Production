@@ -1,4 +1,6 @@
 import type { AuthContext } from "../auth/auth.types";
+import { invalidateDashboardCache } from "../dashboard/invalidateDashboardCache";
+import { resolveListSalonIds } from "../../utils/salonScope";
 import { customersRepository } from "./customers.repository";
 import type {
   CreateCustomerInput,
@@ -8,8 +10,9 @@ import type {
 } from "./customers.validators";
 
 export class CustomersService {
-  list(auth: AuthContext, query: ListCustomersQuery) {
-    return customersRepository.list(auth.salonId, query);
+  async list(auth: AuthContext, query: ListCustomersQuery) {
+    const salonIds = await resolveListSalonIds(auth, query.salonId);
+    return customersRepository.list(salonIds, query);
   }
 
   getById(auth: AuthContext, customerId: string) {
@@ -24,8 +27,10 @@ export class CustomersService {
     return customersRepository.searchByPhone(auth.salonId, phone);
   }
 
-  create(auth: AuthContext, input: CreateCustomerInput) {
-    return customersRepository.create(auth, input);
+  async create(auth: AuthContext, input: CreateCustomerInput) {
+    const result = await customersRepository.create(auth, input);
+    invalidateDashboardCache(auth.salonId);
+    return result;
   }
 
   update(auth: AuthContext, customerId: string, input: UpdateCustomerInput) {

@@ -142,8 +142,12 @@ export class NotificationService {
       expiresMinutes: input.expiresMinutes,
     });
 
-    if (!result && whatsappConfig.enabled) {
+    if (!result) {
       throw new Error("WhatsApp OTP could not be sent — check WHATSAPP_* configuration");
+    }
+
+    if (whatsappConfig.enabled && !result.messageId && result.provider !== "bullmq") {
+      logger.warn("WhatsApp OTP accepted without message id", { provider: result.provider });
     }
   }
 
@@ -273,12 +277,18 @@ export class NotificationService {
     }
 
     try {
-      await this.whatsapp.sendTemplate({
+      const result = await this.whatsapp.sendTemplate({
         to: toE164Plus(digits),
         templateName,
         templateLanguage: whatsappConfig.defaultTemplateLanguage,
         fields,
       });
+      if (result?.messageId) {
+        logger.info("WhatsApp template accepted", {
+          templateName,
+          messageId: result.messageId,
+        });
+      }
     } catch (error) {
       logger.error("WhatsApp template send failed", {
         templateName,

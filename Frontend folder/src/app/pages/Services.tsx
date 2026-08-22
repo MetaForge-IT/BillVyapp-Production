@@ -17,11 +17,11 @@ import {
 } from "../components/ui/table";
 import {
   Scissors, Crown, Plus, Search, Clock,
-  IndianRupee, Star, Pencil, Trash2, Tag, Package, X, CheckCircle, Loader2,
+  IndianRupee, Star, Pencil, Trash2, Tag, Package, X, CheckCircle, Loader2, Filter,
 } from "lucide-react";
 import {
   createService,
-  fetchServices,
+  fetchAllServices,
   updateService,
   type ServiceGender,
   type ServiceRecord,
@@ -37,6 +37,7 @@ import { ServiceProductLinksModal } from "../components/shared/ServiceProductLin
 import { useServiceProducts } from "../context/ServiceProductsContext";
 import { Upload } from "lucide-react";
 import { Pagination } from "../components/shared/Pagination";
+import { FilterSelect } from "../components/shared/FilterSelect";
 import { PageStatCard } from "../components/shared/PageStatCard";
 import { useTablePagination } from "../hooks/useTablePagination";
 import { SEGMENTED_PILL_LIST, SEGMENTED_PILL_TRIGGER } from "../components/layout/segmented-nav";
@@ -195,11 +196,11 @@ export function Services() {
     setLoading(true);
     try {
       const [servicesData, categoriesData, plansData] = await Promise.all([
-        fetchServices({ limit: 1000, sort: "createdAt" }),
+        fetchAllServices({ sort: "createdAt" }),
         fetchServiceCategories(),
         fetchSalonPlans(),
       ]);
-      setServices(servicesData.items);
+      setServices(servicesData);
       setCategories(categoriesData);
       setActivePackageCount(
         plansData.filter((plan) => plan.planType === "package" && plan.isActive).length,
@@ -283,6 +284,32 @@ export function Services() {
     5,
   );
   const paginatedServices = useMemo(() => paginate(filteredServices), [filteredServices, paginate]);
+
+  const activeCount = useMemo(
+    () => allServicesFlat.filter((s) => s.status === "active").length,
+    [allServicesFlat],
+  );
+  const inactiveCount = allServicesFlat.length - activeCount;
+
+  const categoryFilterOptions = useMemo(
+    () => [
+      { value: "all", label: `All Categories (${allServicesFlat.length})` },
+      ...categories.map((c) => ({
+        value: c.name,
+        label: `${c.name} (${categoryCounts[c.id] ?? 0})`,
+      })),
+    ],
+    [categories, categoryCounts, allServicesFlat.length],
+  );
+
+  const statusFilterOptions = useMemo(
+    () => [
+      { value: "all", label: `All Status (${allServicesFlat.length})` },
+      { value: "active", label: `Active (${activeCount})` },
+      { value: "inactive", label: `Inactive (${inactiveCount})` },
+    ],
+    [allServicesFlat.length, activeCount, inactiveCount],
+  );
 
 
   async function handleBulkImport(
@@ -600,12 +627,12 @@ export function Services() {
                 placeholder="Search services…"
                 value={searchInput}
                 onChange={e => { setSearchInput(e.target.value); }}
-                className="h-10 w-full rounded-xl border border-gray-200 bg-[#fafaf8] pl-9 pr-3 text-[13px] text-[#111] outline-none transition-all placeholder:text-gray-400 focus:border-[#d4af37]/60 focus:ring-2 focus:ring-[#d4af37]/10"
+                className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-9 pr-3 text-[13px] text-[#111] outline-none transition-all placeholder:text-gray-400 focus:border-[#d4af37]/60 focus:ring-2 focus:ring-[#d4af37]/10"
               />
             </div>
 
             {/* Filters */}
-            <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:flex-1">
+            <div className="flex w-full min-w-0 flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center lg:flex-1">
               {/* Gender Pills */}
               <div className="flex max-w-full items-center gap-1.5 overflow-x-auto table-scroll pb-0.5">
                 {([
@@ -633,49 +660,23 @@ export function Services() {
                 ))}
               </div>
 
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                {/* Category Dropdown */}
-                <div className="relative min-w-0 flex-1 sm:flex-none">
-                  <select
-                    value={categoryFilter}
-                    onChange={e => { setCategoryFilter(e.target.value); }}
-                    className={`h-9 w-full max-w-full cursor-pointer appearance-none rounded-xl border pl-3 pr-7 text-[12px] font-medium outline-none transition-all sm:w-auto ${
-                      categoryFilter !== "all"
-                        ? "border-[#d4af37]/60 bg-amber-50 font-semibold text-[#b8962e]"
-                        : "border-gray-200 bg-[#fafaf8] text-[#555] hover:border-gray-300"
-                    }`}
-                  >
-                    <option value="all">All Categories</option>
-                    {categories.map(c => (
-                      <option key={c.id} value={c.name}>{c.name} ({categoryCounts[c.id] ?? 0})</option>
-                    ))}
-                  </select>
-                  <div className="select-chevron-legacy pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
-                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </div>
-                  {categoryFilter !== "all" && <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-[#d4af37]" />}
-                </div>
-
-                {/* Status Dropdown */}
-                <div className="relative min-w-0 flex-1 sm:flex-none">
-                  <select
-                    value={statusFilter}
-                    onChange={e => { setStatusFilter(e.target.value as "all" | "active" | "inactive"); }}
-                    className={`h-9 w-full cursor-pointer appearance-none rounded-xl border pl-3 pr-7 text-[12px] font-medium outline-none transition-all sm:w-auto ${
-                      statusFilter !== "all"
-                        ? "border-[#d4af37]/60 bg-amber-50 font-semibold text-[#b8962e]"
-                        : "border-gray-200 bg-[#fafaf8] text-[#555] hover:border-gray-300"
-                    }`}
-                  >
-                    <option value="all">All Status</option>
-                    <option value="active">Active ({allServicesFlat.filter(s => s.status === "active").length})</option>
-                    <option value="inactive">Inactive ({allServicesFlat.filter(s => s.status === "inactive").length})</option>
-                  </select>
-                  <div className="select-chevron-legacy pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
-                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </div>
-                  {statusFilter !== "all" && <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-[#d4af37]" />}
-                </div>
+              <div className="grid w-full grid-cols-1 gap-2.5 min-[420px]:grid-cols-2 sm:flex sm:w-auto sm:flex-wrap sm:gap-3">
+                <FilterSelect
+                  value={categoryFilter}
+                  onValueChange={setCategoryFilter}
+                  icon={Tag}
+                  active={categoryFilter !== "all"}
+                  triggerClassName="sm:min-w-[11rem]"
+                  options={categoryFilterOptions}
+                />
+                <FilterSelect
+                  value={statusFilter}
+                  onValueChange={(v) => setStatusFilter(v as "all" | "active" | "inactive")}
+                  icon={Filter}
+                  active={statusFilter !== "all"}
+                  triggerClassName="sm:min-w-[10.5rem]"
+                  options={statusFilterOptions}
+                />
               </div>
             </div>
           </div>
@@ -841,7 +842,7 @@ export function Services() {
               <div className="space-y-1.5">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Category <span className="text-[#d4af37]">*</span></p>
                 <Select value={form.categoryId} onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}>
-                  <SelectTrigger className="h-10 rounded-xl border-gray-200 bg-gray-50 text-[13px] focus:border-[#d4af37] focus:ring-[#d4af37]/12">
+                  <SelectTrigger className="h-10 rounded-xl">
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -867,7 +868,7 @@ export function Services() {
               <div className="space-y-1.5">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Gender</p>
                 <Select value={form.gender} onValueChange={(v) => setForm((f) => ({ ...f, gender: v as ServiceGender }))}>
-                  <SelectTrigger className="h-10 rounded-xl border-gray-200 bg-gray-50 text-[13px] focus:border-[#d4af37] focus:ring-[#d4af37]/12">
+                  <SelectTrigger className="h-10 rounded-xl">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -949,7 +950,7 @@ export function Services() {
             <div className="space-y-1.5">
               <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Status</p>
               <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v as "active" | "inactive" }))}>
-                <SelectTrigger className="h-10 rounded-xl border-gray-200 bg-gray-50 text-[13px] focus:border-[#d4af37] focus:ring-[#d4af37]/12">
+                <SelectTrigger className="h-10 rounded-xl">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1015,7 +1016,7 @@ export function Services() {
                     value={editing.categoryId}
                     onValueChange={(v) => setEditing((cur) => cur && { ...cur, categoryId: v })}
                   >
-                    <SelectTrigger className="h-10 rounded-xl border-gray-200 bg-white text-[13px]">
+                    <SelectTrigger className="h-10 rounded-xl">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1043,7 +1044,7 @@ export function Services() {
                     value={editing.gender}
                     onValueChange={(v) => setEditing((cur) => cur && { ...cur, gender: v as ServiceGender })}
                   >
-                    <SelectTrigger className="h-10 rounded-xl border-gray-200 bg-white text-[13px]">
+                    <SelectTrigger className="h-10 rounded-xl">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1059,7 +1060,7 @@ export function Services() {
                     value={editing.status}
                     onValueChange={(v) => setEditing((cur) => cur && { ...cur, status: v as "active" | "inactive" })}
                   >
-                    <SelectTrigger className="h-10 rounded-xl border-gray-200 bg-white text-[13px]">
+                    <SelectTrigger className="h-10 rounded-xl">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

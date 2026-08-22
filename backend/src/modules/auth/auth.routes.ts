@@ -1,8 +1,6 @@
-import type { NextFunction, Request, Response } from "express";
 import { Router } from "express";
-import type { ZodType } from "zod";
-import { ZodError } from "zod";
-import { BadRequestError } from "../../utils/errors";
+import { validateRequest } from "../../middleware/validateRequest";
+import { authRateLimiter } from "../../middleware/rateLimit";
 import { authenticate } from "./auth.middleware";
 import { authController } from "./auth.controller";
 import { registrationController } from "./registration.controller";
@@ -20,30 +18,6 @@ import {
 
 const authRouter = Router();
 
-/**
- * Validates `req.body` against a Zod schema and forwards errors to the global handler.
- */
-function validateRequest(schema: ZodType) {
-  return (req: Request, _res: Response, next: NextFunction): void => {
-    try {
-      req.body = schema.parse(req.body);
-      next();
-    } catch (error) {
-      if (error instanceof ZodError) {
-        const errors = error.issues.map((issue) => ({
-          field: issue.path.length > 0 ? issue.path.join(".") : "body",
-          message: issue.message,
-        }));
-
-        next(new BadRequestError("Validation failed", errors));
-        return;
-      }
-
-      next(error);
-    }
-  };
-}
-
 authRouter.post("/register", validateRequest(registerSchema), registrationController.register);
 
 authRouter.get("/verify-email", verificationController.verifyEmailLink);
@@ -60,16 +34,18 @@ authRouter.post(
   verificationController.resendVerification,
 );
 
-authRouter.post("/login", validateRequest(loginSchema), authController.login);
+authRouter.post("/login", authRateLimiter, validateRequest(loginSchema), authController.login);
 
 authRouter.post(
   "/login/verify-otp",
+  authRateLimiter,
   validateRequest(verifyLoginOtpSchema),
   authController.verifyLoginOtp,
 );
 
 authRouter.post(
   "/login/resend-otp",
+  authRateLimiter,
   validateRequest(resendLoginOtpSchema),
   authController.resendLoginOtp,
 );

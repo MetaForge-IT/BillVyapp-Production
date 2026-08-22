@@ -1,5 +1,5 @@
 import Joi from "joi";
-import type { ExpenseCategory, ExpenseSource } from "../api/accounting";
+import type { ExpenseCategory, ExpenseSource, AccountingExpense } from "../api/accounting";
 
 export const EXPENSE_CATEGORIES = ["Operational", "Inventory", "Payroll", "Transfer"] as const;
 export const EXPENSE_SOURCES = ["Cash", "UPI", "Card"] as const;
@@ -135,4 +135,25 @@ export function todayIsoDate(): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+export function expenseToFormValues(expense: AccountingExpense): ExpenseFormValues {
+  const parsed = parseExpenseRemarks(expense.remarks);
+  const date = expense.date?.trim().slice(0, 10) || todayIsoDate();
+  const category = EXPENSE_CATEGORIES.includes(expense.category as ExpenseCategory)
+    ? (expense.category as ExpenseCategory)
+    : "Operational";
+  const source = EXPENSE_SOURCES.includes(expense.source as ExpenseSource)
+    ? (expense.source as ExpenseSource)
+    : "Cash";
+
+  return {
+    date,
+    category,
+    subCategory: expense.subCategory || expense.sub || "",
+    employeeName: parsed.employeeName ?? "",
+    amount: String(expense.amount),
+    source,
+    note: parsed.note,
+  };
 }

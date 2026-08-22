@@ -4,6 +4,7 @@ import {
   Banknote,
   CreditCard,
   Loader2,
+  Pencil,
   Plus,
   QrCode,
   Receipt,
@@ -18,6 +19,7 @@ import {
   fetchAccountingOverview,
   fetchExpenses,
   requestExpenseDelete,
+  updateExpense,
   type AccountingExpense,
   type ExpenseCategory,
   type ExpenseSource,
@@ -26,6 +28,7 @@ import { getApiErrorMessage } from "../../lib/api";
 import {
   EXPENSE_CATEGORIES,
   EXPENSE_SOURCES,
+  expenseToFormValues,
   parseExpenseRemarks,
   todayIsoDate,
   validateExpenseForm,
@@ -71,8 +74,31 @@ export function Expenses() {
   const [actionId, setActionId] = useState<string | null>(null);
   const [isClosed, setIsClosed] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ExpenseFormValues>(emptyForm);
   const [fieldError, setFieldError] = useState<string | undefined>();
+
+  const resetForm = () => {
+    setForm(emptyForm());
+    setFieldError(undefined);
+    setEditingId(null);
+    setShowForm(false);
+  };
+
+  const openCreateForm = () => {
+    setForm(emptyForm());
+    setFieldError(undefined);
+    setEditingId(null);
+    setShowForm(true);
+  };
+
+  const openEditForm = (expense: AccountingExpense) => {
+    if (!admin) return;
+    setForm(expenseToFormValues(expense));
+    setFieldError(undefined);
+    setEditingId(expense.id);
+    setShowForm(true);
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -120,14 +146,21 @@ export function Expenses() {
     }
     setSaving(true);
     try {
-      const created = await createExpense(result.value);
-      setExpenses((prev) => [created, ...prev]);
-      setForm(emptyForm());
-      setShowForm(false);
-      setFieldError(undefined);
-      toast.success("Expense saved");
+      if (editingId) {
+        const updated = await updateExpense(editingId, result.value);
+        setExpenses((prev) => prev.map((e) => (e.id === editingId ? updated : e)));
+        resetForm();
+        toast.success("Expense updated");
+      } else {
+        const created = await createExpense(result.value);
+        setExpenses((prev) => [created, ...prev]);
+        resetForm();
+        toast.success("Expense saved");
+      }
     } catch (error) {
-      toast.error(getApiErrorMessage(error, "Failed to save expense"));
+      toast.error(
+        getApiErrorMessage(error, editingId ? "Failed to update expense" : "Failed to save expense"),
+      );
     } finally {
       setSaving(false);
     }
@@ -216,19 +249,36 @@ export function Expenses() {
             Rejected by admin
           </span>
         ) : null}
-        <button
-          type="button"
-          disabled={isClosed || busy}
-          onClick={() => void remove(e)}
-          aria-label={admin ? "Delete expense" : "Request delete"}
-          className={cn(
-            "flex items-center justify-center gap-1.5 rounded-lg border border-black/[0.08] text-[#9a9a9a] transition-colors hover:border-[#D4AF37]/35 hover:text-[#111118] disabled:opacity-30",
-            compact ? "h-8 w-8" : "h-9 px-3 text-[12px] font-semibold text-[#6b6b6b]",
-          )}
-        >
-          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-          {!compact ? "Delete" : null}
-        </button>
+        <div className={cn("flex flex-wrap items-center gap-1.5", compact ? "" : "justify-end")}>
+          {admin && !e.deleteRequested ? (
+            <button
+              type="button"
+              disabled={isClosed || busy}
+              onClick={() => openEditForm(e)}
+              aria-label="Edit expense"
+              className={cn(
+                "flex items-center justify-center gap-1.5 rounded-lg border border-black/[0.08] text-[#6b6b6b] transition-colors hover:border-[#D4AF37]/35 hover:text-[#9a7d20] disabled:opacity-30",
+                compact ? "h-8 w-8" : "h-9 px-3 text-[12px] font-semibold",
+              )}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              {!compact ? "Edit" : null}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            disabled={isClosed || busy}
+            onClick={() => void remove(e)}
+            aria-label={admin ? "Delete expense" : "Request delete"}
+            className={cn(
+              "flex items-center justify-center gap-1.5 rounded-lg border border-black/[0.08] text-[#9a9a9a] transition-colors hover:border-[#D4AF37]/35 hover:text-[#111118] disabled:opacity-30",
+              compact ? "h-8 w-8" : "h-9 px-3 text-[12px] font-semibold text-[#6b6b6b]",
+            )}
+          >
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+            {!compact ? "Delete" : null}
+          </button>
+        </div>
       </div>
     );
   };
@@ -248,15 +298,11 @@ export function Expenses() {
         <button
           type="button"
           disabled={isClosed}
-          onClick={() => {
-            setForm(emptyForm());
-            setFieldError(undefined);
-            setShowForm((v) => !v);
-          }}
+          onClick={() => (showForm && !editingId ? resetForm() : openCreateForm())}
           className="inline-flex h-10 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-[#111118] px-3.5 text-[12px] font-bold text-[#D4AF37] transition-opacity disabled:opacity-40 sm:h-11 sm:w-auto sm:px-4 sm:text-[13px]"
         >
           <Plus className="h-4 w-4" />
-          {showForm ? "Close Form" : "Add Expense"}
+          {showForm && !editingId ? "Close Form" : "Add Expense"}
         </button>
       </div>
 
@@ -284,8 +330,12 @@ export function Expenses() {
           <div className="flex items-center gap-2">
             <Wallet className="h-4 w-4 shrink-0 text-[#D4AF37]" />
             <div className="min-w-0">
-              <p className="text-[13px] font-bold text-[#111118]">New Expense</p>
-              <p className="text-[11px] text-[#6b6b6b]">Note is compulsory</p>
+              <p className="text-[13px] font-bold text-[#111118]">
+                {editingId ? "Edit Expense" : "New Expense"}
+              </p>
+              <p className="text-[11px] text-[#6b6b6b]">
+                {editingId ? "Admin only — update this entry" : "Note is compulsory"}
+              </p>
             </div>
           </div>
 
@@ -420,7 +470,7 @@ export function Expenses() {
           <div className="flex flex-col-reverse gap-2 min-[400px]:flex-row min-[400px]:flex-wrap min-[400px]:justify-end">
             <button
               type="button"
-              onClick={() => setShowForm(false)}
+              onClick={resetForm}
               className="h-10 rounded-xl border border-black/[0.08] px-4 text-[12px] font-semibold text-[#6b6b6b]"
             >
               Cancel
@@ -432,7 +482,7 @@ export function Expenses() {
               className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#C9A227] px-5 text-[12px] font-bold text-[#111118] disabled:opacity-40"
             >
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-              {saving ? "Saving…" : "Save Expense"}
+              {saving ? "Saving…" : editingId ? "Update Expense" : "Save Expense"}
             </button>
           </div>
         </div>

@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useNavigate, useLocation } from "react-router";
 import { useCoupons } from "../context/CouponsContext";
-import { useRole } from "../context/RoleContext";
+import { useRole, isAdmin } from "../context/RoleContext";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
@@ -12,7 +13,7 @@ import { Switch } from "../components/ui/switch";
 import {
   Users, User, Search, Crown, Phone, Mail, Calendar, Heart,
   Gift, UserPlus, Cake, MessageSquare, CheckCircle, X, Bell,
-  Filter, ArrowLeft, Clock, IndianRupee, ArrowRight,
+  Filter, ArrowLeft, Clock, IndianRupee, ArrowRight, Receipt, Store,
 } from "lucide-react";
 import { formatDisplayPhone, phoneTelHref } from "../../lib/phone";
 import { getApiErrorMessage } from "../../lib/api";
@@ -23,6 +24,7 @@ import {
 } from "../../api/messaging";
 import { Pagination } from "../components/shared/Pagination";
 import { PageStatCard } from "../components/shared/PageStatCard";
+import { FilterSelect } from "../components/shared/FilterSelect";
 import { DEFAULT_PAGE_SIZE } from "../hooks/useTablePagination";
 import {
   financeGoldBtn,
@@ -53,6 +55,7 @@ import {
   isBirthdayThisMonth,
   getInactiveDays,
   formatLatestVisitDate,
+  compareCustomersByLatestDate,
   SourceBadge,
   customerBookingPath,
 } from "./customers/customerHelpers";
@@ -60,11 +63,15 @@ import { CustomerDetailView } from "./customers/CustomerDetailView";
 import { AddCustomerModal, EMPTY_NEW_CUSTOMER, type NewCustomerForm } from "./customers/AddCustomerModal";
 import { LoyaltyProgramModal } from "./customers/LoyaltyProgramModal";
 import { CouponModals } from "./customers/CouponModals";
+import { CustomerReceiptsModal } from "./customers/CustomerReceiptsModal";
+import { fetchMyFranchise } from "../../api/franchises";
 
 export function Customers() {
   const { role } = useRole();
+  const isFranchiseAdmin = isAdmin(role);
   const navigate = useNavigate();
   const location = useLocation();
+  const [shopFilter, setShopFilter] = useState("all");
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -95,7 +102,15 @@ export function Customers() {
 
   useEffect(() => {
     setListPage(1);
-  }, [debouncedSearch, filterStatus, listPageSize]);
+  }, [debouncedSearch, filterStatus, listPageSize, shopFilter]);
+
+  const franchiseQuery = useQuery({
+    queryKey: ["my-franchise"],
+    queryFn: fetchMyFranchise,
+    enabled: isFranchiseAdmin,
+  });
+  const franchiseShops = franchiseQuery.data?.shops ?? [];
+  const showShopColumn = isFranchiseAdmin && shopFilter === "all" && franchiseShops.length > 1;
 
   const {
     customers,
@@ -109,6 +124,7 @@ export function Customers() {
     limit: listPageSize,
     search: debouncedSearch || undefined,
     status: filterStatus === "all" ? undefined : filterStatus,
+    salonId: isFranchiseAdmin && shopFilter !== "all" ? shopFilter : undefined,
   });
   const [todayRevenue, setTodayRevenue] = useState<number | null>(null);
 
@@ -156,6 +172,8 @@ export function Customers() {
   const [selectedCustomerIds, setSelectedCustomerIds] = useState<Set<string>>(new Set());
   const [bulkCouponOpen, setBulkCouponOpen] = useState(false);
   const [bulkCouponId, setBulkCouponId] = useState("");
+  const [receiptsOpen, setReceiptsOpen] = useState(false);
+  const [receiptsCustomer, setReceiptsCustomer] = useState<Customer | null>(null);
   const [newCustomer, setNewCustomer] = useState<NewCustomerForm>(EMPTY_NEW_CUSTOMER);
   const [membershipBenefits, setMembershipBenefits] = useState(DEFAULT_MEMBERSHIP_BENEFITS);
   const [redeeming, setRedeeming] = useState(false);
@@ -185,28 +203,66 @@ export function Customers() {
   };
 
   const filtered = useMemo(() => {
-    return customers.filter(c => {
-      // Search + status already applied server-side.
-      const matchT = filterTier === "all" || c.membershipTier === filterTier;
-      const matchB = !showSearchFilters || filterBirthday === "all" ? true :
-        filterBirthday === "today" ? isBirthdayToday(c.birthday) :
-        isBirthdayThisMonth(c.birthday);
-      const matchG = !showSearchFilters || filterGender === "all" || c.gender === filterGender;
-      const matchSrc = !showSearchFilters || filterSource === "all" || (c.source ?? "unknown") === filterSource;
-      const visitDate = c.lastVisitDate ? new Date(c.lastVisitDate) : null;
-      const matchFrom = !showSearchFilters || !lastVisitFrom ? true : (visitDate ? visitDate >= new Date(lastVisitFrom) : false);
-      const matchTo = !showSearchFilters || !lastVisitTo ? true : (visitDate ? visitDate <= new Date(lastVisitTo) : false);
-      const days = getInactiveDays(c);
-      const matchI = !showSearchFilters || filterInactive === "all" ? true : days != null && days >= Number(filterInactive);
-      return matchT && matchB && matchI && matchG && matchSrc && matchFrom && matchTo;
-    });
+    return customers
+      .filter(c => {
+        // Search + status already applied server-side.
+        const matchT = filterTier === "all" || c.membershipTier === filterTier;
+        const matchB = !showSearchFilters || filterBirthday === "all" ? true :
+          filterBirthday === "today" ? isBirthdayToday(c.birthday) :
+          isBirthdayThisMonth(c.birthday);
+        const matchG = !showSearchFilters || filterGender === "all" || c.gender === filterGender;
+        const matchSrc = !showSearchFilters || filterSource === "all" || (c.source ?? "unknown") === filterSource;
+        const visitDate = c.lastVisitDate ? new Date(c.lastVisitDate) : null;
+        const matchFrom = !showSearchFilters || !lastVisitFrom ? true : (visitDate ? visitDate >= new Date(lastVisitFrom) : false);
+        const matchTo = !showSearchFilters || !lastVisitTo ? true : (visitDate ? visitDate <= new Date(lastVisitTo) : false);
+        const days = getInactiveDays(c);
+        const matchI = !showSearchFilters || filterInactive === "all" ? true : days != null && days >= Number(filterInactive);
+        return matchT && matchB && matchI && matchG && matchSrc && matchFrom && matchTo;
+      })
+      .sort(compareCustomersByLatestDate);
   }, [customers, showSearchFilters, filterTier, filterBirthday, filterInactive, filterGender, filterSource, lastVisitFrom, lastVisitTo]);
 
-  // Live counts for the source segmented toggle (respects all filters except source itself).
+  // Live counts for filter dropdowns (current page / working set).
   const sourceCounts = useMemo(() => ({
     all: customers.length,
     "walk-in": customers.filter(c => (c.source ?? "unknown") === "walk-in").length,
     online: customers.filter(c => (c.source ?? "unknown") === "online").length,
+  }), [customers]);
+
+  const tierCounts = useMemo(() => {
+    const counts = { all: customers.length, platinum: 0, gold: 0, silver: 0, basic: 0 };
+    for (const c of customers) {
+      const key = c.membershipTier as keyof typeof counts;
+      if (key in counts && key !== "all") counts[key] += 1;
+    }
+    return counts;
+  }, [customers]);
+
+  const statusCounts = useMemo(() => ({
+    all: customers.length,
+    active: customers.filter(c => c.status === "active").length,
+    inactive: customers.filter(c => c.status === "inactive").length,
+  }), [customers]);
+
+  const genderCounts = useMemo(() => ({
+    all: customers.length,
+    male: customers.filter(c => c.gender === "male").length,
+    female: customers.filter(c => c.gender === "female").length,
+    other: customers.filter(c => c.gender === "other").length,
+  }), [customers]);
+
+  const birthdayCounts = useMemo(() => ({
+    all: customers.length,
+    today: customers.filter(c => isBirthdayToday(c.birthday)).length,
+    thismonth: customers.filter(c => isBirthdayThisMonth(c.birthday)).length,
+  }), [customers]);
+
+  const inactiveCounts = useMemo(() => ({
+    all: customers.length,
+    "7": customers.filter(c => { const d = getInactiveDays(c); return d != null && d >= 7; }).length,
+    "30": customers.filter(c => { const d = getInactiveDays(c); return d != null && d >= 30; }).length,
+    "60": customers.filter(c => { const d = getInactiveDays(c); return d != null && d >= 60; }).length,
+    "90": customers.filter(c => { const d = getInactiveDays(c); return d != null && d >= 90; }).length,
   }), [customers]);
   const paginatedCustomers = filtered;
   const birthdayCustomers = useMemo(() => customers.filter(c => isBirthdayThisMonth(c.birthday)), [customers]);
@@ -311,6 +367,10 @@ export function Customers() {
     const suggested = coupons.find(cp => cp.status === "active" && new Date(cp.validTill) >= new Date());
     setSelectedCouponId(suggested?.id || "");
     setSingleCouponOpen(true);
+  };
+  const openReceipts = (c: Customer) => {
+    setReceiptsCustomer(c);
+    setReceiptsOpen(true);
   };
 
   const allFilteredSelected = filtered.length > 0 && filtered.every(c => selectedCustomerIds.has(c.id));
@@ -495,7 +555,7 @@ export function Customers() {
       });
       // Close the dialog and open detail immediately so success isn't blocked on list refresh.
       setCustomers((prev) =>
-        prev.some((c) => c.id === created.id) ? prev : [...prev, created],
+        prev.some((c) => c.id === created.id) ? prev : [created, ...prev],
       );
       setSelectedCustomer(created);
       setDetailView(true);
@@ -849,6 +909,37 @@ export function Customers() {
         </div>
       </div>
 
+      {/* Shop filter — franchise admin */}
+      {isFranchiseAdmin && franchiseShops.length > 0 && (
+        <div className="shrink-0 rounded-2xl border border-black/[0.07] bg-white px-4 py-3 shadow-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D4AF37]/25 bg-[#D4AF37]/10">
+                <Store className="h-4 w-4 text-[#D4AF37]" />
+              </div>
+              <div>
+                <p className="text-[13px] font-bold text-[#111118]">Shop</p>
+                <p className="text-[11px] text-[#9a9a9a]">Filter customers by branch</p>
+              </div>
+            </div>
+            <FilterSelect
+              value={shopFilter}
+              onValueChange={setShopFilter}
+              icon={Store}
+              active={shopFilter !== "all"}
+              className="sm:min-w-[14rem]"
+              options={[
+                { value: "all", label: `All Shops (${franchiseShops.length})` },
+                ...franchiseShops.map((shop) => ({
+                  value: shop.id,
+                  label: shop.displayName?.trim() || shop.name,
+                })),
+              ]}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Stat cards — tablet + desktop; phones keep list space. */}
       <div className="hidden shrink-0 gap-3 md:grid md:grid-cols-2 lg:grid-cols-4">
         <PageStatCard
@@ -860,8 +951,8 @@ export function Customers() {
         />
         <PageStatCard
           label="Total Customers"
-          value={customers.length}
-          sub="All in CRM"
+          value={customersTotal}
+          sub={shopFilter === "all" ? "All shops in CRM" : "In selected shop"}
           icon={Users}
           index={1}
           onClick={() => { setShowSearchFilters(true); setFilterTier("all"); setFilterStatus("all"); setFilterBirthday("all"); }}
@@ -916,177 +1007,178 @@ export function Customers() {
 
         {showSearchFilters && (
           <>
-        <div className="mt-3 flex items-center gap-2.5 flex-wrap">
+        <div className="mt-3 space-y-3">
+          {/* Search + source */}
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="relative min-w-0 flex-1 sm:min-w-[220px]">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search name or phone number"
+                className="h-10 w-full rounded-xl border border-black/[0.08] bg-white pl-10 pr-9 text-[13px] text-[#111] outline-none transition-all placeholder:text-[#9a9a9a] focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/12"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-gray-200 transition-colors hover:bg-gray-300"
+                >
+                  <X className="h-3 w-3 text-gray-500" />
+                </button>
+              )}
+            </div>
 
-          {/* Search */}
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-            <input
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search name or phone number"
-              className="w-full h-10 pl-10 pr-9 rounded-xl border border-black/[0.08] text-[13px] text-[#111] placeholder:text-[#9a9a9a] outline-none focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/12 bg-[#FAF8F2]/60 transition-all"
+            <div
+              className="inline-flex w-full shrink-0 items-center gap-0.5 rounded-xl border border-black/[0.08] bg-[#FAF8F2]/60 p-1 sm:w-auto"
+              role="tablist"
+              aria-label="Filter by source"
+            >
+              {([
+                { value: "all", label: "All", icon: Users },
+                { value: "walk-in", label: "Walk-in", icon: ArrowRight },
+                { value: "online", label: "Online", icon: Calendar },
+              ] as const).map(({ value, label, icon: Icon }) => {
+                const isActive = filterSource === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setFilterSource(value)}
+                    className={cn(
+                      "flex h-10 flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 text-[13px] font-semibold transition-all sm:flex-none sm:px-3.5",
+                      isActive
+                        ? "border-[#D4AF37]/35 bg-[#D4AF37]/15 text-[#9a7d20]"
+                        : "border-transparent text-[#6b6b6b] hover:bg-black/[0.04]",
+                    )}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    {label}
+                    <span className={cn(
+                      "rounded-full px-1.5 py-0.5 text-[10px] font-bold",
+                      isActive ? "bg-[#D4AF37]/25 text-[#9a7d20]" : "bg-black/[0.06] text-[#6b6b6b]",
+                    )}>
+                      {sourceCounts[value]}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Filter dropdowns — Radix Select (matches Revenue Report) */}
+          <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <FilterSelect
+              value={filterTier}
+              onValueChange={setFilterTier}
+              icon={Crown}
+              active={filterTier !== "all"}
+              placeholder="All tiers"
+              options={[
+                { value: "all", label: `All Tiers (${tierCounts.all})` },
+                { value: "platinum", label: `Platinum (${tierCounts.platinum})` },
+                { value: "gold", label: `Gold (${tierCounts.gold})` },
+                { value: "silver", label: `Silver (${tierCounts.silver})` },
+                { value: "basic", label: `Basic (${tierCounts.basic})` },
+              ]}
             />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-colors">
-                <X className="h-3 w-3 text-gray-500" />
+            <FilterSelect
+              value={filterStatus}
+              onValueChange={(v) => setFilterStatus(v as typeof filterStatus)}
+              icon={User}
+              active={filterStatus !== "all"}
+              placeholder="All status"
+              options={[
+                { value: "all", label: `All Status (${statusCounts.all})` },
+                { value: "active", label: `Active (${statusCounts.active})` },
+                { value: "inactive", label: `Inactive (${statusCounts.inactive})` },
+              ]}
+            />
+            <FilterSelect
+              value={filterGender}
+              onValueChange={(v) => setFilterGender(v as typeof filterGender)}
+              icon={Users}
+              active={filterGender !== "all"}
+              placeholder="All genders"
+              options={[
+                { value: "all", label: `All Genders (${genderCounts.all})` },
+                { value: "male", label: `Male (${genderCounts.male})` },
+                { value: "female", label: `Female (${genderCounts.female})` },
+                { value: "other", label: `Other (${genderCounts.other})` },
+              ]}
+            />
+            <FilterSelect
+              value={filterBirthday}
+              onValueChange={(v) => setFilterBirthday(v as typeof filterBirthday)}
+              icon={Cake}
+              active={filterBirthday !== "all"}
+              placeholder="All birthdays"
+              options={[
+                { value: "all", label: `All Birthdays (${birthdayCounts.all})` },
+                { value: "today", label: `Today (${birthdayCounts.today})` },
+                { value: "thismonth", label: `This Month (${birthdayCounts.thismonth})` },
+              ]}
+            />
+            <FilterSelect
+              value={filterInactive}
+              onValueChange={(v) => setFilterInactive(v as typeof filterInactive)}
+              icon={Clock}
+              active={filterInactive !== "all"}
+              placeholder="Any activity"
+              options={[
+                { value: "all", label: `Any Activity (${inactiveCounts.all})` },
+                { value: "7", label: `Inactive 7+ days (${inactiveCounts["7"]})` },
+                { value: "30", label: `Inactive 30+ days (${inactiveCounts["30"]})` },
+                { value: "60", label: `Inactive 60+ days (${inactiveCounts["60"]})` },
+                { value: "90", label: `Inactive 90+ days (${inactiveCounts["90"]})` },
+              ]}
+            />
+          </div>
+
+          {/* Last visit range + clear */}
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className={cn(
+              "flex w-full items-center gap-2 rounded-xl border px-3 py-2 sm:w-auto",
+              lastVisitFrom || lastVisitTo
+                ? "border-[#D4AF37]/35 bg-[#FFFBEB]"
+                : "border-black/[0.08] bg-white",
+            )}>
+              <Calendar className="h-4 w-4 shrink-0 text-[#D4AF37]" />
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-[#9a9a9a]">Last visit</span>
+              <input
+                type="date"
+                value={lastVisitFrom}
+                onChange={(e) => setLastVisitFrom(e.target.value)}
+                title="Last visit from"
+                className="h-9 min-w-0 flex-1 rounded-lg border border-black/[0.08] bg-[#FAF8F2]/60 px-2 text-[12px] font-semibold outline-none focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/12 sm:flex-none sm:w-[8.5rem]"
+              />
+              <span className="text-[11px] text-[#9a9a9a]">to</span>
+              <input
+                type="date"
+                value={lastVisitTo}
+                onChange={(e) => setLastVisitTo(e.target.value)}
+                title="Last visit to"
+                className="h-9 min-w-0 flex-1 rounded-lg border border-black/[0.08] bg-[#FAF8F2]/60 px-2 text-[12px] font-semibold outline-none focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/12 sm:flex-none sm:w-[8.5rem]"
+              />
+            </div>
+
+            {(searchQuery || filterTier !== "all" || filterStatus !== "all" || filterGender !== "all" || filterSource !== "all" || filterBirthday !== "all" || filterInactive !== "all" || lastVisitFrom || lastVisitTo) && (
+              <button
+                type="button"
+                onClick={clearSearchFilters}
+                className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-black/[0.08] px-4 text-[12px] font-semibold text-[#6b6b6b] transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-600 sm:w-auto"
+              >
+                <X className="h-3.5 w-3.5" /> Clear filters
               </button>
             )}
           </div>
-
-          {/* Source — 1-click segmented toggle with live counts */}
-          <div className="inline-flex shrink-0 items-center gap-0.5 rounded-xl border border-black/[0.08] bg-[#FAF8F2]/60 p-1" role="tablist" aria-label="Filter by source">
-            {([
-              { value: "all", label: "All", icon: Users },
-              { value: "walk-in", label: "Walk-in", icon: ArrowRight },
-              { value: "online", label: "Online", icon: Calendar },
-            ] as const).map(({ value, label, icon: Icon }) => {
-              const isActive = filterSource === value;
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  onClick={() => setFilterSource(value)}
-                  className={`flex h-11 items-center gap-1.5 rounded-lg px-3.5 text-[13px] font-semibold transition-all ${
-                    isActive
-                      ? "bg-[#D4AF37]/15 text-[#9a7d20] border border-[#D4AF37]/35"
-                      : "text-[#6b6b6b] border border-transparent hover:bg-black/[0.04]"
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {label}
-                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? "bg-[#D4AF37]/25 text-[#9a7d20]" : "bg-black/[0.06] text-[#6b6b6b]"}`}>
-                    {sourceCounts[value]}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Tier */}
-          <div className="relative shrink-0">
-            <Crown className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#d4af37] pointer-events-none" />
-            <select value={filterTier} onChange={e => setFilterTier(e.target.value)}
-              className={`h-10 pl-9 pr-7 rounded-xl border text-[13px] font-semibold appearance-none outline-none cursor-pointer transition-all focus:ring-2 focus:ring-[#d4af37]/20 ${filterTier !== "all" ? "border-[#d4af37]/60 bg-[#fffbea] text-[#9a7a1e]" : "border-black/[0.08] bg-[#FAF8F2]/60 text-[#6b6b6b] hover:border-black/[0.12]"}`}>
-              <option value="all">All Tiers</option>
-              <option value="platinum">👑 Platinum</option>
-              <option value="gold">🥇 Gold</option>
-              <option value="silver">🥈 Silver</option>
-              <option value="basic">🔵 Basic</option>
-            </select>
-            <span className="select-chevron-legacy pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
-              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-            </span>
-            {filterTier !== "all" && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-[#d4af37]" />}
-          </div>
-
-          {/* Status */}
-          <div className="relative shrink-0">
-            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#d4af37] pointer-events-none" />
-            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as typeof filterStatus)}
-              className={`h-10 pl-9 pr-7 rounded-xl border text-[13px] font-semibold appearance-none outline-none cursor-pointer transition-all focus:ring-2 focus:ring-[#d4af37]/20 ${filterStatus !== "all" ? "border-[#d4af37]/60 bg-[#fffbea] text-[#9a7a1e]" : "border-black/[0.08] bg-[#FAF8F2]/60 text-[#6b6b6b] hover:border-black/[0.12]"}`}>
-              <option value="all">All Status</option>
-              <option value="active">✅ Active</option>
-              <option value="inactive">🔴 Inactive</option>
-            </select>
-            <span className="select-chevron-legacy pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
-              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-            </span>
-            {filterStatus !== "all" && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-[#d4af37]" />}
-          </div>
-
-          {/* Gender */}
-          <div className="relative shrink-0">
-            <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#d4af37] pointer-events-none" />
-            <select value={filterGender} onChange={e => setFilterGender(e.target.value as typeof filterGender)}
-              className={`h-10 pl-9 pr-7 rounded-xl border text-[13px] font-semibold appearance-none outline-none cursor-pointer transition-all focus:ring-2 focus:ring-[#d4af37]/20 ${filterGender !== "all" ? "border-[#d4af37]/60 bg-[#fffbea] text-[#9a7a1e]" : "border-black/[0.08] bg-[#FAF8F2]/60 text-[#6b6b6b] hover:border-black/[0.12]"}`}>
-              <option value="all">All Genders</option>
-              <option value="male">👨 Male</option>
-              <option value="female">👩 Female</option>
-              <option value="other">🧑 Other</option>
-            </select>
-            <span className="select-chevron-legacy pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
-              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-            </span>
-            {filterGender !== "all" && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-[#d4af37]" />}
-          </div>
-
-          {/* Birthday */}
-          <div className="relative shrink-0">
-            <Cake className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#d4af37] pointer-events-none" />
-            <select
-              value={filterBirthday}
-              onChange={(e) => setFilterBirthday(e.target.value as typeof filterBirthday)}
-              className={`h-10 pl-9 pr-7 rounded-xl border text-[13px] font-semibold appearance-none outline-none cursor-pointer transition-all focus:ring-2 focus:ring-[#d4af37]/20 ${filterBirthday !== "all" ? "border-[#d4af37]/60 bg-[#fffbea] text-[#9a7a1e]" : "border-black/[0.08] bg-[#FAF8F2]/60 text-[#6b6b6b] hover:border-black/[0.12]"}`}
-            >
-              <option value="all">All Birthdays</option>
-              <option value="today">🎂 Today</option>
-              <option value="thismonth">This Month</option>
-            </select>
-            <span className="select-chevron-legacy pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
-              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-            </span>
-            {filterBirthday !== "all" && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-[#d4af37]" />}
-          </div>
-
-          {/* Inactive days */}
-          <div className="relative shrink-0">
-            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#d4af37] pointer-events-none" />
-            <select
-              value={filterInactive}
-              onChange={(e) => setFilterInactive(e.target.value as typeof filterInactive)}
-              className={`h-10 pl-9 pr-7 rounded-xl border text-[13px] font-semibold appearance-none outline-none cursor-pointer transition-all focus:ring-2 focus:ring-[#d4af37]/20 ${filterInactive !== "all" ? "border-[#d4af37]/60 bg-[#fffbea] text-[#9a7a1e]" : "border-black/[0.08] bg-[#FAF8F2]/60 text-[#6b6b6b] hover:border-black/[0.12]"}`}
-            >
-              <option value="all">Any Activity</option>
-              <option value="7">Inactive 7+ days</option>
-              <option value="30">Inactive 30+ days</option>
-              <option value="60">Inactive 60+ days</option>
-              <option value="90">Inactive 90+ days</option>
-            </select>
-            <span className="select-chevron-legacy pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
-              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-            </span>
-            {filterInactive !== "all" && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-[#d4af37]" />}
-          </div>
-
-          {/* Last visit range */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <Calendar className="h-4 w-4 text-[#d4af37] shrink-0" />
-            <input
-              type="date"
-              value={lastVisitFrom}
-              onChange={(e) => setLastVisitFrom(e.target.value)}
-              title="Last visit from"
-              className={`h-10 rounded-xl border px-2 text-[12px] font-semibold outline-none focus:ring-2 focus:ring-[#d4af37]/20 ${lastVisitFrom ? "border-[#d4af37]/60 bg-[#fffbea] text-[#9a7a1e]" : "border-black/[0.08] bg-[#FAF8F2]/60 text-[#6b6b6b]"}`}
-            />
-            <span className="text-[11px] text-gray-400">to</span>
-            <input
-              type="date"
-              value={lastVisitTo}
-              onChange={(e) => setLastVisitTo(e.target.value)}
-              title="Last visit to"
-              className={`h-10 rounded-xl border px-2 text-[12px] font-semibold outline-none focus:ring-2 focus:ring-[#d4af37]/20 ${lastVisitTo ? "border-[#d4af37]/60 bg-[#fffbea] text-[#9a7a1e]" : "border-black/[0.08] bg-[#FAF8F2]/60 text-[#6b6b6b]"}`}
-            />
-          </div>
-
-          {/* Clear */}
-          {(searchQuery || filterTier !== "all" || filterStatus !== "all" || filterGender !== "all" || filterSource !== "all" || filterBirthday !== "all" || filterInactive !== "all" || lastVisitFrom || lastVisitTo) && (
-            <button
-              type="button"
-              onClick={clearSearchFilters}
-              className="flex items-center gap-1.5 h-10 px-3 text-[12px] font-semibold text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl border border-black/[0.08] hover:border-red-200 transition-all shrink-0"
-            >
-              <X className="h-3.5 w-3.5" /> Clear
-            </button>
-          )}
         </div>
 
         <div className="mt-2 flex items-center justify-between gap-2">
           <span className="text-[11px] font-semibold text-[#9a9a9a]">
-            Showing {filtered.length} of {customers.length} customers
+            Showing {filtered.length} of {customersTotal} customers
           </span>
         </div>
 
@@ -1189,6 +1281,9 @@ export function Customers() {
                           {isBirthdayToday(customer.birthday) && <span title="Birthday today">🎂</span>}
                         </div>
                         <p className="mt-0.5 truncate text-[11px] text-[#9a9a9a]">{customer.email || "No email"}</p>
+                        {showShopColumn && customer.shopLabel && (
+                          <p className="mt-0.5 truncate text-[10px] font-semibold text-[#9a7d20]">{customer.shopLabel}</p>
+                        )}
                       </div>
                     </button>
 
@@ -1279,6 +1374,15 @@ export function Customers() {
                     <Button
                       size="sm"
                       variant="outline"
+                      className="h-10 rounded-xl border-[#D4AF37]/30 px-3 text-[12px] text-[#9a7d20]"
+                      onClick={() => openReceipts(customer)}
+                    >
+                      <Receipt className="mr-1.5 h-3.5 w-3.5" />
+                      Receipts
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
                       className="h-10 rounded-xl px-3 text-[12px]"
                       onClick={() => openNotify(customer)}
                     >
@@ -1311,6 +1415,9 @@ export function Customers() {
                     />
                   </th>
                   <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Customer</th>
+                  {showShopColumn && (
+                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Shop</th>
+                  )}
                   <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Date</th>
                   <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Source</th>
                   <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Tier</th>
@@ -1353,6 +1460,11 @@ export function Customers() {
                           {isBirthdayToday(c.birthday) && <span title="Birthday Today">🎂</span>}
                         </div>
                       </td>
+                      {showShopColumn && (
+                        <td className="px-4 py-3 text-xs font-medium text-[#6b6b6b]">
+                          {c.shopLabel ?? "—"}
+                        </td>
+                      )}
                       <td className="whitespace-nowrap px-4 py-3 text-[13px] font-medium tabular-nums text-[#111118]">
                         {formatLatestVisitDate(c)}
                       </td>
@@ -1375,6 +1487,15 @@ export function Customers() {
                           {!someSelected && (
                             <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={e=>{e.stopPropagation(); openCoupon(c);}}>🎁</Button>
                           )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 border-[#D4AF37]/30 px-2 text-xs text-[#9a7d20]"
+                            title="View receipts"
+                            onClick={e => { e.stopPropagation(); openReceipts(c); }}
+                          >
+                            <Receipt className="h-3 w-3" />
+                          </Button>
                           <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={e=>{e.stopPropagation(); openNotify(c);}}>
                             <Bell className="h-3 w-3" />
                           </Button>
@@ -1384,7 +1505,7 @@ export function Customers() {
                   );
                 })}
                 {filtered.length === 0 && (
-                  <tr><td colSpan={10} className="py-10 text-center text-muted-foreground">No customers match your search.</td></tr>
+                  <tr><td colSpan={showShopColumn ? 11 : 10} className="py-10 text-center text-muted-foreground">No customers match your search.</td></tr>
                 )}
               </tbody>
             </table>
@@ -1453,6 +1574,12 @@ export function Customers() {
         setBdayCouponOpen={setBdayCouponOpen}
         todayBirthdays={todayBirthdays}
         onSendBirthdayCoupons={sendBirthdayCoupons}
+      />
+
+      <CustomerReceiptsModal
+        open={receiptsOpen}
+        onOpenChange={setReceiptsOpen}
+        customer={receiptsCustomer}
       />
 
       <NotifyCustomerModal

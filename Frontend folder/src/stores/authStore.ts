@@ -17,6 +17,8 @@ interface AuthState {
   syncAuth: () => void;
   clearSession: () => void;
   bootstrap: () => Promise<void>;
+  /** Rotate access token when missing/expired/near expiry. Returns false when logged out. */
+  ensureFreshAccessToken: () => Promise<boolean>;
   logout: () => Promise<void>;
 }
 
@@ -111,6 +113,33 @@ export const useAuthStore = create<AuthState>()(
             isReady: true,
           });
         }
+      },
+
+      ensureFreshAccessToken: async () => {
+        const current = get().accessToken;
+        // Refresh proactively when expired or within 2 minutes of expiry (access JWT is 15m).
+        const needsRefresh = !current || isAccessTokenUnusable(current, 120);
+
+        if (!needsRefresh) {
+          return true;
+        }
+
+        try {
+          const response = await authApi.refresh();
+          if (response.data?.accessToken) {
+            get().setAccessToken(response.data.accessToken);
+            return true;
+          }
+        } catch {
+          // fall through
+        }
+
+        if (isAccessTokenUnusable(get().accessToken)) {
+          get().clearSession();
+          return false;
+        }
+
+        return Boolean(get().accessToken);
       },
 
       logout: async () => {

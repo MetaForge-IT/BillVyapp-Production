@@ -1,5 +1,6 @@
 import type { Feedback } from "@prisma/client";
 import { prisma } from "../../config/prisma";
+import { MAX_PAGE_LIMIT } from "../../utils/pagination";
 import { AppError, ConflictError } from "../../utils/errors";
 import type { AuthContext } from "../auth/auth.types";
 import { APPOINTMENT_STATUS } from "../appointments/appointments.constants";
@@ -123,7 +124,7 @@ export class FeedbackRepository {
       },
       include: feedbackInclude,
       orderBy: { createdAt: "desc" },
-      take: 500,
+      take: MAX_PAGE_LIMIT,
     });
 
     return feedbacks.map(mapFeedback);

@@ -3,6 +3,7 @@ import {
   salonReceiptBrandHeaderHtml,
   type ReceiptShopInfo,
 } from "../components/shared/SalonReceiptBrand";
+import { receiptLinesForDisplay, type ReceiptLineItem } from "./receiptLineItems";
 
 export interface DownloadableReceipt {
   receiptNo: string;
@@ -11,6 +12,7 @@ export interface DownloadableReceipt {
   customer: string;
   phone?: string;
   services: string[];
+  lineItems?: ReceiptLineItem[];
   subtotal?: number;
   discount?: number;
   gst?: number;
@@ -46,11 +48,16 @@ export function buildReceiptDocumentHtml(
   const discount = receipt.discount ?? 0;
   const gst = receipt.gst ?? 0;
   const dateLine = [receipt.date, receipt.time].filter(Boolean).join("  ");
-  const serviceRows = (receipt.services.length ? receipt.services : ["Services"]).map(
-    (name) => `
+  const lines = receiptLinesForDisplay(
+    receipt.lineItems,
+    receipt.services,
+    subtotal,
+  );
+  const serviceRows = lines.map(
+    (line) => `
       <div class="row">
-        <span class="item">${escapeHtml(name)}</span>
-        <span class="amt"></span>
+        <span class="item">${escapeHtml(line.name)}</span>
+        <span class="amt">${formatInr(line.amount)}</span>
       </div>`,
   );
 

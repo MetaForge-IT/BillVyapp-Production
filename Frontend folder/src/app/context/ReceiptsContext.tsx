@@ -60,7 +60,7 @@ export function ReceiptsProvider({ children }: { children: ReactNode }) {
       });
       return;
     }
-    await queryClient.invalidateQueries({ queryKey: ["billing", "invoices"] });
+    await queryClient.invalidateQueries({ queryKey: ["billing"] });
   }, [queryClient]);
 
   const addReceipt = useCallback(

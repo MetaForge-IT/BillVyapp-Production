@@ -1,6 +1,7 @@
 import type { AuthContext } from "../auth/auth.types";
 import { BadRequestError } from "../../utils/errors";
 import { addDaysToDateKey, istDateKey } from "../../utils/ist";
+import { invalidateDashboardCache } from "../dashboard/invalidateDashboardCache";
 import { appointmentsRepository } from "./appointments.repository";
 import type {
   CreateAppointmentInput,
@@ -39,27 +40,37 @@ export class AppointmentsService {
     return appointmentsRepository.list(auth.salonId, query);
   }
 
-  create(auth: AuthContext, input: CreateAppointmentInput) {
-    // Existing customerId → returning (past 7 days OK). No customerId → new (today onwards only).
+  async create(auth: AuthContext, input: CreateAppointmentInput) {
     const allowPastDays = input.customerId ? APPOINTMENT_PAST_DAYS_LIMIT : 0;
     assertScheduledDateAllowed(input.scheduledDate, { allowPastDays });
-    return appointmentsRepository.create(auth, input);
+    const result = await appointmentsRepository.create(auth, input);
+    invalidateDashboardCache(auth.salonId);
+    return result;
   }
 
-  updateStatus(auth: AuthContext, appointmentId: string, input: UpdateAppointmentStatusInput) {
-    return appointmentsRepository.updateStatus(auth, appointmentId, input);
+  async updateStatus(
+    auth: AuthContext,
+    appointmentId: string,
+    input: UpdateAppointmentStatusInput,
+  ) {
+    const result = await appointmentsRepository.updateStatus(auth, appointmentId, input);
+    invalidateDashboardCache(auth.salonId);
+    return result;
   }
 
-  update(auth: AuthContext, appointmentId: string, input: UpdateAppointmentInput) {
+  async update(auth: AuthContext, appointmentId: string, input: UpdateAppointmentInput) {
     if (input.scheduledDate) {
-      // Updates are for existing appointments — allow the returning-customer past window.
       assertScheduledDateAllowed(input.scheduledDate, { allowPastDays: APPOINTMENT_PAST_DAYS_LIMIT });
     }
-    return appointmentsRepository.update(auth, appointmentId, input);
+    const result = await appointmentsRepository.update(auth, appointmentId, input);
+    invalidateDashboardCache(auth.salonId);
+    return result;
   }
 
-  delete(auth: AuthContext, appointmentId: string) {
-    return appointmentsRepository.delete(auth, appointmentId);
+  async delete(auth: AuthContext, appointmentId: string) {
+    const result = await appointmentsRepository.delete(auth, appointmentId);
+    invalidateDashboardCache(auth.salonId);
+    return result;
   }
 }
 

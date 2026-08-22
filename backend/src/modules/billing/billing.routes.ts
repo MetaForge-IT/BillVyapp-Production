@@ -1,8 +1,5 @@
-import type { NextFunction, Request, Response } from "express";
 import { Router } from "express";
-import type { ZodType } from "zod";
-import { ZodError } from "zod";
-import { BadRequestError } from "../../utils/errors";
+import { validateRequest } from "../../middleware/validateRequest";
 import { authenticate, authorize } from "../auth/auth.middleware";
 import { billingController } from "./billing.controller";
 import { REFUND_APPROVAL_ROLES } from "./billing.constants";
@@ -16,25 +13,6 @@ import {
 
 const billingRouter = Router();
 
-function validateRequest(schema: ZodType) {
-  return (req: Request, _res: Response, next: NextFunction): void => {
-    try {
-      req.body = schema.parse(req.body);
-      next();
-    } catch (error) {
-      if (error instanceof ZodError) {
-        const errors = error.issues.map((issue) => ({
-          field: issue.path.length > 0 ? issue.path.join(".") : "body",
-          message: issue.message,
-        }));
-        next(new BadRequestError("Validation failed", errors));
-        return;
-      }
-      next(error);
-    }
-  };
-}
-
 billingRouter.use(authenticate);
 
 billingRouter.post("/confirm-only", validateRequest(confirmOnlySchema), billingController.confirmOnly);
@@ -42,6 +20,11 @@ billingRouter.post("/checkout", validateRequest(checkoutSchema), billingControll
 // Shop billing is operated by managers/receptionists and reviewed by accounts.
 // Restricting this to franchise admins made every checkout refresh fail with 403
 // for the manager who had just created the invoice.
+billingRouter.get(
+  "/invoices/summary",
+  authorize("admin", "manager", "accountant", "receptionist"),
+  billingController.getInvoicesSummary,
+);
 billingRouter.get(
   "/invoices",
   authorize("admin", "manager", "accountant", "receptionist"),

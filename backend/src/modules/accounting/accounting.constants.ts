@@ -15,6 +15,9 @@ export const ACCOUNTING_ERROR_CODES = {
 
 export const DAY_CLOSE_ROLES = ["manager", "accountant"] as const;
 
+/** Roles that may edit existing expenses. */
+export const EXPENSE_EDIT_ROLES = ["admin"] as const;
+
 /** Roles that hard-delete expenses (approve pending or delete directly). */
 export const EXPENSE_DELETE_APPROVER_ROLES = ["admin"] as const;
 

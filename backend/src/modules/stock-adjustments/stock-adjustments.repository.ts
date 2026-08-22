@@ -1,5 +1,6 @@
 import type { Product, StockMovement } from "@prisma/client";
 import { prisma } from "../../config/prisma";
+import { MAX_PAGE_LIMIT } from "../../utils/pagination";
 import type { AuthContext } from "../auth/auth.types";
 import { applyStockChange, MOVEMENT_TYPE, notifyStockChangeResult } from "../inventory/inventory.shared";
 import { AppError } from "../../utils/errors";
@@ -38,7 +39,7 @@ export class StockAdjustmentsRepository {
       },
       include: adjustmentInclude,
       orderBy: { createdAt: "desc" },
-      take: 500,
+      take: MAX_PAGE_LIMIT,
     });
     return adjustments.map(mapAdjustment);
   }

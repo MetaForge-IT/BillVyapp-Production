@@ -1,5 +1,4 @@
 import { ArrowLeft, Clock, Receipt, Scissors } from "lucide-react";
-import { useNavigate } from "react-router";
 import { Button } from "../../components/ui/button";
 import { cn } from "../../components/ui/utils";
 import { formatDisplayPhone } from "../../../lib/phone";
@@ -30,6 +29,7 @@ interface BillStepProps {
   submitting: boolean;
   onPay: () => void;
   onConfirmOnly: () => void;
+  onCancel: () => void;
   // discounts
   discountTools: Record<DiscountTool, boolean>;
   onToggleTool: (tool: DiscountTool, enabled: boolean) => void;
@@ -66,7 +66,6 @@ interface BillStepProps {
 }
 
 export function BillStep(props: BillStepProps) {
-  const navigate = useNavigate();
   const {
     billValid,
     servicesValid,
@@ -82,6 +81,7 @@ export function BillStep(props: BillStepProps) {
     submitting,
     onPay,
     onConfirmOnly,
+    onCancel,
   } = props;
 
   const upiNote = `${BRAND.appName} walk-in${customerName ? ` — ${customerName}` : ""}`;
@@ -268,7 +268,7 @@ export function BillStep(props: BillStepProps) {
             </div>
             <Button
               variant="outline"
-              onClick={() => navigate(-1)}
+              onClick={onCancel}
               className="h-10 w-full rounded-xl border-black/[0.1] text-[13px] font-medium text-[#9a9a9a]"
             >
               Cancel

@@ -76,6 +76,11 @@ export function istCalendarDayRange(date: Date = new Date()): { gte: Date; lt: D
   };
 }
 
+/** IST paidAt window for a calendar YYYY-MM-DD (matches dashboard revenue). */
+export function istDayRangeForDateKey(dateKey: string): { gte: Date; lt: Date } {
+  return istDayRange(new Date(`${dateKey}T12:00:00+05:30`));
+}
+
 /** HH:mm:ss wall clock in IST (for `@db.Time` stored as UTC time-of-day). */
 export function formatTimeKeyInIst(date: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-GB", {
@@ -93,6 +98,30 @@ export function formatTimeKeyInIst(date: Date = new Date()): string {
 /** Wall-clock IST time as `1970-01-01T HH:mm:ss Z` for Prisma `@db.Time`. */
 export function istWallClockAsUtcTime(date: Date = new Date()): Date {
   return new Date(`1970-01-01T${formatTimeKeyInIst(date)}.000Z`);
+}
+
+/** Read HH:mm:ss from Prisma `@db.Time` (IST wall clock stored as UTC time-of-day). */
+export function formatDbTimeKey(time: Date): string {
+  return time.toISOString().slice(11, 19);
+}
+
+/** Format stored wall-clock time for display — no timezone shift. */
+export function formatWallClockTime12h(timeKey: string): string {
+  const normalized = /^\d{2}:\d{2}$/.test(timeKey) ? `${timeKey}:00` : timeKey;
+  const parsed = new Date(`1970-01-01T${normalized}Z`);
+  if (Number.isNaN(parsed.getTime())) return timeKey;
+  return parsed.toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "UTC",
+  });
+}
+
+/** Combine `@db.Date` + `@db.Time` wall clock into an ISO instant (IST). */
+export function istDateTimeIso(dateKey: string, timeKey: string): string {
+  const time = /^\d{2}:\d{2}$/.test(timeKey) ? `${timeKey}:00` : timeKey;
+  return `${dateKey}T${time}+05:30`;
 }
 
 /** Serialize a `@db.Date` (UTC midnight calendar day) to YYYY-MM-DD. */

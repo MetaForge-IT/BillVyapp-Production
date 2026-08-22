@@ -1,6 +1,9 @@
 import { fetchInvoices, fetchPendingPayments, type InvoiceResponse } from "../../api/billing";
 import { LIST_WORKING_LIMIT } from "../../lib/pagination";
 import { istDateKey } from "../../lib/istDate";
+import type { ReceiptLineItem } from "./receiptLineItems";
+
+export type { ReceiptLineItem };
 
 export type PaymentStatus = "paid" | "pending" | "partially_paid";
 
@@ -12,6 +15,7 @@ export interface ReceiptRecord {
   customer: string;
   phone: string;
   services: string[];
+  lineItems: ReceiptLineItem[];
   subtotal: number;
   discount: number;
   gst: number;
@@ -55,6 +59,16 @@ function mapSource(source?: string): ReceiptRecord["source"] {
 }
 
 export function mapInvoiceToReceipt(inv: InvoiceResponse): ReceiptRecord {
+  const lineItems: ReceiptLineItem[] =
+    inv.lineItems ??
+    inv.items?.map((item) => ({
+      name: item.itemName,
+      amount: item.lineTotal,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+    })) ??
+    [];
+
   return {
     id: inv.id,
     receiptNo: inv.receiptNo ?? inv.receiptNumber,
@@ -62,7 +76,8 @@ export function mapInvoiceToReceipt(inv: InvoiceResponse): ReceiptRecord {
     time: inv.time ?? "",
     customer: inv.customer ?? "",
     phone: inv.phone ?? "",
-    services: inv.services ?? [],
+    services: inv.services ?? lineItems.map((line) => line.name),
+    lineItems,
     subtotal: inv.subtotal ?? 0,
     discount: inv.discount ?? 0,
     gst: inv.gst ?? 0,
@@ -98,11 +113,21 @@ export async function fetchReceiptRecords(params?: {
   page?: number;
   limit?: number;
   search?: string;
+  salonId?: string;
+  date?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  paymentMethod?: string;
 }) {
   const result = await fetchInvoices({
     page: params?.page ?? 1,
     limit: params?.limit ?? LIST_WORKING_LIMIT,
     search: params?.search,
+    salonId: params?.salonId,
+    date: params?.date,
+    dateFrom: params?.dateFrom,
+    dateTo: params?.dateTo,
+    paymentMethod: params?.paymentMethod,
   });
   return {
     ...result,

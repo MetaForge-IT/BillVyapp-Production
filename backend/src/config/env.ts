@@ -27,6 +27,7 @@ export const env = {
   apiPrefix: optionalEnv("API_PREFIX", "/api"),
 
   databaseUrl: requireEnv("DATABASE_URL"),
+  databaseReadUrl: optionalEnv("DATABASE_URL_READ", ""),
   corsOrigin: optionalEnv("CORS_ORIGIN", "http://localhost:5173"),
 
   logLevel: optionalEnv("LOG_LEVEL", nodeEnv === "development" ? "debug" : "info"),
