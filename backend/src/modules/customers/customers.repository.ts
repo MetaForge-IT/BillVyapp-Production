@@ -1,5 +1,6 @@
 import type { Customer, CustomerPreference, MembershipTier, Service } from "@prisma/client";
 import { prisma } from "../../config/prisma";
+import { MAX_PAGE_LIMIT } from "../../utils/pagination";
 import type { AuthContext } from "../auth/auth.types";
 import { AppError, ConflictError } from "../../utils/errors";
 import { APPOINTMENT_STATUS } from "../appointments/appointments.constants";
@@ -12,11 +13,14 @@ import type {
   UpdateCustomerInput,
 } from "./customers.validators";
 import { toPaginatedResult } from "../../utils/pagination";
+import { formatDbDateKey, formatDbTimeKey, istDateTimeIso } from "../../utils/ist";
+import { salonIdFilter } from "../../utils/salonScope";
 import type { Prisma } from "@prisma/client";
 
 type CustomerWithRelations = Customer & {
   currentTier: MembershipTier | null;
   preferences: (CustomerPreference & { favoriteService: Pick<Service, "name"> | null }) | null;
+  salon?: { name: string; displayName: string | null; city: string | null } | null;
 };
 
 function formatRelativeDate(date: Date | null): string {
@@ -32,7 +36,14 @@ function formatRelativeDate(date: Date | null): string {
   return `${Math.floor(diffDays / 365)} year${diffDays >= 730 ? "s" : ""} ago`;
 }
 
-function mapCustomer(customer: CustomerWithRelations) {
+function mapCustomer(customer: CustomerWithRelations, includeShop = false) {
+  const shopLabel =
+    includeShop && customer.salon
+      ? [customer.salon.displayName?.trim() || customer.salon.name, customer.salon.city]
+          .filter(Boolean)
+          .join(" · ")
+      : undefined;
+
   return {
     id: customer.id,
     name: customer.fullName,
@@ -55,6 +66,7 @@ function mapCustomer(customer: CustomerWithRelations) {
     gstin: customer.gstin ?? "",
     status: customer.status as "active" | "inactive",
     source: (customer as Customer & { source?: string }).source ?? "unknown",
+    ...(shopLabel ? { shopLabel } : {}),
   };
 }
 
@@ -65,27 +77,38 @@ function normalizePhone(phone: string): string {
 }
 
 export class CustomersRepository {
-  async list(salonId: string, query: ListCustomersQuery) {
+  async list(salonIds: string[], query: ListCustomersQuery) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 50;
     const skip = (page - 1) * limit;
+    const multiShop = salonIds.length > 1;
+    const salonWhere = salonIdFilter(salonIds);
 
-    const where: Prisma.CustomerWhereInput = {
-      salonId,
+    const base: Prisma.CustomerWhereInput = {
+      ...salonWhere,
       deletedAt: null,
     };
 
     if (query.status) {
-      where.status = query.status;
+      base.status = query.status;
     }
+
+    let where: Prisma.CustomerWhereInput = base;
 
     if (query.search?.trim()) {
       const term = query.search.trim();
-      where.OR = [
-        { fullName: { contains: term } },
-        { phone: { contains: term } },
-        { email: { contains: term } },
-      ];
+      where = {
+        AND: [
+          base,
+          {
+            OR: [
+              { fullName: { contains: term } },
+              { phone: { contains: term } },
+              { email: { contains: term } },
+            ],
+          },
+        ],
+      };
     }
 
     const [total, customers] = await prisma.$transaction([
@@ -93,16 +116,28 @@ export class CustomersRepository {
       prisma.customer.findMany({
         where,
         include: {
+          ...(multiShop
+            ? { salon: { select: { name: true, displayName: true, city: true } } }
+            : {}),
           currentTier: true,
           preferences: { include: { favoriteService: { select: { name: true } } } },
         },
-        orderBy: [{ createdAt: "desc" }],
+        orderBy: [
+          { lastVisitAt: { sort: "desc", nulls: "last" } },
+          { joinedAt: "desc" },
+          { createdAt: "desc" },
+        ],
         skip,
         take: limit,
       }),
     ]);
 
-    return toPaginatedResult(customers.map(mapCustomer), total, page, limit);
+    return toPaginatedResult(
+      customers.map((customer) => mapCustomer(customer as CustomerWithRelations, multiShop)),
+      total,
+      page,
+      limit,
+    );
   }
 
   async getById(salonId: string, customerId: string) {
@@ -180,7 +215,7 @@ export class CustomersRepository {
       },
     });
 
-    return customers.map(mapCustomer);
+    return customers.map((customer) => mapCustomer(customer));
   }
 
   async create(auth: AuthContext, input: CreateCustomerInput) {
@@ -304,7 +339,9 @@ export class CustomersRepository {
           voidedAt: null,
         },
         include: {
-          lineItems: { select: { itemName: true, lineTotal: true, lineType: true } },
+          lineItems: {
+            select: { itemName: true, lineTotal: true, lineType: true, quantity: true, unitPrice: true },
+          },
           payments: { select: { paymentMethod: true, amount: true, paidAt: true }, take: 1 },
         },
         orderBy: { invoiceDate: "desc" },
@@ -365,10 +402,15 @@ export class CustomersRepository {
         .filter((line) => line.lineType === "product")
         .map((line) => line.itemName);
 
+      const paidAt = invoice.payments[0]?.paidAt;
+      const dateKey = formatDbDateKey(invoice.invoiceDate);
+      const timeKey = formatDbTimeKey(invoice.invoiceTime);
+      const visitInstant = paidAt ?? new Date(istDateTimeIso(dateKey, timeKey));
+
       visits.push({
         type: "invoice",
         id: invoice.publicId,
-        date: invoice.invoiceDate.toISOString(),
+        date: visitInstant.toISOString(),
         label: `${invoice.receiptNumber} · ${services.join(", ") || "Paid invoice"}`,
         amount: Number(invoice.totalAmount),
         meta: {
@@ -376,6 +418,12 @@ export class CustomersRepository {
           receiptNumber: invoice.receiptNumber,
           services,
           products,
+          lineItems: invoice.lineItems.map((line) => ({
+            name: line.itemName,
+            amount: Number(line.lineTotal),
+            quantity: line.quantity,
+            unitPrice: Number(line.unitPrice),
+          })),
           paymentMethod: invoice.payments[0]?.paymentMethod ?? null,
           amountPaid: Number(invoice.amountPaid),
           membershipUsed: Number(invoice.membershipDiscount) > 0,
@@ -402,7 +450,7 @@ export class CustomersRepository {
     const transactions = await prisma.loyaltyTransaction.findMany({
       where: { salonId, customerId },
       orderBy: { createdAt: "desc" },
-      take: 500,
+      take: MAX_PAGE_LIMIT,
     });
 
     return {

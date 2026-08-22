@@ -1,7 +1,8 @@
 import type { BudgetLine, DayClose, Expense, Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma";
+import { MAX_PAGE_LIMIT } from "../../utils/pagination";
 import { AppError } from "../../utils/errors";
-import { formatDbDateKey } from "../../utils/ist";
+import { formatDbDateKey, istDayRangeForDateKey } from "../../utils/ist";
 import type { AuthContext } from "../auth/auth.types";
 import { ACCOUNTING_ERROR_CODES } from "./accounting.constants";
 import type {
@@ -161,9 +162,10 @@ async function getOpeningCash(salonId: string, day: Date): Promise<number> {
 }
 
 async function buildDaySnapshot(salonId: string, day: Date) {
-  const dayEnd = addDays(day, 1);
+  const dateKey = formatDate(day);
+  const { gte, lt } = istDayRangeForDateKey(dateKey);
   const [sales, expenses, openingCash, dayClose] = await Promise.all([
-    sumSalesByMethod(salonId, day, dayEnd),
+    sumSalesByMethod(salonId, gte, lt),
     sumExpensesForDay(salonId, day),
     getOpeningCash(salonId, day),
     prisma.dayClose.findFirst({
@@ -233,7 +235,7 @@ export class AccountingRepository {
       where,
       include: expenseDeleteInclude,
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-      take: 1000,
+      take: MAX_PAGE_LIMIT,
     });
     return rows.map(mapExpense);
   }
@@ -502,9 +504,10 @@ export class AccountingRepository {
     const weekly: Array<{ day: string; date: string; revenue: number; expenses: number }> = [];
     for (let i = 6; i >= 0; i -= 1) {
       const d = addDays(day, -i);
-      const dEnd = addDays(d, 1);
+      const dateKey = formatDate(d);
+      const { gte, lt } = istDayRangeForDateKey(dateKey);
       const [sales, expenses] = await Promise.all([
-        sumSalesByMethod(salonId, d, dEnd),
+        sumSalesByMethod(salonId, gte, lt),
         sumExpensesForDay(salonId, d),
       ]);
       weekly.push({

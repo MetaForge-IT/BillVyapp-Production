@@ -104,6 +104,35 @@ async function resolveAppointmentServices(
   salonId: string,
   services: CreateAppointmentInput["services"],
 ) {
+  const serviceIds = [
+    ...new Set(
+      services.filter((service) => service.serviceId).map((service) => service.serviceId as string),
+    ),
+  ];
+  const serviceNames = [
+    ...new Set(
+      services
+        .filter((service) => !service.serviceId)
+        .map((service) => service.itemName),
+    ),
+  ];
+
+  const [servicesById, servicesByName] = await Promise.all([
+    serviceIds.length
+      ? prisma.service.findMany({
+          where: { id: { in: serviceIds }, salonId, isActive: true, deletedAt: null },
+        })
+      : [],
+    serviceNames.length
+      ? prisma.service.findMany({
+          where: { salonId, name: { in: serviceNames }, isActive: true, deletedAt: null },
+        })
+      : [],
+  ]);
+
+  const serviceIdMap = new Map(servicesById.map((service) => [service.id, service]));
+  const serviceNameMap = new Map(servicesByName.map((service) => [service.name, service]));
+
   const resolved: Array<{
     serviceId: string;
     itemName: string;
@@ -113,12 +142,8 @@ async function resolveAppointmentServices(
 
   for (const service of services) {
     const dbService = service.serviceId
-      ? await prisma.service.findFirst({
-          where: { id: service.serviceId, salonId, isActive: true, deletedAt: null },
-        })
-      : await prisma.service.findFirst({
-          where: { salonId, name: service.itemName, isActive: true, deletedAt: null },
-        });
+      ? serviceIdMap.get(service.serviceId)
+      : serviceNameMap.get(service.itemName);
 
     if (!dbService) {
       throw new AppError(400, `Service "${service.itemName}" is not available for booking`, {

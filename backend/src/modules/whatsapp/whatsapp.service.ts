@@ -1,4 +1,3 @@
-import { QueueEvents } from "bullmq";
 import { env } from "../../config/env";
 import { whatsappConfig } from "../../config/whatsapp.config";
 import { logger } from "../../utils/logger";
@@ -11,12 +10,10 @@ import type {
   WhatsAppDeliveryResult,
 } from "./whatsapp.types";
 import {
-  enqueueWhatsAppTemplate,
   enqueueWhatsAppText,
   getWhatsAppQueue,
-  WHATSAPP_QUEUE_NAME,
 } from "../../queues/whatsapp.queue";
-import { getBullMqConnection, isBullMqEnabled } from "../../queues/connection";
+import { isBullMqEnabled } from "../../queues/connection";
 
 /**
  * Application WhatsApp orchestration — queues sends via BullMQ when Redis is available.
@@ -46,37 +43,15 @@ export class WhatsAppService {
   async sendOtp(input: SendWhatsAppOtpInput): Promise<WhatsAppDeliveryResult | null> {
     if (!this.ensureReady()) return null;
 
-    if (isBullMqEnabled() && getWhatsAppQueue()) {
-      try {
-        const messageId = await this.waitForOtpJob(input);
-        return { provider: "bullmq", messageId };
-      } catch (error) {
-        logger.warn("WhatsApp OTP queue failed — falling back to direct send", {
-          reason: error instanceof Error ? error.message : "unknown",
-        });
-      }
-    }
-
+    // Login OTP must be sent synchronously — confirm Sparklebot/Meta accepted before
+    // returning the login challenge (queued sends reported success while worker lagged).
     return this.dispatch(() => this.provider!.sendOtp(input));
   }
 
   async sendTemplate(input: SendWhatsAppTemplateInput): Promise<WhatsAppDeliveryResult | null> {
     if (!this.ensureReady()) return null;
 
-    // Fire-and-forget for billing / appointments — keep HTTP requests fast
-    try {
-      if (isBullMqEnabled() && getWhatsAppQueue()) {
-        const queued = await enqueueWhatsAppTemplate(input);
-        if (queued.queued) {
-          return { provider: "bullmq", messageId: queued.jobId };
-        }
-      }
-    } catch (error) {
-      logger.warn("WhatsApp template queue unavailable — sending inline", {
-        reason: error instanceof Error ? error.message : "unknown",
-      });
-    }
-
+    // Send inline — confirm Sparklebot/Meta accepted (same fix as login OTP).
     return this.dispatch(async () => {
       if (!this.provider?.sendTemplate) {
         throw new Error(
@@ -85,40 +60,6 @@ export class WhatsAppService {
       }
       return this.provider.sendTemplate(input);
     });
-  }
-
-  private async waitForOtpJob(input: SendWhatsAppOtpInput): Promise<string> {
-    const connection = getBullMqConnection();
-    const queue = getWhatsAppQueue();
-    if (!connection || !queue) {
-      throw new Error("WhatsApp queue unavailable");
-    }
-
-    const queueEvents = new QueueEvents(WHATSAPP_QUEUE_NAME, {
-      connection: connection.duplicate(),
-    });
-
-    try {
-      await queueEvents.waitUntilReady();
-      const job = await queue.add(
-        "send-otp",
-        { kind: "otp", payload: input },
-        {
-          priority: 1,
-          attempts: 3,
-          backoff: { type: "exponential", delay: 1_500 },
-          removeOnComplete: { count: 100 },
-          removeOnFail: { count: 200 },
-        },
-      );
-
-      const result = (await job.waitUntilFinished(queueEvents, 20_000)) as
-        | WhatsAppDeliveryResult
-        | undefined;
-      return result?.messageId ?? String(job.id);
-    } finally {
-      await queueEvents.close();
-    }
   }
 
   private ensureReady(): boolean {

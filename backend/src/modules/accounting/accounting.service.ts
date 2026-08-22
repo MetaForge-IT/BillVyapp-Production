@@ -25,6 +25,9 @@ export class AccountingService {
   }
 
   updateExpense(auth: AuthContext, expenseId: string, input: UpdateExpenseInput) {
+    if (!APPROVER_ROLES.has(auth.role)) {
+      throw new ForbiddenError("Only admin can edit expenses");
+    }
     return accountingRepository.updateExpense(auth, expenseId, input);
   }
 

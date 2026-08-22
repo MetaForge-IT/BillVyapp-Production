@@ -4,6 +4,11 @@ import { AppError, ForbiddenError } from "../../utils/errors";
 import { AUTH_ERROR_CODES, AUTH_HEADERS, AUTH_TOKEN_PREFIXES } from "./auth.constants";
 import { authRepository } from "./auth.repository";
 import type { AuthContext } from "./auth.types";
+import {
+  getCachedAuthUser,
+  patchCachedAuthUserSalonId,
+  setCachedAuthUser,
+} from "./authContextCache";
 import { tokenService } from "./token.service";
 
 interface AuthenticatedRequest extends Request {
@@ -17,12 +22,24 @@ export const authenticate: RequestHandler = asyncHandler(
   async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     const accessToken = extractBearerToken(req);
     const payload = tokenService.verifyAccessToken(accessToken);
-    const user = await authRepository.findUserById(payload.sub);
 
+    let user = await getCachedAuthUser(payload.sub);
     if (!user) {
-      throw new AppError(401, "Invalid access token", {
-        code: AUTH_ERROR_CODES.TOKEN_INVALID,
-      });
+      const dbUser = await authRepository.findUserById(payload.sub);
+      if (!dbUser) {
+        throw new AppError(401, "Invalid access token", {
+          code: AUTH_ERROR_CODES.TOKEN_INVALID,
+        });
+      }
+
+      user = {
+        id: dbUser.id,
+        salonId: dbUser.salonId,
+        franchiseId: dbUser.franchiseId,
+        role: dbUser.role,
+        isActive: dbUser.isActive,
+      };
+      void setCachedAuthUser(user);
     }
 
     if (!user.isActive) {
@@ -33,11 +50,12 @@ export const authenticate: RequestHandler = asyncHandler(
 
     let salonId = user.salonId ?? "";
 
-    // Franchise staff with no shop link yet: use the franchise's first shop and persist.
-    // Avoids empty salon_id FK failures on services/categories/settings.
     if (!salonId && user.franchiseId && user.role !== "super_admin") {
       const resolved = await authRepository.resolvePrimarySalonId(user.id, user.franchiseId);
-      if (resolved) salonId = resolved;
+      if (resolved) {
+        salonId = resolved;
+        void patchCachedAuthUserSalonId(user.id, resolved);
+      }
     }
 
     (req as AuthenticatedRequest).auth = {

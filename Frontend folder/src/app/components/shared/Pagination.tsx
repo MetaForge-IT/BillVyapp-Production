@@ -1,5 +1,12 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { PAGE_SIZE_OPTIONS } from "../../hooks/useTablePagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 import { cn } from "../ui/utils";
 
 export interface TablePaginationProps {
@@ -75,21 +82,25 @@ export function Pagination({
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-medium text-[#6B6B6B]">Rows</span>
-          <div className="relative">
-            <select
-              value={pageSize}
-              onChange={(e) => onPageSizeChange(Number(e.target.value))}
-              className="h-8 min-w-[3.5rem] rounded-xl border border-[rgba(18,18,18,0.12)] bg-white pl-2.5 text-[12px] font-semibold text-[#121212] transition-all hover:border-[#D4AF37]/40 focus:border-[#D4AF37]/60 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/15"
+          <Select
+            value={String(pageSize)}
+            onValueChange={(value) => onPageSizeChange(Number(value))}
+          >
+            <SelectTrigger
+              size="sm"
               aria-label="Records per page"
+              className="h-8 min-w-[4.5rem] border-[rgba(18,18,18,0.12)] px-2.5 text-[12px] font-semibold shadow-none hover:border-[#D4AF37]/40"
             >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="end" className="min-w-[var(--radix-select-trigger-width)] rounded-xl">
               {PAGE_SIZE_OPTIONS.map((size) => (
-                <option key={size} value={size}>
+                <SelectItem key={size} value={String(size)} className="text-[12px]">
                   {size}
-                </option>
+                </SelectItem>
               ))}
-            </select>
-          </div>
-          <span className="text-[11px] font-medium text-[#6B6B6B]">/ page</span>
+            </SelectContent>
+          </Select>
         </div>
 
         <nav className="flex items-center gap-1" aria-label="Pagination">

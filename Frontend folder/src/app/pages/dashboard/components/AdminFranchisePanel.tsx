@@ -12,6 +12,7 @@ import { clearCachedAuthUser } from "../../../../lib/authUserCache";
 import { useAuthStore } from "../../../../stores/authStore";
 import { getApiErrorMessage } from "../../../../lib/api";
 import { toast } from "../../../components/ui/hot-toast";
+import { FormSelect } from "../../../components/shared/FormSelect";
 import { DashboardCard, DashboardCardHeader, SectionLabel } from "./DashboardCard";
 
 const emptyManagerForm = {
@@ -185,6 +186,12 @@ export function AdminFranchisePanel() {
     );
   }
 
+  const shopSelectOptions = franchise.shops.map((shop) => ({
+    value: shop.id,
+    label: (shop.displayName || shop.name) + (shop.city ? ` · ${shop.city}` : ""),
+    description: [shop.address, shop.state, shop.pincode].filter(Boolean).join(", ") || undefined,
+  }));
+
   return (
     <section aria-label="Franchise management" className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -238,20 +245,17 @@ export function AdminFranchisePanel() {
                 onChange={(e) => setManagerForm((f) => ({ ...f, password: e.target.value }))}
                 className="h-10 rounded-xl border border-black/[0.08] bg-[#fafaf8] px-3 text-[13px] outline-none focus:border-[#D4AF37]/50"
               />
-              <select
-                value={managerForm.salonId}
-                onChange={(e) => setManagerForm((f) => ({ ...f, salonId: e.target.value }))}
-                className="h-10 rounded-xl border border-black/[0.08] bg-[#fafaf8] px-3 text-[13px] outline-none focus:border-[#D4AF37]/50 sm:col-span-2"
-              >
-                <option value="">Select shop / branch *</option>
-                {franchise.shops.map((shop) => (
-                  <option key={shop.id} value={shop.id}>
-                    {(shop.displayName || shop.name)
-                      + (shop.city ? ` · ${shop.city}` : "")
-                      + (shop.address ? ` — ${shop.address}` : "")}
-                  </option>
-                ))}
-              </select>
+              <div className="sm:col-span-2">
+                <FormSelect
+                  value={managerForm.salonId}
+                  onValueChange={(salonId) => setManagerForm((f) => ({ ...f, salonId }))}
+                  options={shopSelectOptions}
+                  placeholder="Select shop / branch *"
+                  icon={Building2}
+                  aria-label="Assign manager to shop"
+                  triggerClassName="bg-white"
+                />
+              </div>
             </div>
             <button
               type="button"

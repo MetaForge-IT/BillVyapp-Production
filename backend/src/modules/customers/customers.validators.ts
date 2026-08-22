@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { paginationQuerySchema } from "../../utils/pagination";
 
 export const createCustomerSchema = z.object({
   fullName: z.string().trim().min(1).max(200),
@@ -23,11 +24,11 @@ export type CreateCustomerInput = z.infer<typeof createCustomerSchema>;
 export type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>;
 export type RedeemLoyaltyInput = z.infer<typeof redeemLoyaltySchema>;
 
-export const listCustomersQuerySchema = z.object({
-  page: z.coerce.number().int().min(1).optional().default(1),
-  limit: z.coerce.number().int().min(1).max(200).optional().default(50),
+export const listCustomersQuerySchema = paginationQuerySchema.extend({
   search: z.string().trim().max(200).optional(),
   status: z.enum(["active", "inactive"]).optional(),
+  /** Franchise admin: filter customers to one shop (omit for all shops). */
+  salonId: z.string().uuid().optional(),
 });
 
 export type ListCustomersQuery = z.infer<typeof listCustomersQuerySchema>;

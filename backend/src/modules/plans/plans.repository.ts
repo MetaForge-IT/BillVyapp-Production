@@ -1,5 +1,6 @@
 import type { CustomerPlanEnrollment, SalonPlan, SalonPlanService, Service } from "@prisma/client";
 import { prisma } from "../../config/prisma";
+import { MAX_PAGE_LIMIT } from "../../utils/pagination";
 import type { AuthContext } from "../auth/auth.types";
 import { AppError } from "../../utils/errors";
 import { formatDbDateKey, istCalendarDate } from "../../utils/ist";
@@ -126,7 +127,7 @@ export class PlansRepository {
       where: { salonId, deletedAt: null, status: "active" },
       select: { id: true, fullName: true, phone: true },
       orderBy: { fullName: "asc" },
-      take: 500,
+      take: MAX_PAGE_LIMIT,
     });
     return customers;
   }

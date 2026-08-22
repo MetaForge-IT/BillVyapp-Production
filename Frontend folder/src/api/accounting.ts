@@ -37,6 +37,8 @@ export interface CreateExpensePayload {
   remarks: string;
 }
 
+export type UpdateExpensePayload = Partial<CreateExpensePayload>;
+
 export interface BudgetLine {
   id: string;
   name: string;
@@ -165,6 +167,17 @@ export async function fetchExpenses(params?: {
 export async function createExpense(payload: CreateExpensePayload): Promise<AccountingExpense> {
   const { data } = await apiClient.post<ApiEnvelope<AccountingExpense>>(
     "/accounting/expenses",
+    payload,
+  );
+  return data.data;
+}
+
+export async function updateExpense(
+  expenseId: string,
+  payload: UpdateExpensePayload,
+): Promise<AccountingExpense> {
+  const { data } = await apiClient.patch<ApiEnvelope<AccountingExpense>>(
+    `/accounting/expenses/${expenseId}`,
     payload,
   );
   return data.data;

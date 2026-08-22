@@ -346,6 +346,8 @@ model Customer {
   @@index([salonId, status])
   @@index([salonId, source])
   @@index([salonId, lastVisitAt])
+  @@index([salonId, joinedAt])
+  @@index([salonId, totalSpend(sort: Desc)])
   @@index([salonId, dateOfBirth])
   @@map("customers")
 }
@@ -828,6 +830,7 @@ model Appointment {
   feedback       Feedback[]
 
   @@index([salonId, scheduledDate, status])
+  @@index([salonId, updatedAt(sort: Desc)])
   @@index([customerId])
   @@map("appointments")
 }
@@ -900,6 +903,7 @@ model Invoice {
 
   @@unique([salonId, receiptNumber])
   @@index([salonId, invoiceDate(sort: Desc)])
+  @@index([salonId, status, balanceAmount])
   @@index([customerId])
   @@map("invoices")
 }
@@ -942,6 +946,7 @@ model Payment {
 
   @@index([invoiceId])
   @@index([paidAt])
+  @@index([paidAt, invoiceId])
   @@map("payments")
 }
 

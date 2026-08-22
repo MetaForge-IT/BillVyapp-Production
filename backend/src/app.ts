@@ -1,4 +1,5 @@
 import type { CorsOptions } from "cors";
+import compression from "compression";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express, { type Application } from "express";
@@ -18,6 +19,7 @@ export function createApp(): Application {
   app.set("trust proxy", 1);
 
   app.use(helmet());
+  app.use(compression({ threshold: 1024 }));
 
   const devCorsOrigin: CorsOptions["origin"] = (origin, callback) => {
     if (!origin) {
@@ -65,7 +67,10 @@ export function createApp(): Application {
     );
   }
 
-  app.use(env.apiPrefix, apiRouter);
+  app.use(
+    env.apiPrefix,
+    apiRouter,
+  );
 
   app.use(notFoundHandler);
   app.use(errorHandler);

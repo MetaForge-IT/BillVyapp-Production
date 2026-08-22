@@ -63,6 +63,16 @@ export class BillingController {
     });
   });
 
+  getInvoicesSummary = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const auth = (req as AuthenticatedRequest).auth;
+    const summary = await billingService.getInvoicesSummary(auth);
+
+    sendSuccess(res, {
+      message: "Invoice summary retrieved",
+      data: summary,
+    });
+  });
+
   listRefunds = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const auth = (req as AuthenticatedRequest).auth;
     const refunds = await billingService.listRefunds(auth);

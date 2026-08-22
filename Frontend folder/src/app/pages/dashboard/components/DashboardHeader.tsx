@@ -1,14 +1,23 @@
 import { motion } from "framer-motion";
-import { Loader2, Plus, RefreshCw } from "lucide-react";
+import { Loader2, Plus, RefreshCw, Store } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useRole } from "../../../context/RoleContext";
+import { FilterSelect } from "../../../components/shared/FilterSelect";
 import { DASHBOARD_DURATION, DASHBOARD_EASE } from "../motion";
 import { useDashboard } from "../useDashboard";
 
 export function DashboardHeader() {
   const { role, firstName, fullName } = useRole();
   const navigate = useNavigate();
-  const { refreshing, lastUpdated, refresh } = useDashboard();
+  const {
+    refreshing,
+    lastUpdated,
+    refresh,
+    shopFilter,
+    setShopFilter,
+    franchiseShops,
+    isFranchiseAdmin,
+  } = useDashboard();
 
   // Prefer first name; never fall back to role label (avoids "Good afternoon, Manager").
   const displayName = firstName || fullName.split(/\s+/)[0] || "";
@@ -51,7 +60,23 @@ export function DashboardHeader() {
         </p>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+        {isFranchiseAdmin && franchiseShops.length > 0 && (
+          <FilterSelect
+            value={shopFilter}
+            onValueChange={setShopFilter}
+            icon={Store}
+            active={shopFilter !== "all"}
+            className="w-full sm:w-auto sm:min-w-[11rem]"
+            options={[
+              { value: "all", label: `All Shops (${franchiseShops.length})` },
+              ...franchiseShops.map((shop) => ({
+                value: shop.id,
+                label: shop.displayName?.trim() || shop.name,
+              })),
+            ]}
+          />
+        )}
         <button
           type="button"
           onClick={() => void refresh()}

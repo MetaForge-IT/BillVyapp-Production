@@ -1,5 +1,6 @@
 import type { Notification } from "@prisma/client";
 import { prisma } from "../../config/prisma";
+import { MAX_PAGE_LIMIT } from "../../utils/pagination";
 import { AppError } from "../../utils/errors";
 import { NOTIFICATION_ERROR_CODES } from "./app-notifications.constants";
 import type { CreateNotificationInput } from "./app-notifications.validators";
@@ -41,7 +42,7 @@ export class AppNotificationsRepository {
         ...(filters?.unreadOnly ? { isRead: false } : {}),
       },
       orderBy: { createdAt: "desc" },
-      take: 500,
+      take: MAX_PAGE_LIMIT,
     });
     return notifications.map(mapNotification);
   }

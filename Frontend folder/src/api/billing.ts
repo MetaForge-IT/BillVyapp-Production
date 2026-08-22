@@ -56,6 +56,12 @@ export interface InvoiceResponse {
   phone?: string;
   customerPhone?: string;
   services?: string[];
+  lineItems?: Array<{
+    name: string;
+    amount: number;
+    quantity?: number;
+    unitPrice?: number;
+  }>;
   receiptNo?: string;
   date?: string;
   time?: string;
@@ -66,6 +72,12 @@ export interface InvoiceResponse {
   paymentMethod?: "cash" | "card" | "upi" | "wallet" | "none";
   source?: string;
   appointmentId?: string | null;
+  items?: Array<{
+    itemName: string;
+    lineTotal: number;
+    quantity: number;
+    unitPrice: number;
+  }>;
 }
 
 interface ApiEnvelope<T> {
@@ -100,15 +112,41 @@ export async function fetchPendingPayments(
 }
 
 export async function fetchInvoices(
-  params: { page?: number; limit?: number; search?: string } = {},
+  params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    salonId?: string;
+    date?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    paymentMethod?: string;
+  } = {},
 ): Promise<PaginatedResult<InvoiceResponse>> {
   const { data } = await apiClient.get<ApiEnvelope<PaginatedResult<InvoiceResponse>>>("/billing/invoices", {
     params: {
       page: params.page,
       limit: params.limit,
       search: params.search || undefined,
+      salonId: params.salonId || undefined,
+      date: params.date || undefined,
+      dateFrom: params.dateFrom || undefined,
+      dateTo: params.dateTo || undefined,
+      paymentMethod: params.paymentMethod || undefined,
     },
   });
+  return data.data;
+}
+
+export interface InvoicesSummary {
+  totalRevenue: number;
+  todayRevenue: number;
+  totalReceipts: number;
+  avgBill: number;
+}
+
+export async function fetchInvoicesSummary(): Promise<InvoicesSummary> {
+  const { data } = await apiClient.get<ApiEnvelope<InvoicesSummary>>("/billing/invoices/summary");
   return data.data;
 }
 

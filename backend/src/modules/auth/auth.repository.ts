@@ -1,4 +1,5 @@
 import { prisma } from "../../config/prisma";
+import { invalidateAuthUserCache } from "./authContextCache";
 
 // ─── Repository record types ─────────────────────────────────────────────────
 
@@ -327,6 +328,8 @@ export class AuthRepository {
       data: { salonId: shop.id },
     });
 
+    void invalidateAuthUserCache(userId);
+
     return shop.id;
   }
 
@@ -342,6 +345,7 @@ export class AuthRepository {
       where: { id: userId },
       data: { passwordHash },
     });
+    void invalidateAuthUserCache(userId);
   }
 
   // Refresh tokens

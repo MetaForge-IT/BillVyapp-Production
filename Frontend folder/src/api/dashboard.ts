@@ -136,7 +136,11 @@ interface ApiEnvelope<T> {
   data: T;
 }
 
-export async function fetchDashboard(): Promise<DashboardData> {
-  const { data } = await apiClient.get<ApiEnvelope<DashboardData>>("/dashboard");
+export async function fetchDashboard(params?: { salonId?: string }): Promise<DashboardData> {
+  const { data } = await apiClient.get<ApiEnvelope<DashboardData>>("/dashboard", {
+    params: {
+      salonId: params?.salonId || undefined,
+    },
+  });
   return data.data;
 }

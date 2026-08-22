@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { paginationQuerySchema } from "../../utils/pagination";
 import { LINE_ITEM_TYPES, PAYMENT_METHODS } from "./billing.constants";
 
 const lineItemSchema = z.object({
@@ -114,10 +115,23 @@ export type CollectPaymentInput = z.infer<typeof collectPaymentSchema>;
 export type RequestRefundInput = z.infer<typeof requestRefundSchema>;
 export type ApproveRefundInput = z.infer<typeof approveRefundSchema>;
 
-export const listBillingQuerySchema = z.object({
-  page: z.coerce.number().int().min(1).optional().default(1),
-  limit: z.coerce.number().int().min(1).max(200).optional().default(50),
+const truthyQueryFlag = z
+  .union([z.literal("1"), z.literal("true"), z.literal("0"), z.literal("false"), z.boolean(), z.number()])
+  .optional()
+  .transform((value) => value === true || value === 1 || value === "1" || value === "true");
+
+export const listBillingQuerySchema = paginationQuerySchema.extend({
   search: z.string().trim().max(200).optional(),
+  /** Franchise admin: filter receipts to one shop (omit for all shops). */
+  salonId: z.string().uuid().optional(),
+  /** Single invoice calendar day (YYYY-MM-DD, IST). */
+  date: z.string().date().optional(),
+  /** Inclusive start/end calendar days for range filters (YYYY-MM-DD, IST). */
+  dateFrom: z.string().date().optional(),
+  dateTo: z.string().date().optional(),
+  paymentMethod: z.enum(["cash", "card", "upi", "wallet"]).optional(),
+  /** When true, include line items and payments on each invoice row. */
+  detail: truthyQueryFlag.default(false),
 });
 
 export type ListBillingQuery = z.infer<typeof listBillingQuerySchema>;

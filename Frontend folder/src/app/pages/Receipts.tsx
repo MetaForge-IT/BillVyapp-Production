@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -14,11 +14,12 @@ import {
   Receipt, Search, Mail, Eye, IndianRupee, FileCheck,
   Printer, Download, Send, Check, X, Paperclip, User,
   Banknote, CreditCard, Smartphone, Wallet, TrendingUp, CalendarDays, Filter,
-  RotateCcw,
+  RotateCcw, RefreshCw, Loader2, Store,
 } from "lucide-react";
 import { useReceipts, type ReceiptRecord } from "../context/ReceiptsContext";
-import { useRole } from "../context/RoleContext";
-import { requestRefund } from "../../api/billing";
+import { useRole, isAdmin } from "../context/RoleContext";
+import { fetchInvoicesSummary, requestRefund } from "../../api/billing";
+import { fetchMyFranchise } from "../../api/franchises";
 import { getApiErrorMessage } from "../../lib/api";
 import { toast } from "../components/ui/hot-toast";
 import { Pagination } from "../components/shared/Pagination";
@@ -26,10 +27,11 @@ import { FilterSelect } from "../components/shared/FilterSelect";
 import { DEFAULT_PAGE_SIZE } from "../hooks/useTablePagination";
 import { fetchReceiptRecords } from "../lib/billingQueries";
 import { queryKeys } from "../lib/queryKeys";
-import { istDateKey } from "../../lib/istDate";
+import { istDateKey, addDaysToDateKey } from "../../lib/istDate";
 import { BRAND, RECEIPT_FOOTER } from "../config/brand";
 import { SalonReceiptBrandHeader, SalonReceiptPaper, useReceiptShopInfo } from "../components/shared/SalonReceiptBrand";
 import { downloadReceiptBill } from "../lib/downloadReceipt";
+import { receiptLinesForDisplay } from "../lib/receiptLineItems";
 import {
   FinanceStatCard,
   FinanceStatGrid,
@@ -82,10 +84,13 @@ const METHOD_OPTIONS = [
 
 /* ── component ───────────────────────────────────────────── */
 export function Receipts() {
+  const queryClient = useQueryClient();
   const { refresh } = useReceipts();
   const { role } = useRole();
   const isManager = role === "manager";
+  const isFranchiseAdmin = isAdmin(role);
   const shopInfo = useReceiptShopInfo();
+  const [shopFilter, setShopFilter] = useState("all");
   const [searchParams, setSearchParams] = useSearchParams();
   const dateParam = searchParams.get("date");
   const [search,       setSearch]       = useState("");
@@ -113,48 +118,87 @@ export function Receipts() {
 
   useEffect(() => {
     setListPage(1);
-  }, [debouncedSearch, listPageSize]);
+  }, [debouncedSearch, listPageSize, shopFilter, methodFilter, dateFilter, dateParam]);
+
+  const franchiseQuery = useQuery({
+    queryKey: ["my-franchise"],
+    queryFn: fetchMyFranchise,
+    enabled: isFranchiseAdmin,
+  });
+  const franchiseShops = franchiseQuery.data?.shops ?? [];
+
+  const dateQueryParams = useMemo(() => {
+    if (dateParam) return { date: dateParam };
+    if (dateFilter === "today") return { date: TODAY };
+    if (dateFilter === "week") return { dateFrom: addDaysToDateKey(TODAY, -6), dateTo: TODAY };
+    if (dateFilter === "month") return { dateFrom: `${TODAY.slice(0, 7)}-01`, dateTo: TODAY };
+    return {};
+  }, [dateParam, dateFilter, TODAY]);
 
   const invoiceParams = {
     page: listPage,
     limit: listPageSize,
     search: debouncedSearch || undefined,
+    salonId: isFranchiseAdmin && shopFilter !== "all" ? shopFilter : undefined,
+    paymentMethod: methodFilter !== "all" ? methodFilter : undefined,
+    ...dateQueryParams,
   };
   const receiptsQuery = useQuery({
     queryKey: queryKeys.billing.invoices(invoiceParams),
     queryFn: () => fetchReceiptRecords(invoiceParams),
   });
+  const summaryQuery = useQuery({
+    queryKey: queryKeys.billing.invoicesSummary(),
+    queryFn: fetchInvoicesSummary,
+    enabled: !isManager,
+  });
   const receipts = receiptsQuery.data?.items ?? [];
   const receiptsTotal = receiptsQuery.data?.total ?? 0;
+
+  useEffect(() => {
+    if (receiptsQuery.error) {
+      toast.error(getApiErrorMessage(receiptsQuery.error, "Failed to load revenue report"));
+    }
+  }, [receiptsQuery.error]);
 
   useEffect(() => {
     const maxPage = Math.max(1, Math.ceil(receiptsTotal / listPageSize) || 1);
     if (listPage > maxPage) setListPage(maxPage);
   }, [receiptsTotal, listPageSize, listPage]);
 
-  const filtered = useMemo(() => receipts.filter(r => {
-    const matchMethod  = methodFilter === "all" || r.paymentMethod === methodFilter;
-    let   matchDate    = true;
-    if (dateParam) matchDate = r.date === dateParam;
-    else if (dateFilter === "today") matchDate = r.date === TODAY;
-    else if (dateFilter === "week") {
-      const diff = (new Date(TODAY).getTime() - new Date(r.date).getTime()) / 86400000;
-      matchDate = diff >= 0 && diff < 7;
-    } else if (dateFilter === "month") matchDate = r.date.startsWith(TODAY.slice(0, 7));
-    return matchMethod && matchDate;
-  }), [methodFilter, dateFilter, dateParam, receipts]);
+  const paginatedReceipts = receipts;
 
-  const paginatedReceipts = filtered;
+  const totalRevenue = summaryQuery.data?.totalRevenue ?? 0;
+  const todayRevenue = summaryQuery.data?.todayRevenue ?? 0;
+  const avgBill = summaryQuery.data?.avgBill ?? 0;
+  const totalReceiptsCount = summaryQuery.data?.totalReceipts ?? receiptsTotal;
 
-  const totalRevenue = receipts.reduce((s, r) => s + r.total, 0);
-  const todayRevenue = receipts.filter(r => r.date === TODAY).reduce((s, r) => s + r.total, 0);
-  const avgBill      = receipts.length ? Math.round(totalRevenue / receipts.length) : 0;
+  const reportRefreshing =
+    receiptsQuery.isFetching || (!isManager && summaryQuery.isFetching);
 
-  const hasActiveFilter = search || methodFilter !== "all" || dateFilter !== "all" || Boolean(dateParam);
+  const handleRefreshReport = useCallback(async () => {
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["billing"] }),
+        refresh(),
+      ]);
+      toast.success("Revenue report updated");
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Failed to refresh revenue report"));
+    }
+  }, [queryClient, refresh]);
+
+  const hasActiveFilter =
+    search ||
+    methodFilter !== "all" ||
+    dateFilter !== "all" ||
+    Boolean(dateParam) ||
+    (isFranchiseAdmin && shopFilter !== "all");
   const clearFilters = () => {
     setSearch("");
     setMethodFilter("all");
     setDateFilter("all");
+    if (isFranchiseAdmin) setShopFilter("all");
     if (dateParam) {
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
@@ -184,6 +228,7 @@ export function Receipts() {
         customer: r.customer,
         phone: r.phone,
         services: r.services,
+        lineItems: r.lineItems,
         subtotal: r.subtotal,
         discount: r.discount,
         gst: r.gst,
@@ -231,14 +276,31 @@ export function Receipts() {
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
 
       {/* ── Page header ── */}
-      <div className="flex shrink-0 items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#D4AF37]/10 border border-[#D4AF37]/20 shrink-0">
-          <Receipt className="h-5 w-5 text-[#D4AF37]" />
+      <div className="flex shrink-0 items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#D4AF37]/10 border border-[#D4AF37]/20 shrink-0">
+            <Receipt className="h-5 w-5 text-[#D4AF37]" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-lg font-bold text-[#111118]">Sales Receipts</h2>
+            <p className="text-xs text-[#9a9a9a] mt-0.5">All completed transactions and payment history</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-lg font-bold text-[#111118]">Sales Receipts</h2>
-          <p className="text-xs text-[#9a9a9a] mt-0.5">All completed transactions and payment history</p>
-        </div>
+        {!isManager && (
+          <button
+            type="button"
+            onClick={() => void handleRefreshReport()}
+            disabled={reportRefreshing}
+            className="flex shrink-0 items-center gap-2 rounded-xl border border-black/[0.08] bg-white px-3.5 py-2 text-[12px] font-semibold text-[#111118] transition-all hover:border-[#D4AF37]/35 disabled:opacity-60"
+          >
+            {reportRefreshing ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" />
+            )}
+            Refresh
+          </button>
+        )}
       </div>
 
       {/* ── Stat cards (admin Revenue Report only) ── */}
@@ -271,7 +333,7 @@ export function Receipts() {
             />
             <FinanceStatCard
               label="Total Receipts"
-              value={receiptsTotal}
+              value={totalReceiptsCount}
               sub={`All paid · ₹${totalRevenue.toLocaleString()}`}
               icon={Receipt}
               index={3}
@@ -310,6 +372,21 @@ export function Receipts() {
           )}
 
           <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2 sm:flex sm:flex-wrap sm:gap-3">
+            {isFranchiseAdmin && franchiseShops.length > 0 && (
+              <FilterSelect
+                value={shopFilter}
+                onValueChange={setShopFilter}
+                icon={Store}
+                active={shopFilter !== "all"}
+                options={[
+                  { value: "all", label: `All Shops (${franchiseShops.length})` },
+                  ...franchiseShops.map((shop) => ({
+                    value: shop.id,
+                    label: shop.displayName?.trim() || shop.name,
+                  })),
+                ]}
+              />
+            )}
             <FilterSelect
               value={dateFilter}
               onValueChange={setDateFilter}
@@ -354,7 +431,7 @@ export function Receipts() {
         <div className={`${financePanelHeader} shrink-0 border-b border-black/[0.07]`}>
           <div className="flex items-center gap-2">
             <h2 className={financePanelTitle}>Receipt List</h2>
-            <span className="text-[11px] font-semibold text-[#9a9a9a] bg-[#FAF8F2] border border-black/[0.07] px-2 py-0.5 rounded-full">{filtered.length}</span>
+            <span className="text-[11px] font-semibold text-[#9a9a9a] bg-[#FAF8F2] border border-black/[0.07] px-2 py-0.5 rounded-full">{receiptsTotal}</span>
           </div>
         </div>
 
@@ -428,7 +505,7 @@ export function Receipts() {
               </div>
             </article>
           ))}
-          {filtered.length === 0 && (
+          {paginatedReceipts.length === 0 && (
             <div className="flex flex-col items-center gap-2 py-16">
               <Receipt className="h-8 w-8 text-gray-200" />
               <p className="text-[13px] font-semibold text-gray-400">No receipts found</p>
@@ -474,7 +551,7 @@ export function Receipts() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <div className="h-7 w-7 rounded-full bg-[#d4af37]/15 border border-[#d4af37]/25 flex items-center justify-center shrink-0">
-                        <span className="text-[11px] font-black text-[#b8962e]">{r.customer[0]}</span>
+                        <span className="text-[11px] font-black text-[#b8962e]">{(r.customer || "?")[0]}</span>
                       </div>
                       <div className="min-w-0">
                         <p className="truncate text-[12px] font-semibold text-[#111]">{r.customer}</p>
@@ -534,7 +611,7 @@ export function Receipts() {
                   </TableCell>
                 </TableRow>
               ))}
-              {filtered.length === 0 && (
+              {paginatedReceipts.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="py-16 text-center">
                     <div className="flex flex-col items-center gap-2">
@@ -606,16 +683,16 @@ export function Receipts() {
                       <span className="flex-1">Description</span>
                       <span className="w-16 text-right">Amount</span>
                     </div>
-                    {viewReceipt.services.map((svc, i) => {
-                      const per = Math.round(viewReceipt.subtotal / viewReceipt.services.length);
-                      const amt = i === viewReceipt.services.length - 1 ? viewReceipt.subtotal - per * (viewReceipt.services.length - 1) : per;
-                      return (
-                        <div key={i} className="flex py-0.5 text-[11px]">
-                          <span className="flex-1 pr-2 font-semibold uppercase">{svc}</span>
-                          <span className="w-16 text-right">&#x20b9;{amt.toLocaleString()}</span>
-                        </div>
-                      );
-                    })}
+                    {receiptLinesForDisplay(
+                      viewReceipt.lineItems,
+                      viewReceipt.services,
+                      viewReceipt.subtotal,
+                    ).map((line, i) => (
+                      <div key={i} className="flex py-0.5 text-[11px]">
+                        <span className="flex-1 pr-2 font-semibold uppercase">{line.name}</span>
+                        <span className="w-16 text-right">&#x20b9;{line.amount.toLocaleString()}</span>
+                      </div>
+                    ))}
                   </div>
                   <div className="border-b border-dashed border-[#D4AF37]/25 pb-3 mb-3 space-y-0.5">
                     <div className="flex justify-between text-[11px]"><span className="text-[#9a9a9a]">Subtotal</span><span>&#x20b9;{viewReceipt.subtotal.toLocaleString()}</span></div>

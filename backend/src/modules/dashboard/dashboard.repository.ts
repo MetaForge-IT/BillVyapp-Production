@@ -1,10 +1,15 @@
-import { prisma } from "../../config/prisma";
+import { getReadClient } from "../../config/prisma";
 import { STOCK_STATUS } from "../inventory/inventory.shared";
 import {
   ACTIVE_APPOINTMENT_STATUSES,
   CHECKED_IN_STATUSES,
   REVENUE_STATUSES,
 } from "./dashboard.constants";
+import {
+  dayAmountFromMap,
+  sumPaymentsGroupedByDay,
+  sumPaymentsInRange,
+} from "./dashboard.queries";
 import {
   addDays,
   dayShortLabel,
@@ -19,24 +24,49 @@ import {
   startOfMonth,
   startOfWeek,
 } from "./dashboard.utils";
+import { salonIdFilter } from "../../utils/salonScope";
 
-async function sumPaymentsBetween(
-  salonId: string,
-  from: Date,
-  to: Date,
-): Promise<number> {
-  const payments = await prisma.payment.findMany({
-    where: {
-      paidAt: { gte: from, lt: to },
-      invoice: { salonId, voidedAt: null },
-    },
-    select: { amount: true },
-  });
-  return payments.reduce((sum, payment) => sum + Number(payment.amount), 0);
+function buildSparklineFromMap(
+  start: Date,
+  days: number,
+  map: Map<string, number>,
+  transform: (value: number) => number = (v) => v,
+): { v: number }[] {
+  const result: { v: number }[] = [];
+  for (let i = 0; i < days; i += 1) {
+    const day = addDays(start, i);
+    result.push({ v: transform(dayAmountFromMap(map, day)) });
+  }
+  return result;
+}
+
+function groupFeedbackAvgByDay(
+  rows: Array<{ createdAt: Date; rating: number }>,
+): Map<string, { sum: number; count: number }> {
+  const map = new Map<string, { sum: number; count: number }>();
+  for (const row of rows) {
+    const key = localDateKey(row.createdAt);
+    const existing = map.get(key) ?? { sum: 0, count: 0 };
+    existing.sum += row.rating;
+    existing.count += 1;
+    map.set(key, existing);
+  }
+  return map;
+}
+
+function countByDayFromDates(dates: Date[]): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const date of dates) {
+    const key = localDateKey(date);
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+  return map;
 }
 
 export class DashboardRepository {
-  async getDashboard(salonId: string) {
+  async getDashboard(salonIds: string[]) {
+    const prisma = getReadClient();
+    const sw = salonIdFilter(salonIds);
     const today = startOfLocalDay();
     const tomorrow = addDays(today, 1);
     const yesterday = addDays(today, -1);
@@ -45,16 +75,17 @@ export class DashboardRepository {
     const weekStart = startOfWeek(today);
     const monthStart = startOfMonth(today);
     const trendStart = addDays(today, -6);
+    const sparklineStart = addDays(today, -6);
+    const customerTrendStart = addDays(today, -29);
 
     const [
-      todayRevenue,
-      yesterdayRevenue,
+      paymentDayTotals,
       todayAppointments,
       yesterdayAppointments,
       checkedInToday,
       noShowsToday,
       walkInsToday,
-      pendingInvoices,
+      pendingAgg,
       totalCustomers,
       newCustomersToday,
       newCustomersYesterday,
@@ -66,132 +97,151 @@ export class DashboardRepository {
       feedbackAllAgg,
       feedbackPositiveCount,
       recentFeedbackRaw,
+      feedbackWeekRows,
       appointmentStatusGroups,
+      appointmentDayGroups,
       walkInsWeek,
       bookedAppointmentsToday,
       serviceLines,
-      categoryLines,
       topCustomersRaw,
       customerVisitTrend,
+      newCustomerDayGroups,
       paymentMethods,
       upcomingRaw,
+      membershipCustomers,
+      returningCustomers,
+      cancelledToday,
+      pendingCreatedRows,
     ] = await Promise.all([
-      sumPaymentsBetween(salonId, today, tomorrow),
-      sumPaymentsBetween(salonId, yesterday, today),
+      sumPaymentsGroupedByDay(salonIds, monthStart, tomorrow, prisma),
       prisma.appointment.count({
         where: {
-          salonId,
+          ...sw,
           scheduledDate: todayRange,
           status: { not: "cancelled" },
         },
       }),
       prisma.appointment.count({
         where: {
-          salonId,
+          ...sw,
           scheduledDate: yesterdayRange,
           status: { not: "cancelled" },
         },
       }),
       prisma.appointment.count({
         where: {
-          salonId,
+          ...sw,
           scheduledDate: todayRange,
           status: { in: [...CHECKED_IN_STATUSES] },
         },
       }),
       prisma.appointment.count({
         where: {
-          salonId,
+          ...sw,
           scheduledDate: todayRange,
           status: "no_show",
         },
       }),
       prisma.appointment.count({
         where: {
-          salonId,
+          ...sw,
           scheduledDate: todayRange,
           appointmentType: "walk_in",
           status: { not: "cancelled" },
         },
       }),
-      prisma.invoice.findMany({
+      prisma.invoice.aggregate({
         where: {
-          salonId,
+          ...sw,
           voidedAt: null,
           balanceAmount: { gt: 0 },
           status: { in: ["pending", "partially_paid"] },
         },
-        select: { balanceAmount: true },
+        _sum: { balanceAmount: true },
+        _count: { _all: true },
       }),
       prisma.customer.count({
-        where: { salonId, deletedAt: null, status: "active" },
+        where: { ...sw, deletedAt: null, status: "active" },
       }),
       prisma.customer.count({
         where: {
-          salonId,
+          ...sw,
           deletedAt: null,
           joinedAt: { gte: today, lt: tomorrow },
         },
       }),
       prisma.customer.count({
         where: {
-          salonId,
+          ...sw,
           deletedAt: null,
           joinedAt: { gte: yesterday, lt: today },
         },
       }),
       prisma.customer.count({
         where: {
-          salonId,
+          ...sw,
           deletedAt: null,
           joinedAt: { gte: monthStart, lt: tomorrow },
         },
       }),
       prisma.customerPlanEnrollment.count({
         where: {
-          salonId,
+          ...sw,
           status: "active",
           expiryDate: { gte: today },
         },
       }),
       prisma.product.findMany({
-        where: { salonId, deletedAt: null, isActive: true },
+        where: { ...sw, deletedAt: null, isActive: true },
         select: { stockQty: true, costPrice: true, stockStatus: true, name: true, id: true, minStockQty: true, sku: true },
       }),
       prisma.feedback.aggregate({
-        where: { salonId, createdAt: { gte: today, lt: tomorrow } },
+        where: { ...sw, createdAt: { gte: today, lt: tomorrow } },
         _avg: { rating: true },
         _count: { rating: true },
       }),
       prisma.feedback.aggregate({
-        where: { salonId, createdAt: { gte: yesterday, lt: today } },
+        where: { ...sw, createdAt: { gte: yesterday, lt: today } },
         _avg: { rating: true },
         _count: { rating: true },
       }),
       prisma.feedback.aggregate({
-        where: { salonId },
+        where: { ...sw },
         _avg: { rating: true },
         _count: { rating: true },
       }),
       prisma.feedback.count({
-        where: { salonId, rating: { gte: 4 } },
+        where: { ...sw, rating: { gte: 4 } },
       }),
       prisma.feedback.findMany({
-        where: { salonId },
+        where: { ...sw },
         include: {
           customer: { select: { fullName: true } },
         },
         orderBy: { createdAt: "desc" },
         take: 5,
       }),
+      prisma.feedback.findMany({
+        where: { ...sw, createdAt: { gte: sparklineStart, lt: tomorrow } },
+        select: { createdAt: true, rating: true },
+      }),
       prisma.appointment.groupBy({
         by: ["status"],
-        where: { salonId, scheduledDate: { gte: weekStart, lt: tomorrow } },
+        where: { ...sw, scheduledDate: { gte: weekStart, lt: tomorrow } },
+        _count: { _all: true },
+      }),
+      prisma.appointment.groupBy({
+        by: ["scheduledDate"],
+        where: {
+          ...sw,
+          scheduledDate: { gte: trendStart, lt: tomorrow },
+          status: { not: "cancelled" },
+        },
         _count: { _all: true },
       }),
       prisma.appointment.count({
         where: {
-          salonId,
+          ...sw,
           appointmentType: "walk_in",
           scheduledDate: { gte: weekStart, lt: tomorrow },
           status: { not: "cancelled" },
@@ -199,7 +249,7 @@ export class DashboardRepository {
       }),
       prisma.appointment.count({
         where: {
-          salonId,
+          ...sw,
           appointmentType: "appointment",
           scheduledDate: todayRange,
           status: { not: "cancelled" },
@@ -209,7 +259,7 @@ export class DashboardRepository {
         where: {
           lineType: "service",
           invoice: {
-            salonId,
+            ...sw,
             voidedAt: null,
             status: { in: [...REVENUE_STATUSES] },
             invoiceDate: { gte: trendStart, lt: tomorrow },
@@ -220,22 +270,6 @@ export class DashboardRepository {
           quantity: true,
           lineTotal: true,
           serviceId: true,
-        },
-      }),
-      prisma.invoiceLineItem.findMany({
-        where: {
-          lineType: "service",
-          serviceId: { not: null },
-          invoice: {
-            salonId,
-            voidedAt: null,
-            status: { in: [...REVENUE_STATUSES] },
-            invoiceDate: { gte: trendStart, lt: tomorrow },
-          },
-        },
-        select: {
-          lineTotal: true,
-          quantity: true,
           service: {
             select: {
               category: { select: { name: true } },
@@ -244,30 +278,39 @@ export class DashboardRepository {
         },
       }),
       prisma.customer.findMany({
-        where: { salonId, deletedAt: null },
+        where: { ...sw, deletedAt: null },
         orderBy: { totalSpend: "desc" },
         take: 5,
         select: { id: true, fullName: true, totalSpend: true, totalVisits: true },
       }),
       prisma.customer.findMany({
         where: {
-          salonId,
+          ...sw,
           deletedAt: null,
-          joinedAt: { gte: addDays(today, -29), lt: tomorrow },
+          joinedAt: { gte: customerTrendStart, lt: tomorrow },
         },
         select: { joinedAt: true },
+      }),
+      prisma.customer.groupBy({
+        by: ["joinedAt"],
+        where: {
+          ...sw,
+          deletedAt: null,
+          joinedAt: { gte: sparklineStart, lt: tomorrow },
+        },
+        _count: { _all: true },
       }),
       prisma.payment.groupBy({
         by: ["paymentMethod"],
         where: {
           paidAt: { gte: trendStart, lt: tomorrow },
-          invoice: { salonId, voidedAt: null },
+          invoice: { ...sw, voidedAt: null },
         },
         _sum: { amount: true },
       }),
       prisma.appointment.findMany({
         where: {
-          salonId,
+          ...sw,
           scheduledDate: { gte: todayRange.gte },
           status: { in: [...ACTIVE_APPOINTMENT_STATUSES] },
         },
@@ -278,78 +321,82 @@ export class DashboardRepository {
         orderBy: [{ scheduledDate: "asc" }, { scheduledTime: "asc" }],
         take: 5,
       }),
+      prisma.customerPlanEnrollment.count({
+        where: { ...sw, status: "active" },
+      }),
+      prisma.customer.count({
+        where: { ...sw, deletedAt: null, totalVisits: { gt: 1 } },
+      }),
+      prisma.appointment.count({
+        where: { ...sw, scheduledDate: todayRange, status: "cancelled" },
+      }),
+      prisma.invoice.findMany({
+        where: {
+          ...sw,
+          voidedAt: null,
+          balanceAmount: { gt: 0 },
+          createdAt: { gte: sparklineStart, lt: tomorrow },
+        },
+        select: { createdAt: true },
+      }),
     ]);
 
-    const revenueSparkline: { v: number }[] = [];
-    const appointmentSparkline: { v: number }[] = [];
-    const weeklyTrend: { day: string; date: string; revenue: number; appointments: number }[] = [];
+    const todayRevenue = dayAmountFromMap(paymentDayTotals, today);
+    const yesterdayRevenue = dayAmountFromMap(paymentDayTotals, yesterday);
+    const dailySales = todayRevenue;
+    const weeklySales = sumPaymentsInRange(paymentDayTotals, weekStart, tomorrow);
+    const monthlySales = sumPaymentsInRange(paymentDayTotals, monthStart, tomorrow);
 
+    const appointmentDayMap = new Map<string, number>();
+    for (const row of appointmentDayGroups) {
+      appointmentDayMap.set(formatDateKey(row.scheduledDate), row._count._all);
+    }
+
+    const revenueSparkline = buildSparklineFromMap(trendStart, 7, paymentDayTotals, (v) =>
+      Math.round(v / 1000) || 0,
+    );
+    const appointmentSparkline = buildSparklineFromMap(trendStart, 7, appointmentDayMap);
+    const weeklyTrend: { day: string; date: string; revenue: number; appointments: number }[] = [];
     for (let i = 0; i < 7; i += 1) {
       const dayStart = addDays(trendStart, i);
-      const dayEnd = addDays(dayStart, 1);
-      const dayRange = { gte: dayStart, lt: dayEnd };
-      const [revenue, appointments] = await Promise.all([
-        sumPaymentsBetween(salonId, dayStart, dayEnd),
-        prisma.appointment.count({
-          where: {
-            salonId,
-            scheduledDate: dayRange,
-            status: { not: "cancelled" },
-          },
-        }),
-      ]);
-      revenueSparkline.push({ v: Math.round(revenue / 1000) || 0 });
-      appointmentSparkline.push({ v: appointments });
+      const dayKey = localDateKey(dayStart);
       weeklyTrend.push({
         day: dayShortLabel(dayStart),
-        date: localDateKey(dayStart),
-        revenue: Math.round(revenue),
-        appointments,
+        date: dayKey,
+        revenue: Math.round(paymentDayTotals.get(dayKey) ?? 0),
+        appointments: appointmentDayMap.get(formatDateKey(dayStart)) ?? 0,
       });
     }
 
+    const feedbackByDay = groupFeedbackAvgByDay(feedbackWeekRows);
     const satisfactionSparkline: { v: number }[] = [];
     for (let i = 6; i >= 0; i -= 1) {
       const dayStart = addDays(today, -i);
-      const dayEnd = addDays(dayStart, 1);
-      const agg = await prisma.feedback.aggregate({
-        where: { salonId, createdAt: { gte: dayStart, lt: dayEnd } },
-        _avg: { rating: true },
+      const bucket = feedbackByDay.get(localDateKey(dayStart));
+      satisfactionSparkline.push({
+        v: bucket && bucket.count > 0 ? bucket.sum / bucket.count : 0,
       });
-      satisfactionSparkline.push({ v: Number(agg._avg.rating ?? 0) });
     }
 
+    const newCustomerDayMap = new Map<string, number>();
+    for (const row of newCustomerDayGroups) {
+      newCustomerDayMap.set(formatDateKey(row.joinedAt), row._count._all);
+    }
     const newCustomerSparkline: { v: number }[] = [];
     for (let i = 6; i >= 0; i -= 1) {
       const dayStart = addDays(today, -i);
-      const dayEnd = addDays(dayStart, 1);
-      const count = await prisma.customer.count({
-        where: {
-          salonId,
-          deletedAt: null,
-          joinedAt: { gte: dayStart, lt: dayEnd },
-        },
+      newCustomerSparkline.push({
+        v: newCustomerDayMap.get(formatDateKey(dayStart)) ?? 0,
       });
-      newCustomerSparkline.push({ v: count });
     }
 
-    const pendingAmount = pendingInvoices.reduce(
-      (sum, invoice) => sum + Number(invoice.balanceAmount),
-      0,
-    );
+    const pendingAmount = Number(pendingAgg._sum.balanceAmount ?? 0);
+    const pendingPaymentsCount = pendingAgg._count._all;
+    const pendingByDay = countByDayFromDates(pendingCreatedRows.map((row) => row.createdAt));
     const pendingSparkline: { v: number }[] = [];
     for (let i = 6; i >= 0; i -= 1) {
       const dayStart = addDays(today, -i);
-      const dayEnd = addDays(dayStart, 1);
-      const count = await prisma.invoice.count({
-        where: {
-          salonId,
-          voidedAt: null,
-          balanceAmount: { gt: 0 },
-          createdAt: { gte: dayStart, lt: dayEnd },
-        },
-      });
-      pendingSparkline.push({ v: count });
+      pendingSparkline.push({ v: pendingByDay.get(localDateKey(dayStart)) ?? 0 });
     }
 
     const inventoryValue = inventoryProducts.reduce(
@@ -426,7 +473,7 @@ export class DashboardRepository {
     }));
 
     const categoryAgg = new Map<string, { name: string; bookings: number; revenue: number }>();
-    for (const line of categoryLines) {
+    for (const line of serviceLines) {
       const name = line.service?.category?.name ?? "Other";
       const existing = categoryAgg.get(name) ?? { name, bookings: 0, revenue: 0 };
       existing.bookings += line.quantity;
@@ -454,14 +501,6 @@ export class DashboardRepository {
       }
     }
 
-    const membershipCustomers = await prisma.customerPlanEnrollment.count({
-      where: { salonId, status: "active" },
-    });
-
-    const returningCustomers = await prisma.customer.count({
-      where: { salonId, deletedAt: null, totalVisits: { gt: 1 } },
-    });
-
     const paymentTotal = paymentMethods.reduce(
       (sum, row) => sum + Number(row._sum.amount ?? 0),
       0,
@@ -475,12 +514,6 @@ export class DashboardRepository {
           : 0,
       }))
       .sort((a, b) => b.amount - a.amount);
-
-    const [dailySales, weeklySales, monthlySales] = await Promise.all([
-      sumPaymentsBetween(salonId, today, tomorrow),
-      sumPaymentsBetween(salonId, weekStart, tomorrow),
-      sumPaymentsBetween(salonId, monthStart, tomorrow),
-    ]);
 
     const upcomingAppointments = upcomingRaw.map((appointment) => ({
       id: appointment.id,
@@ -516,20 +549,17 @@ export class DashboardRepository {
       });
     }
 
-    if (pendingInvoices.length > 0) {
+    if (pendingPaymentsCount > 0) {
       alerts.push({
         id: "payments",
         title: "Pending Payments",
-        detail: `${pendingInvoices.length} invoice${pendingInvoices.length > 1 ? "s" : ""} · ${formatInr(pendingAmount)} outstanding`,
+        detail: `${pendingPaymentsCount} invoice${pendingPaymentsCount > 1 ? "s" : ""} · ${formatInr(pendingAmount)} outstanding`,
         urgent: true,
         href: "/finance?tab=receipts&section=pending",
         type: "payment",
       });
     }
 
-    const cancelledToday = await prisma.appointment.count({
-      where: { salonId, scheduledDate: todayRange, status: "cancelled" },
-    });
     if (cancelledToday > 0) {
       alerts.push({
         id: "cancelled",
@@ -550,7 +580,7 @@ export class DashboardRepository {
         walkInCount: walkInsToday,
         upcomingAppointmentsCount: upcomingAppointments.length,
         pendingPaymentsAmount: Math.round(pendingAmount),
-        pendingPaymentsCount: pendingInvoices.length,
+        pendingPaymentsCount,
         totalCustomers,
         activeMemberships,
         inventoryValue: Math.round(inventoryValue),
@@ -591,9 +621,9 @@ export class DashboardRepository {
         {
           label: "Pending Payments",
           value: formatInr(pendingAmount),
-          change: `${pendingInvoices.length} bills`,
+          change: `${pendingPaymentsCount} bills`,
           changePositive: false,
-          comparison: pendingInvoices.length > 0 ? "Requires follow-up today" : "All clear",
+          comparison: pendingPaymentsCount > 0 ? "Requires follow-up today" : "All clear",
           sparkline: pendingSparkline,
           accent: "#111118",
         },

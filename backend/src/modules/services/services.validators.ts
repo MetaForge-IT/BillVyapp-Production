@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { SERVICE_STATUS } from "./services.constants";
+import { paginationQuerySchema } from "../../utils/pagination";
 
 export const serviceGenderSchema = z.enum(["MALE", "FEMALE", "UNISEX"]);
 
@@ -42,7 +43,7 @@ export const updateServiceSchema = z.object({
   memberPrice: z.number().nonnegative().optional().nullable(),
 });
 
-export const listServicesQuerySchema = z.object({
+export const listServicesQuerySchema = paginationQuerySchema.extend({
   gender: serviceGenderSchema.optional(),
   categoryId: z.string().uuid().optional(),
   serviceGroup: z.string().trim().min(1).max(100).optional(),
@@ -54,8 +55,6 @@ export const listServicesQuerySchema = z.object({
       if (v === undefined) return undefined;
       return v === "true" || v === "1";
     }),
-  page: z.coerce.number().int().min(1).optional().default(1),
-  limit: z.coerce.number().int().min(1).max(1000).optional().default(50),
   sort: z
     .enum(["sortOrder", "name", "displayName", "price", "createdAt", "popularity"])
     .optional()

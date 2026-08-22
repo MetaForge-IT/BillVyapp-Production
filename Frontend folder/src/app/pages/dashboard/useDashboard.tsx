@@ -8,10 +8,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "react-router";
 import { fetchDashboard, type DashboardData } from "../../../api/dashboard";
+import { fetchMyFranchise } from "../../../api/franchises";
 import { getApiErrorMessage } from "../../../lib/api";
 import { useAuthStore } from "../../../stores/authStore";
+import { isAdmin, useRole } from "../../context/RoleContext";
 
 const REFRESH_INTERVAL_MS = 60_000;
 
@@ -22,6 +25,11 @@ type DashboardContextValue = {
   refreshing: boolean;
   lastUpdated: Date | null;
   refresh: () => Promise<void>;
+  /** Franchise admin shop scope — "all" or a shop id. */
+  shopFilter: string;
+  setShopFilter: (value: string) => void;
+  franchiseShops: Array<{ id: string; name: string; displayName: string | null }>;
+  isFranchiseAdmin: boolean;
 };
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);
@@ -32,8 +40,11 @@ function isDashboardPath(pathname: string) {
 
 export function DashboardProvider({ children }: { children: ReactNode }) {
   const location = useLocation();
+  const { role } = useRole();
+  const isFranchiseAdmin = isAdmin(role);
   const accessToken = useAuthStore((s) => s.accessToken);
   const authReady = useAuthStore((s) => s.isReady);
+  const [shopFilter, setShopFilter] = useState("all");
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -45,6 +56,16 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const hasLoadedRef = useRef(false);
   const onDashboard = isDashboardPath(location.pathname);
 
+  const franchiseQuery = useQuery({
+    queryKey: ["my-franchise"],
+    queryFn: fetchMyFranchise,
+    enabled: Boolean(accessToken) && isFranchiseAdmin,
+  });
+  const franchiseShops = franchiseQuery.data?.shops ?? [];
+
+  const salonIdParam =
+    isFranchiseAdmin && shopFilter !== "all" ? shopFilter : undefined;
+
   const refresh = useCallback(async () => {
     if (!useAuthStore.getState().accessToken) {
       setLoading(false);
@@ -53,7 +74,9 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     if (hasLoadedRef.current) setRefreshing(true);
     setError(null);
     try {
-      const result = await fetchDashboard();
+      const result = await fetchDashboard({
+        salonId: salonIdParam,
+      });
       setData(result);
       setLastUpdated(new Date(result.refreshedAt));
       hasLoadedRef.current = true;
@@ -63,7 +86,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [salonIdParam]);
 
   useEffect(() => {
     const onVisibility = () => {
@@ -84,26 +107,42 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // One-shot load so sidebar KPIs have data even off-dashboard.
-    if (!hasLoadedRef.current) {
-      void refresh();
-    }
+    hasLoadedRef.current = false;
+    setLoading(true);
+    void refresh();
 
-    // Poll only while the dashboard is active and the tab is visible.
     if (!onDashboard || !tabVisible) return;
 
-    if (hasLoadedRef.current) {
-      void refresh();
-    }
     const intervalId = window.setInterval(() => {
       void refresh();
     }, REFRESH_INTERVAL_MS);
     return () => window.clearInterval(intervalId);
-  }, [authReady, accessToken, refresh, onDashboard, tabVisible]);
+  }, [authReady, accessToken, refresh, onDashboard, tabVisible, shopFilter]);
 
   const value = useMemo(
-    () => ({ data, loading, error, refreshing, lastUpdated, refresh }),
-    [data, loading, error, refreshing, lastUpdated, refresh],
+    () => ({
+      data,
+      loading,
+      error,
+      refreshing,
+      lastUpdated,
+      refresh,
+      shopFilter,
+      setShopFilter,
+      franchiseShops,
+      isFranchiseAdmin,
+    }),
+    [
+      data,
+      loading,
+      error,
+      refreshing,
+      lastUpdated,
+      refresh,
+      shopFilter,
+      franchiseShops,
+      isFranchiseAdmin,
+    ],
   );
 
   return (

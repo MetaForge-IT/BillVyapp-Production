@@ -74,23 +74,7 @@ export class SparklebotWhatsAppProvider implements WhatsAppProvider {
       throw new Error(`Sparklebot WhatsApp failed (${response.status}): ${responseText}`);
     }
 
-    let messageId: string | undefined;
-    try {
-      const payload = JSON.parse(responseText) as {
-        id?: string;
-        message_id?: string;
-        data?: { id?: string; message_id?: string };
-      };
-      messageId =
-        payload.message_id ??
-        payload.id ??
-        payload.data?.message_id ??
-        payload.data?.id;
-    } catch {
-      // Non-JSON success body is still treated as delivered
-    }
-
-    return { provider: this.name, messageId };
+    return parseSparklebotSuccess(responseText, this.name);
   }
 
   private templateUrl(): string {
@@ -110,4 +94,44 @@ export class SparklebotWhatsAppProvider implements WhatsAppProvider {
 function formatSparklebotPhone(raw: string): string | null {
   // Sparklebot expects digits with country code, e.g. 919581169963 (no +)
   return normalizePhoneToE164Digits(raw);
+}
+
+type SparklebotApiResponse = {
+  status?: string;
+  message?: string;
+  data?: {
+    template?: { sent?: boolean };
+    whatsapp_response?: {
+      messages?: Array<{ id?: string; message_status?: string }>;
+    };
+  };
+};
+
+function parseSparklebotSuccess(responseText: string, provider: string): WhatsAppDeliveryResult {
+  let payload: SparklebotApiResponse;
+  try {
+    payload = JSON.parse(responseText) as SparklebotApiResponse;
+  } catch {
+    throw new Error(`Sparklebot returned non-JSON success body: ${responseText.slice(0, 200)}`);
+  }
+
+  if (payload.status && payload.status !== "success") {
+    throw new Error(`Sparklebot WhatsApp rejected send: ${payload.message ?? responseText}`);
+  }
+
+  const waMessage = payload.data?.whatsapp_response?.messages?.[0];
+  const messageStatus = waMessage?.message_status;
+  if (messageStatus && messageStatus !== "accepted" && messageStatus !== "sent") {
+    throw new Error(`WhatsApp message not accepted (status: ${messageStatus})`);
+  }
+
+  if (payload.data?.template?.sent === false) {
+    throw new Error("Sparklebot reported template was not sent");
+  }
+
+  const messageId =
+    waMessage?.id ??
+    payload.data?.whatsapp_response?.messages?.[0]?.id;
+
+  return { provider, messageId };
 }

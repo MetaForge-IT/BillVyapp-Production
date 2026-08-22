@@ -15,6 +15,7 @@ export function useCustomersQuery(options?: FetchCustomersParams & { enabled?: b
     limit: options?.limit ?? LIST_WORKING_LIMIT,
     search: options?.search,
     status: options?.status,
+    salonId: options?.salonId,
   };
   const enabled = Boolean(accessToken) && (options?.enabled ?? true);
 
@@ -45,7 +46,7 @@ export function useCustomersQuery(options?: FetchCustomersParams & { enabled?: b
     },
     // params object identity — serialize stable deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [queryClient, params.page, params.limit, params.search, params.status],
+    [queryClient, params.page, params.limit, params.search, params.status, params.salonId],
   );
 
   const reloadCustomers = useCallback(async () => {
@@ -54,7 +55,7 @@ export function useCustomersQuery(options?: FetchCustomersParams & { enabled?: b
       queryFn: () => fetchCustomers(params),
     });
     return rows.items;
-  }, [queryClient, params.page, params.limit, params.search, params.status]);
+  }, [queryClient, params.page, params.limit, params.search, params.status, params.salonId]);
 
   const invalidateCustomers = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ["customers"] });

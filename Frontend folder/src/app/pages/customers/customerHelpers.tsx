@@ -95,6 +95,19 @@ export function getInactivityLabel(days: number | null): string {
   return `${Math.floor(days / 30)} month${Math.floor(days / 30) > 1 ? "s" : ""} inactive`;
 }
 
+/** Sort customers with the most recent visit/join day first (matches the list “Date” column). */
+export function compareCustomersByLatestDate(a: Customer, b: Customer): number {
+  const latestMs = (c: Customer) => {
+    const visit = c.lastVisitDate?.trim() ? Date.parse(c.lastVisitDate) : Number.NaN;
+    const joined = c.joinDate?.trim() ? Date.parse(c.joinDate) : Number.NaN;
+    return Math.max(
+      Number.isFinite(visit) ? visit : 0,
+      Number.isFinite(joined) ? joined : 0,
+    );
+  };
+  return latestMs(b) - latestMs(a);
+}
+
 /** Latest visit date for list/table “Date” column. */
 export function formatLatestVisitDate(c: Customer): string {
   const raw = c.lastVisitDate?.trim() || c.lastVisit?.trim();

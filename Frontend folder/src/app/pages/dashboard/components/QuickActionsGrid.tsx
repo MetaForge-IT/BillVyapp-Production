@@ -3,15 +3,20 @@ import { useNavigate } from "react-router";
 import { quickActions } from "../data";
 import { dashboardFadeUpStagger } from "../motion";
 import { SectionLabel } from "./DashboardCard";
+import { useRole } from "../../../context/RoleContext";
 
 export function QuickActionsGrid() {
   const navigate = useNavigate();
+  const { role } = useRole();
+  const actions = quickActions.filter((action) =>
+    role === "manager" ? action.label !== "Receipts" : true,
+  );
 
   return (
     <section aria-label="Quick actions">
       <SectionLabel>Quick Actions</SectionLabel>
       <div className="flex gap-3 flex-wrap lg:flex-nowrap">
-        {quickActions.map((action, i) => (
+        {actions.map((action, i) => (
           <motion.button
             key={action.label}
             type="button"

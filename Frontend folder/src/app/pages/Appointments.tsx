@@ -71,244 +71,35 @@ import {
   isPaymentMethodValid,
   type PaymentMethodValue,
 } from "../components/shared/PaymentMethodPicker";
-
-/** Counter staff settle almost every bill by QR, so checkout opens on UPI. */
-const createDefaultBillPayment = () => createPaymentMethodValue({ method: "upi" });
-
-/** Optional bill adjustments — each one is revealed by its own toggle. */
-type DiscountTool = "coupon" | "loyalty" | "manual" | "advance";
-const NO_DISCOUNT_TOOLS: Record<DiscountTool, boolean> = {
-  coupon: false,
-  loyalty: false,
-  manual: false,
-  advance: false,
-};
-
-const APPOINTMENTS: Appointment[] = [];
-const WALKINS: Walkin[] = [];
-const QUEUE: Array<{
-  id: string;
-  token: string;
-  customer: string;
-  phone: string;
-  service: string;
-  status: "waiting" | "called" | "in-service";
-  waitMins: number;
-  priority: "normal" | "vip";
-  type: "appointment" | "walk-in";
-}> = [];
-
-
-const statusColors: Record<string, string> = {
-  pending: "bg-yellow-100 text-yellow-700 border-yellow-200",
-  confirmed: "bg-green-100 text-green-700 border-green-200",
-  "checked-in": "bg-cyan-100 text-cyan-700 border-cyan-200",
-  "in-progress": "bg-blue-100 text-blue-700 border-blue-200",
-  completed: "bg-gray-100 text-gray-700 border-gray-200",
-  cancelled: "bg-red-100 text-red-700 border-red-200",
-  "no-show": "bg-red-100 text-red-700 border-red-200",
-  rescheduled: "bg-purple-100 text-purple-700 border-purple-200",
-  waiting: "bg-orange-100 text-orange-700 border-orange-200",
-  called: "bg-purple-100 text-purple-700 border-purple-200",
-  "in-service": "bg-blue-100 text-blue-700 border-blue-200",
-};
-
-type AppointmentStatus =
-  | "pending"
-  | "confirmed"
-  | "checked-in"
-  | "in-progress"
-  | "completed"
-  | "cancelled"
-  | "no-show"
-  | "rescheduled";
-
-interface Appointment {
-  id: string;
-  sortKey: number;
-  time: string;
-  duration: number;
-  customer: string;
-  phone: string;
-  customerId?: string;
-  service: string;
-  /** All booked service names (multi-select). `service` stays a display/join string. */
-  services?: string[];
-  serviceLines?: ApiAppointment["serviceLines"];
-  status: AppointmentStatus;
-  type: "appointment" | "walk-in";
-
-  chairNo?: string;
-  roomNo?: string;
-
-  serviceProgress?: number;
-
-  arrivalStatus?: "not-arrived" | "arrived" | "late";
-
-  source?: "online" | "walk-in" | "phone";
-
-  extraServices?: {
-    name: string;
-    price: number;
-  }[];
-
-  date?: string;
-  scheduledDate?: string;
-  notes?: string;
-}
-
-type WalkinStatus = "waiting" | "in-service" | "done";
-
-function toApiStatus(status: AppointmentStatus | WalkinStatus): ApptStatus {
-  if (status === "in-service") return "in-progress";
-  if (status === "done") return "completed";
-  if (status === "checked-in") return "confirmed";
-  return status as ApptStatus;
-}
-
-interface Walkin {
-  id: string;
-  sortKey: number;
-  token: string;
-  customer: string;
-  phone: string;
-  customerId?: string;
-  service: string;
-  services?: string[];
-  status: WalkinStatus;
-  waitMins: number;
-  arrival: string;
-  notes?: string;
-}
-
-// ─── Timeline ordering ──────────────────────────────────────────────────────
-// Most recently updated first — any status/edit bumps `updatedAt` / sortKey
-// so the row moves to the top of the Timeline.
-function sortAppointmentQueue(list: Appointment[]): Appointment[] {
-  return [...list].sort((a, b) => {
-    if (b.sortKey !== a.sortKey) return b.sortKey - a.sortKey;
-    return a.time.localeCompare(b.time);
-  });
-}
-
-function walkinQueueRank(status: WalkinStatus): number {
-  if (status === "in-service") return 1;
-  if (status === "done") return 2;
-  return 0; // waiting
-}
-
-function sortWalkinQueue(list: Walkin[]): Walkin[] {
-  return [...list].sort((a, b) => {
-    const rankDiff = walkinQueueRank(a.status) - walkinQueueRank(b.status);
-    return rankDiff !== 0 ? rankDiff : a.sortKey - b.sortKey;
-  });
-}
-
-type BillingTarget = {
-  name: string;
-  phone: string;
-  service: string;
-  id: string;
-  customerId?: string;
-  type?: "appointment" | "walk-in";
-  time?: string;
-  token?: string;
-  sourceKind: "appointment" | "walkin";
-};
-// Back button component used across sub-pages
-function BackButton({ onClick }: { onClick: () => void }) {
-  return (
-    <Button variant="outline" size="sm" onClick={onClick} className="flex items-center gap-1 rounded-xl border-[#d4af37]/40 hover:bg-amber-50">
-      <ArrowLeft className="h-4 w-4" /> Back
-    </Button>
-  );
-}
-
-const NOTIFY_TEMPLATES = [
-  {
-    id: "confirm",
-    label: "Confirmation",
-    text: (name: string) =>
-      `Dear ${name}, your appointment at BillVyapp is confirmed. We look forward to seeing you!`,
-  },
-  {
-    id: "reminder",
-    label: "Reminder",
-    text: (name: string) =>
-      `Hi ${name}, this is a friendly reminder about your upcoming appointment at BillVyapp. See you soon!`,
-  },
-  {
-    id: "delay",
-    label: "Running late",
-    text: (name: string) =>
-      `Hi ${name}, we're running slightly behind schedule at BillVyapp. Thank you for your patience — we'll see you shortly.`,
-  },
-  {
-    id: "thanks",
-    label: "Thank you",
-    text: (name: string) =>
-      `Thank you for visiting BillVyapp, ${name}! We hope you loved your experience. Book again anytime.`,
-  },
-] as const;
-
-const DIRECT_BILL_TIER_BADGE: Record<string, string> = {
-  Platinum: "bg-[#111118] text-[#D4AF37] border-transparent",
-  Gold: "bg-[#D4AF37]/15 text-[#B8962E] border-[#D4AF37]/20",
-  Silver: "bg-black/[0.06] text-[#6b6b6b] border-black/[0.08]",
-  Basic: "bg-black/[0.04] text-[#9a9a9a] border-black/[0.05]",
-};
-
-function membershipTierLabel(tier: string): string {
-  switch (tier.toLowerCase()) {
-    case "platinum":
-      return "Platinum";
-    case "gold":
-      return "Gold";
-    case "silver":
-      return "Silver";
-    default:
-      return "Basic";
-  }
-}
-
-function buildAppointmentServicePayload(
-  catalog: CatalogService[],
-  serviceName: string,
-  fallbackDuration = 30,
-) {
-  const match = findCatalogService(catalog, serviceName);
-  return {
-    serviceId: match?.id,
-    itemName: serviceName,
-    price: match?.price ?? resolveServicePrice(catalog, serviceName),
-    durationMinutes: match?.duration ?? fallbackDuration,
-  };
-}
-
-/** Normalize an appointment's service list (supports legacy single `service` string). */
-function appointmentServiceNames(appt: {
-  service: string;
-  services?: string[];
-}): string[] {
-  if (appt.services && appt.services.length > 0) {
-    return appt.services;
-  }
-  return appt.service
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
-function totalDurationForServices(catalog: CatalogService[], names: string[]): number {
-  return names.reduce((sum, name) => {
-    const match = findCatalogService(catalog, name);
-    return sum + (match?.duration ?? 30);
-  }, 0);
-}
-
-function customerInitials(name: string) {
-  return name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
-}
+import {
+  APPOINTMENTS,
+  WALKINS,
+  QUEUE,
+  NO_DISCOUNT_TOOLS,
+  type DiscountTool,
+  type Appointment,
+  type AppointmentStatus,
+  type Walkin,
+  type WalkinStatus,
+  type BillingTarget,
+  type NotifyTarget,
+  statusColors,
+} from "./appointments/board/boardTypes";
+import { sortAppointmentQueue, sortWalkinQueue } from "./appointments/board/queueSort";
+import {
+  createDefaultBillPayment,
+  toApiStatus,
+  buildAppointmentServicePayload,
+  appointmentServiceNames,
+  customerInitials,
+  DIRECT_BILL_TIER_BADGE,
+  membershipTierLabel,
+} from "./appointments/board/appointmentHelpers";
+import { NOTIFY_TEMPLATES } from "./appointments/board/notifyTemplates";
+import { EditWalkinDialog } from "./appointments/board/EditWalkinDialog";
+import { EditAppointmentDialog } from "./appointments/board/EditAppointmentDialog";
+import { NotifyCustomerDialog } from "./appointments/board/NotifyCustomerDialog";
+import { QueueBoard } from "./appointments/board/QueueBoard";
 
 export function Appointments() {
   const [serviceCatalog, setServiceCatalog] = useState<CatalogService[]>([]);
@@ -446,7 +237,7 @@ export function Appointments() {
   const [expandedServices, setExpandedServices] = useState<Set<string>>(new Set());
   const [customerInfoAppt, setCustomerInfoAppt] = useState<Appointment | null>(null);
   const [notifyOpen, setNotifyOpen] = useState(false);
-  const [notifyTarget, setNotifyTarget] = useState<{ name: string; phone: string } | null>(null);
+  const [notifyTarget, setNotifyTarget] = useState<NotifyTarget | null>(null);
   const [notifyMsg, setNotifyMsg] = useState("");
   const [billingOpen, setBillingOpen] = useState(false);
   const billAutoOpenedRef = useRef<string | null>(null);
@@ -955,17 +746,44 @@ export function Appointments() {
     return () => window.clearTimeout(timer);
   }, [billHandoffPending, setSearchParams]);
 
+  const resetBillingForm = () => {
+    setCouponApplied(null);
+    setCouponInput("");
+    setLoyaltyRedeem(0);
+    setDiscountPct(0);
+    setDiscountFlat(0);
+    setDiscountMode("pct");
+    setDiscountTools(NO_DISCOUNT_TOOLS);
+    setDiscountReason("");
+    setAdvanceApplied(0);
+    setPayMethod(createDefaultBillPayment());
+    setScanFocus(false);
+  };
+
+  const clearBillingSelections = () => {
+    setBillingItems([]);
+    setBillingServiceSearch("");
+    setBillingReferral("");
+    setDirectCustomerSearch("");
+    setDirectCustomerSelected(false);
+    setDirectCustomerMode("search");
+    resetBillingForm();
+  };
+
   const dismissBilling = () => {
     setBillingOpen(false);
     setScanFocus(false);
+    clearBillingSelections();
 
     if (!billAppointmentId) return;
 
     billAutoOpenedRef.current = null;
     billRefreshTriedRef.current = false;
-    // The checkout was launched from the walk-in flow. Leave the handoff route
-    // immediately so its six-second recovery timer cannot fire after dismissal.
-    navigate("/walk-in", { replace: true });
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("bill");
+      return next;
+    }, { replace: true });
   };
 
   const openWalkinBilling = (w: Walkin) => {
@@ -1114,20 +932,6 @@ export function Appointments() {
       return { ...a, extraServices: (a.extraServices || []).filter(e => e.name !== serviceName) };
     }));
     setExtraServicesTarget(prev => prev ? { ...prev, extraServices: (prev.extraServices || []).filter(e => e.name !== serviceName) } : prev);
-  };
-
-  const resetBillingForm = () => {
-    setCouponApplied(null);
-    setCouponInput("");
-    setLoyaltyRedeem(0);
-    setDiscountPct(0);
-    setDiscountFlat(0);
-    setDiscountMode("pct");
-    setDiscountTools(NO_DISCOUNT_TOOLS);
-    setDiscountReason("");
-    setAdvanceApplied(0);
-    setPayMethod(createDefaultBillPayment());
-    setScanFocus(false);
   };
 
   const finalizeAppointmentAfterCheckout = async () => {
@@ -1974,98 +1778,15 @@ export function Appointments() {
         </TabsContent>
 
 
-        {/* â”€â”€ QUEUE TAB â”€â”€ Tabular by default */}
-        <TabsContent value="queue" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden data-[state=inactive]:hidden">
-          <div className="flex shrink-0 items-center gap-3">
-            <Button variant="outline" size="sm" className="rounded-xl border-[#d4af37]/40 hover:bg-amber-50" onClick={() => { setActiveTab("timeline"); setFilterTypeAndUrl("walk-in"); }}>
-              <ArrowLeft className="h-4 w-4 mr-1" /> Back
-            </Button>
-            <div className="flex-1 flex justify-between items-center">
-              <h2 className="text-lg font-semibold">Booking Queue</h2>
-              <div className="flex gap-2">
-                <Badge className="bg-purple-100 text-purple-700">VIP Priority</Badge>
-                <Badge className="bg-orange-100 text-orange-700">Walk-ins</Badge>
-              </div>
-            </div>
-          </div>
-          {/* Queue table */}
-          <Card className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden shadow-lg">
-            <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
-              <div className="min-h-0 flex-1 overflow-auto overscroll-contain">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-[#FAF8F2]">
-                      <th className="text-left p-3 font-semibold text-[#3d3d3d]">#</th>
-                      <th className="text-left p-3 font-semibold text-[#3d3d3d]">Token</th>
-                      <th className="text-left p-3 font-semibold text-[#3d3d3d]">Customer</th>
-                      <th className="text-left p-3 font-semibold text-[#3d3d3d]">Phone</th>
-                      <th className="text-left p-3 font-semibold text-[#3d3d3d]">Service</th>
-                      <th className="text-left p-3 font-semibold text-[#3d3d3d]">Type</th>
-                      <th className="text-left p-3 font-semibold text-[#3d3d3d]">Priority</th>
-                      <th className="text-left p-3 font-semibold text-[#3d3d3d]">Wait</th>
-                      <th className="text-left p-3 font-semibold text-[#3d3d3d]">Status</th>
-                      <th className="text-left p-3 font-semibold text-[#3d3d3d]">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedQueue.map((q, idx) => (
-                      <tr key={q.id} className={`border-b transition-colors hover:bg-amber-50/50 ${idx % 2 === 0 ? "bg-white" : "bg-[#FAFAFA]"}`}>
-                        <td className="p-3">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#1a1a1a] to-[#2d2d2d] text-white font-bold text-sm">
-                            {idx + 1}
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <span className="font-mono bg-[#1a1a1a] text-white text-xs px-2 py-0.5 rounded-md">{q.token}</span>
-                        </td>
-                        <td className="p-3 font-semibold text-[#1a1a1a]">{q.customer}</td>
-                        <td className="p-3 text-muted-foreground text-xs">{q.phone}</td>
-                        <td className="p-3 font-medium">{q.service}</td>
-                        <td className="p-3"><Badge variant="outline" className="text-xs capitalize">{q.type}</Badge></td>
-                        <td className="p-3">
-                          {q.priority === "vip"
-                            ? <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs">VIP</Badge>
-                            : <Badge variant="outline" className="text-xs">Normal</Badge>}
-                        </td>
-                        <td className="p-3">
-                          {q.waitMins > 0 ? <span className="text-orange-600 font-semibold">{q.waitMins}m</span> : <span className="text-green-600">—</span>}
-                        </td>
-                        <td className="p-3">
-                          <Badge className={`${statusColors[q.status]} border text-xs`}>{q.status}</Badge>
-                        </td>
-                        <td className="p-3">
-                          <div className="flex gap-1">
-                            {q.status === "waiting" && (
-                              <Button size="sm" className="h-7 text-xs rounded-lg bg-purple-600 hover:bg-purple-700" onClick={() => setQueue(prev => prev.map(x => x.id === q.id ? { ...x, status: "called" as const } : x))}>
-                                <Bell className="h-3 w-3 mr-0.5" />Call
-                              </Button>
-                            )}
-                            {q.status === "called" && (
-                              <Button size="sm" className="h-7 text-xs rounded-lg bg-blue-600 hover:bg-blue-700" onClick={() => setQueue(prev => prev.map(x => x.id === q.id ? { ...x, status: "in-service" as const, waitMins: 0 } : x))}>
-                                Seat
-                              </Button>
-                            )}
-                            <Button size="sm" variant="outline" className="h-7 w-7 p-0 rounded-lg" onClick={() => openNotify(q.customer, q.phone)}><MessageSquare className="h-3 w-3" /></Button>
-                            <Button size="sm" variant="outline" className="h-7 w-7 p-0 rounded-lg text-red-500 hover:bg-red-50" onClick={() => setQueue(prev => prev.filter(x => x.id !== q.id))}><X className="h-3 w-3" /></Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="shrink-0 border-t border-black/[0.06] bg-white">
-              <Pagination
-                page={queuePagination.page}
-                pageSize={queuePagination.pageSize}
-                totalRecords={queue.length}
-                onPageChange={queuePagination.setPage}
-                onPageSizeChange={queuePagination.setPageSize}
-              />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <QueueBoard
+          paginatedQueue={paginatedQueue}
+          queuePagination={queuePagination}
+          queue={queue}
+          setActiveTab={setActiveTab}
+          setFilterTypeAndUrl={setFilterTypeAndUrl}
+          setQueue={setQueue}
+          openNotify={openNotify}
+        />
 
         {/* Calendar tab */}
         <TabsContent value="calendar" className="mt-0 min-h-0 flex-1 overflow-y-auto overscroll-contain data-[state=inactive]:hidden">
@@ -2280,156 +2001,12 @@ export function Appointments() {
       </Tabs>
 
       {/* â”€â”€ NEW APPOINTMENT MODAL â”€â”€ */}
-      {/* â”€â”€ EDIT WALK-IN MODAL â”€â”€ */}
-      <Dialog open={!!editWalkin} onOpenChange={open => !open && setEditWalkin(null)}>
-        <DialogContent aria-describedby={undefined} className="gap-0 overflow-hidden rounded-2xl border-black/[0.08] p-0 sm:max-w-lg">
-          <div className="relative border-b border-black/[0.06] bg-[#111118] px-6 py-5">
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#D4AF37]/70 to-transparent" />
-            <DialogHeader className="space-y-1 text-left">
-              <DialogTitle className="flex items-center gap-2.5 text-[16px] font-bold text-white">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/15">
-                  <Edit className="h-4 w-4 text-[#D4AF37]" />
-                </div>
-                Edit Walk-In
-              </DialogTitle>
-              <p className="text-[12px] text-white/50">Update details for this walk-in visit</p>
-            </DialogHeader>
-          </div>
-          {editWalkin && (
-            <div className="space-y-4 bg-[#f4f2ed] p-6">
-              {/* Recipient summary card */}
-              <div className="flex items-center gap-3 rounded-xl border border-[#D4AF37]/25 bg-[#FFFBEB] p-3.5 shadow-[0_2px_12px_rgba(212,175,55,0.08)]">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#C9A227] text-[12px] font-bold text-[#111118]">
-                  {customerInitials(editWalkin.customer || "?")}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[14px] font-bold text-[#111118]">{editWalkin.customer || "Unnamed walk-in"}</p>
-                  <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[#9a9a9a]">
-                    <Phone className="h-3 w-3 shrink-0 text-[#D4AF37]" />
-                    {editWalkin.phone || "No phone number on file"}
-                  </p>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-1">
-                  <Badge className="border border-black/[0.08] bg-black/[0.06] text-[9px] font-bold text-[#6b6b6b]">
-                    {editWalkin.token}
-                  </Badge>
-                  <Badge className={cn("border text-[9px] font-bold capitalize", statusColors[editWalkin.status])}>
-                    {editWalkin.status}
-                  </Badge>
-                </div>
-              </div>
-
-              {/* Contact fields */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Customer Name</Label>
-                  <div className="relative mt-1.5">
-                    <User className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
-                    <Input
-                      value={editWalkin.customer}
-                      onChange={e => setEditWalkin(w => w ? { ...w, customer: e.target.value } : w)}
-                      className="h-10 rounded-xl border-black/[0.08] bg-white pl-9 focus:border-[#D4AF37]/40 focus:ring-[#D4AF37]/10"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Phone</Label>
-                  <div className="relative mt-1.5">
-                    <Phone className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
-                    <Input
-                      value={editWalkin.phone}
-                      onChange={e => setEditWalkin(w => w ? { ...w, phone: e.target.value } : w)}
-                      className="h-10 rounded-xl border-black/[0.08] bg-white pl-9 focus:border-[#D4AF37]/40 focus:ring-[#D4AF37]/10"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Service assignment — multi-select */}
-              <div className="rounded-xl border border-black/[0.06] bg-white p-3.5 space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">
-                    <Scissors className="h-3 w-3 text-[#D4AF37]" /> Services
-                  </p>
-                  <span className="text-[10px] font-semibold text-[#D4AF37]">
-                    {appointmentServiceNames(editWalkin).length} selected
-                  </span>
-                </div>
-                <div className="max-h-48 space-y-1.5 overflow-y-auto pr-0.5">
-                  {serviceCatalog.map((s) => {
-                    const selected = appointmentServiceNames(editWalkin).includes(s.name);
-                    return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() =>
-                          setEditWalkin((w) => {
-                            if (!w) return w;
-                            const current = appointmentServiceNames(w);
-                            const next = selected
-                              ? current.filter((n) => n !== s.name)
-                              : [...current, s.name];
-                            if (next.length === 0) return w;
-                            return {
-                              ...w,
-                              services: next,
-                              service: next.join(", "),
-                            };
-                          })
-                        }
-                        className={cn(
-                          "flex w-full items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition-all",
-                          selected
-                            ? "border-[#D4AF37]/40 bg-[#FFFBEB] shadow-sm"
-                            : "border-black/[0.07] bg-[#faf9f7] hover:border-[#D4AF37]/25",
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            "flex h-5 w-5 shrink-0 items-center justify-center rounded-md",
-                            selected ? "bg-[#D4AF37] text-[#111118]" : "bg-white text-[#c0c0c0] border border-black/[0.08]",
-                          )}
-                        >
-                          {selected ? <Check className="h-3 w-3" strokeWidth={3} /> : <Plus className="h-3 w-3" />}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[12.5px] font-semibold text-[#111118]">{s.name}</p>
-                          <p className="text-[10px] text-[#9a9a9a]">{s.duration} min · {formatInr(s.price)}</p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-          <DialogFooter className="border-t border-black/[0.06] bg-white px-6 py-4 gap-2">
-            <Button variant="outline" className="rounded-xl" onClick={() => setEditWalkin(null)}>Cancel</Button>
-            <Button
-              className="rounded-xl bg-[#111118] text-[#D4AF37] hover:bg-[#1a1a1a]"
-              onClick={() => {
-                if (!editWalkin) return;
-                void (async () => {
-                  try {
-                    await persistAppointmentEdit({
-                      id: editWalkin.id,
-                      customer: editWalkin.customer,
-                      phone: editWalkin.phone,
-                      services: appointmentServiceNames(editWalkin),
-                    });
-                    setEditWalkin(null);
-                    toast.success("Walk-in updated");
-                  } catch (error) {
-                    toast.error(getApiErrorMessage(error, "Failed to save walk-in"));
-                  }
-                })();
-              }}
-            >
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EditWalkinDialog
+        editWalkin={editWalkin}
+        setEditWalkin={setEditWalkin}
+        serviceCatalog={serviceCatalog}
+        persistAppointmentEdit={persistAppointmentEdit}
+      />
 
       {/* â”€â”€ WALK-IN CUSTOMER INFO â”€â”€ */}
       <Dialog open={!!customerInfoWalkin} onOpenChange={() => setCustomerInfoWalkin(null)}>
@@ -2517,369 +2094,20 @@ export function Appointments() {
         </DialogContent>
       </Dialog>
 
-      {/* â”€â”€ NOTIFY / SMS+WHATSAPP MODAL â”€â”€ */}
-      <Dialog open={notifyOpen} onOpenChange={setNotifyOpen}>
-        <DialogContent aria-describedby={undefined} className="gap-0 overflow-hidden rounded-2xl border-black/[0.08] p-0 sm:max-w-md">
-          <div className="relative border-b border-black/[0.06] bg-[#111118] px-6 py-5">
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#D4AF37]/70 to-transparent" />
-            <DialogHeader className="space-y-1 text-left">
-              <DialogTitle className="flex items-center gap-2.5 text-[16px] font-bold text-white">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/15">
-                  <MessageSquare className="h-4 w-4 text-[#D4AF37]" />
-                </div>
-                {notifyTarget?.context === "staff" ? "Notify Staff" : "Notify Customer"}
-              </DialogTitle>
-              <p className="text-[12px] text-white/50">
-                Send a WhatsApp or SMS message via BillVyapp
-              </p>
-            </DialogHeader>
-          </div>
+      <NotifyCustomerDialog
+        notifyOpen={notifyOpen}
+        setNotifyOpen={setNotifyOpen}
+        notifyTarget={notifyTarget}
+        notifyMsg={notifyMsg}
+        setNotifyMsg={setNotifyMsg}
+      />
 
-          {notifyTarget && (
-            <div className="space-y-4 bg-[#f4f2ed] p-6">
-              {/* Recipient card */}
-              <div className="flex items-center gap-3 rounded-xl border border-[#D4AF37]/25 bg-[#FFFBEB] p-3.5 shadow-[0_2px_12px_rgba(212,175,55,0.08)]">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#C9A227] text-[12px] font-bold text-[#111118]">
-                  {customerInitials(notifyTarget.name)}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[14px] font-bold text-[#111118]">{notifyTarget.name}</p>
-                  <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[#9a9a9a]">
-                    <Phone className="h-3 w-3 shrink-0 text-[#D4AF37]" />
-                    {notifyTarget.phone || "No phone number on file"}
-                  </p>
-                </div>
-                <Badge className={cn(
-                  "shrink-0 border text-[9px] font-bold",
-                  notifyTarget.context === "staff"
-                    ? "border-black/[0.08] bg-black/[0.06] text-[#6b6b6b]"
-                    : "border-[#D4AF37]/25 bg-[#D4AF37]/10 text-[#B8962E]",
-                )}>
-                  {notifyTarget.context === "staff" ? "Staff" : "Customer"}
-                </Badge>
-              </div>
-
-              {/* Quick templates */}
-              {notifyTarget.context === "customer" && (
-                <div>
-                  <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Quick templates</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {NOTIFY_TEMPLATES.map(t => {
-                      const active = notifyMsg === t.text(notifyTarget.name);
-                      return (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => setNotifyMsg(t.text(notifyTarget.name))}
-                          className={cn(
-                            "rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition-all",
-                            active
-                              ? "border-[#D4AF37]/50 bg-[#111118] text-[#D4AF37] shadow-sm"
-                              : "border-black/[0.08] bg-white text-[#6b6b6b] hover:border-[#D4AF37]/35 hover:bg-[#FFFBEB] hover:text-[#111118]",
-                          )}
-                        >
-                          {t.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Message */}
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <Label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Message</Label>
-                  <span className={cn(
-                    "text-[10px] tabular-nums font-semibold",
-                    notifyMsg.length > 280 ? "text-[#E07A5F]" : "text-[#c0c0c0]",
-                  )}>
-                    {notifyMsg.length}/320
-                  </span>
-                </div>
-                <Textarea
-                  rows={4}
-                  maxLength={320}
-                  value={notifyMsg}
-                  onChange={e => setNotifyMsg(e.target.value)}
-                  placeholder="Write your message…"
-                  className="resize-none rounded-xl border-black/[0.08] bg-white text-[13px] leading-relaxed text-[#111118] placeholder:text-[#c0c0c0] focus:border-[#D4AF37]/40 focus:ring-[#D4AF37]/10"
-                />
-              </div>
-
-              {/* Live preview — chat-style bubble */}
-              {notifyMsg.trim() && (
-                <div>
-                  <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Preview</p>
-                  <div className="rounded-xl bg-[#e9f8ef] p-3">
-                    <div className="ml-auto max-w-[85%] rounded-2xl rounded-tr-sm bg-white px-3.5 py-2.5 shadow-sm">
-                      <p className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-[#111118]">{notifyMsg}</p>
-                      <p className="mt-1 text-right text-[9px] text-[#9a9a9a]">Now</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Send actions */}
-              <div className="grid grid-cols-2 gap-2.5 pt-1">
-                <Button
-                  disabled={!notifyMsg.trim() || !notifyTarget.phone}
-                  className="h-11 rounded-xl bg-[#111118] text-[13px] font-bold text-[#D4AF37] hover:bg-[#1e1e1e] disabled:opacity-40"
-                  onClick={() => {
-                    toast.success("WhatsApp sent", { description: `Message delivered to ${notifyTarget.name}` });
-                    setNotifyOpen(false);
-                  }}
-                >
-                  <Send className="mr-2 h-4 w-4" />
-                  WhatsApp
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={!notifyMsg.trim() || !notifyTarget.phone}
-                  className="h-11 rounded-xl border-black/[0.1] bg-white text-[13px] font-semibold text-[#111118] hover:border-[#D4AF37]/35 hover:bg-[#FFFBEB] disabled:opacity-40"
-                  onClick={() => {
-                    toast.success("SMS sent", { description: `Message delivered to ${notifyTarget.name}` });
-                    setNotifyOpen(false);
-                  }}
-                >
-                  <Phone className="mr-2 h-4 w-4 text-[#D4AF37]" />
-                  Send SMS
-                </Button>
-              </div>
-
-              {!notifyTarget.phone && (
-                <p className="flex items-center gap-1.5 text-center text-[11px] text-[#9a9a9a]">
-                  <AlertCircle className="h-3.5 w-3.5 shrink-0 text-[#D4AF37]" />
-                  Add a phone number to send notifications
-                </p>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* â”€â”€ EDIT APPOINTMENT MODAL â”€â”€ */}
-      <Dialog open={!!editAppt} onOpenChange={open => !open && setEditAppt(null)}>
-        <DialogContent aria-describedby={undefined} className="gap-0 overflow-hidden rounded-2xl border-black/[0.08] p-0 sm:max-w-lg [&>button:last-of-type]:absolute [&>button:last-of-type]:right-4 [&>button:last-of-type]:top-4 [&>button:last-of-type]:text-white/50 [&>button:last-of-type]:hover:text-white">
-          <div className="relative border-b border-black/[0.06] bg-[#111118] px-6 py-5">
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#D4AF37]/70 to-transparent" />
-            <DialogHeader className="space-y-1 text-left">
-              <DialogTitle className="flex items-center gap-2.5 text-[16px] font-bold text-white">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/15">
-                  <Edit className="h-4 w-4 text-[#D4AF37]" />
-                </div>
-                Edit Appointment
-              </DialogTitle>
-              <p className="text-[12px] text-white/50">Update booking details or status</p>
-            </DialogHeader>
-          </div>
-
-          {editAppt && (
-            <div className="space-y-4 bg-[#f4f2ed] p-6">
-              {/* Customer summary */}
-              <div className="flex items-center gap-3 rounded-xl border border-[#D4AF37]/25 bg-[#FFFBEB] p-3.5 shadow-[0_2px_12px_rgba(212,175,55,0.08)]">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#C9A227] text-[12px] font-bold text-[#111118]">
-                  {customerInitials(editAppt.customer || "?")}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[14px] font-bold text-[#111118]">{editAppt.customer || "Unnamed customer"}</p>
-                  <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[#9a9a9a]">
-                    <Phone className="h-3 w-3 shrink-0 text-[#D4AF37]" />
-                    {editAppt.phone || "No phone number on file"}
-                  </p>
-                </div>
-                <Badge className={cn("shrink-0 border text-[9px] font-bold capitalize", statusColors[editAppt.status])}>
-                  {editAppt.status}
-                </Badge>
-              </div>
-
-              {/* Schedule snapshot */}
-              <div className="grid grid-cols-3 gap-2.5">
-                {[
-                  { icon: CalendarIcon, label: "Date", value: editAppt.date ?? "Today" },
-                  { icon: Clock, label: "Time", value: editAppt.time },
-                  {
-                    icon: Timer,
-                    label: "Duration",
-                    value: `${totalDurationForServices(serviceCatalog, appointmentServiceNames(editAppt)) || editAppt.duration} min`,
-                  },
-                ].map(({ icon: Icon, label, value }) => (
-                  <div
-                    key={label}
-                    className="rounded-xl border border-black/[0.06] bg-white px-3 py-2.5 text-center shadow-sm"
-                  >
-                    <Icon className="mx-auto mb-1 h-3.5 w-3.5 text-[#D4AF37]" />
-                    <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-[#9a9a9a]">{label}</p>
-                    <p className="mt-0.5 truncate text-[12px] font-semibold text-[#111118]">{value}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Contact */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <Label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Customer Name</Label>
-                  <div className="relative mt-1.5">
-                    <User className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
-                    <Input
-                      value={editAppt.customer}
-                      onChange={e => setEditAppt(a => a ? { ...a, customer: e.target.value } : a)}
-                      className="h-10 rounded-xl border-black/[0.08] bg-white pl-9 focus:border-[#D4AF37]/40 focus:ring-[#D4AF37]/10"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Phone</Label>
-                  <div className="relative mt-1.5">
-                    <Phone className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
-                    <Input
-                      value={editAppt.phone}
-                      onChange={e => setEditAppt(a => a ? { ...a, phone: e.target.value } : a)}
-                      className="h-10 rounded-xl border-black/[0.08] bg-white pl-9 focus:border-[#D4AF37]/40 focus:ring-[#D4AF37]/10"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Services — multi-select */}
-              <div className="space-y-3 rounded-xl border border-black/[0.06] bg-white p-3.5">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">
-                    <Scissors className="h-3 w-3 text-[#D4AF37]" />
-                    Services
-                  </p>
-                  <span className="text-[10px] font-semibold text-[#D4AF37]">
-                    {appointmentServiceNames(editAppt).length} selected ·{" "}
-                    {totalDurationForServices(serviceCatalog, appointmentServiceNames(editAppt))} min
-                  </span>
-                </div>
-                <div className="max-h-52 space-y-1.5 overflow-y-auto pr-0.5">
-                  {serviceCatalog.length === 0 && (
-                    <p className="py-4 text-center text-[12px] italic text-[#c0c0c0]">No services loaded</p>
-                  )}
-                  {serviceCatalog.map((s) => {
-                    const selected = appointmentServiceNames(editAppt).includes(s.name);
-                    return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() =>
-                          setEditAppt((a) => {
-                            if (!a) return a;
-                            const current = appointmentServiceNames(a);
-                            const next = selected
-                              ? current.filter((n) => n !== s.name)
-                              : [...current, s.name];
-                            if (next.length === 0) return a;
-                            return {
-                              ...a,
-                              services: next,
-                              service: next.join(", "),
-                              duration: totalDurationForServices(serviceCatalog, next),
-                            };
-                          })
-                        }
-                        className={cn(
-                          "flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-all",
-                          selected
-                            ? "border-[#D4AF37]/40 bg-[#FFFBEB] shadow-sm"
-                            : "border-black/[0.07] bg-[#faf9f7] hover:border-[#D4AF37]/25 hover:bg-white",
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            "flex h-5 w-5 shrink-0 items-center justify-center rounded-md",
-                            selected
-                              ? "bg-[#D4AF37] text-[#111118]"
-                              : "border border-black/[0.08] bg-white text-[#c0c0c0]",
-                          )}
-                        >
-                          {selected ? <Check className="h-3 w-3" strokeWidth={3} /> : <Plus className="h-3 w-3" />}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[12.5px] font-semibold text-[#111118]">{s.name}</p>
-                          <p className="mt-0.5 text-[10px] text-[#9a9a9a]">
-                            {s.duration} min · {formatInr(s.price)}
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Status */}
-              <div className="rounded-xl border border-black/[0.06] bg-white p-3.5">
-                <p className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Appointment Status</p>
-                <div className="flex flex-wrap gap-2">
-                  {(
-                    [
-                      { value: "pending", label: "Pending" },
-                      { value: "confirmed", label: "Confirmed" },
-                      { value: "in-progress", label: "In Progress" },
-                      { value: "completed", label: "Completed" },
-                      { value: "cancelled", label: "Cancelled" },
-                    ] as const
-                  ).map(({ value, label }) => {
-                    const active = editAppt.status === value;
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => setEditAppt(a => a ? { ...a, status: value } : a)}
-                        className={cn(
-                          "rounded-lg border px-3 py-1.5 text-[11px] font-semibold capitalize transition-all",
-                          active
-                            ? "border-[#D4AF37]/40 bg-[#FFFBEB] text-[#9a7a1e] shadow-sm ring-1 ring-[#D4AF37]/20"
-                            : "border-black/[0.08] bg-[#faf9f7] text-[#6b6b6b] hover:border-[#D4AF37]/25 hover:bg-white",
-                        )}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <DialogFooter className="gap-2 border-t border-black/[0.06] bg-white px-6 py-4">
-            <Button
-              variant="outline"
-              className="h-10 flex-1 rounded-xl border-black/[0.1] text-[13px] font-semibold sm:flex-none"
-              onClick={() => setEditAppt(null)}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="h-10 flex-1 rounded-xl bg-[#111118] text-[13px] font-semibold text-[#D4AF37] hover:bg-[#1a1a1a] sm:flex-none"
-              onClick={() => {
-                if (!editAppt) return;
-                void (async () => {
-                  try {
-                    await persistAppointmentEdit({
-                      id: editAppt.id,
-                      customer: editAppt.customer,
-                      phone: editAppt.phone,
-                      services: appointmentServiceNames(editAppt),
-                      status: editAppt.status,
-                    });
-                    setEditAppt(null);
-                    toast.success("Appointment updated", {
-                      description: `${editAppt.customer} · ${appointmentServiceNames(editAppt).length} service(s) · ${editAppt.time}`,
-                    });
-                  } catch (error) {
-                    toast.error(getApiErrorMessage(error, "Failed to save appointment"));
-                  }
-                })();
-              }}
-            >
-              <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EditAppointmentDialog
+        editAppt={editAppt}
+        setEditAppt={setEditAppt}
+        serviceCatalog={serviceCatalog}
+        persistAppointmentEdit={persistAppointmentEdit}
+      />
 
       {/* â”€â”€ CUSTOMER INFO MODAL â”€â”€ */}
       <Dialog open={!!customerInfoAppt} onOpenChange={() => setCustomerInfoAppt(null)}>
@@ -3776,7 +3004,8 @@ export function Appointments() {
                 </div>
 
                 {/* Checkout actions */}
-                <div className="shrink-0 flex flex-col gap-2.5 border-t border-black/[0.06] bg-[#faf9f7] px-4 py-3 sm:flex-row sm:gap-3 sm:px-5">
+                <div className="shrink-0 flex flex-col gap-2.5 border-t border-black/[0.06] bg-[#faf9f7] px-4 py-3 sm:px-5">
+                  <div className="flex flex-col gap-2.5 sm:flex-row sm:gap-3">
                   <button
                     type="button"
                     onClick={handleConfirmOnly}
@@ -3798,6 +3027,14 @@ export function Appointments() {
                         {billDue === 0 ? "Covered by advance" : `₹${billDue.toLocaleString()} due`}
                       </span>
                     </span>
+                  </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={clearBillingSelections}
+                    className="h-10 w-full rounded-xl border border-black/[0.1] bg-white text-[13px] font-medium text-[#9a9a9a] transition-colors hover:border-[#D4AF37]/30 hover:bg-[#FFFBEB] hover:text-[#9a7a1e]"
+                  >
+                    Cancel
                   </button>
                 </div>
               </div>

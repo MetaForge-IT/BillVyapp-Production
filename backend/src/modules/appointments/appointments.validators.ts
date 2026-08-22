@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { paginationQuerySchema } from "../../utils/pagination";
 
 const appointmentServiceSchema = z.object({
   serviceId: z.string().uuid().optional(),
@@ -69,10 +70,8 @@ export type CreateAppointmentInput = z.infer<typeof createAppointmentSchema>;
 export type UpdateAppointmentStatusInput = z.infer<typeof updateAppointmentStatusSchema>;
 export type UpdateAppointmentInput = z.infer<typeof updateAppointmentSchema>;
 
-export const listAppointmentsQuerySchema = z.object({
+export const listAppointmentsQuerySchema = paginationQuerySchema.extend({
   date: z.string().date().optional(),
-  page: z.coerce.number().int().min(1).optional().default(1),
-  limit: z.coerce.number().int().min(1).max(200).optional().default(50),
 });
 
 export type ListAppointmentsQuery = z.infer<typeof listAppointmentsQuerySchema>;

@@ -1,7 +1,7 @@
 import type { Appointment as ApiAppointment } from "../../../../api/appointments";
 
+/** Optional bill adjustments — each one is revealed by its own toggle. */
 export type DiscountTool = "coupon" | "loyalty" | "manual" | "advance";
-
 export const NO_DISCOUNT_TOOLS: Record<DiscountTool, boolean> = {
   coupon: false,
   loyalty: false,
@@ -110,6 +110,8 @@ export type BillingTarget = {
   sourceKind: "appointment" | "walkin";
 };
 
+export type QueueItem = (typeof QUEUE)[number];
+
 export type BillingItem = {
   type: "service" | "product";
   name: string;
@@ -138,5 +140,3 @@ export type NotifyTarget = {
   phone: string;
   context?: "customer" | "staff";
 };
-
-export type QueueItem = (typeof QUEUE)[number];

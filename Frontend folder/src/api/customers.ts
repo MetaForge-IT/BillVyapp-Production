@@ -24,6 +24,8 @@ export interface Customer {
   status: "active" | "inactive";
   /** Acquisition source: walk-in | online | unknown */
   source?: "walk-in" | "online" | "unknown";
+  /** Present when listing customers across multiple shops (franchise admin). */
+  shopLabel?: string;
 }
 
 export interface CreateCustomerPayload {
@@ -47,6 +49,7 @@ interface ApiEnvelope<T> {
 
 export type FetchCustomersParams = ListQueryParams & {
   status?: "active" | "inactive";
+  salonId?: string;
 };
 
 export async function fetchCustomers(
@@ -58,6 +61,7 @@ export async function fetchCustomers(
       limit: params.limit,
       search: params.search || undefined,
       status: params.status,
+      salonId: params.salonId || undefined,
     },
   });
   return data.data;

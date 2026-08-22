@@ -1,4 +1,5 @@
 import { apiClient } from "../lib/axios";
+import { LIST_WORKING_LIMIT } from "../lib/pagination";
 
 export type ServiceGender = "MALE" | "FEMALE" | "UNISEX";
 
@@ -96,6 +97,22 @@ export async function fetchServices(params: ListServicesParams = {}): Promise<Se
     },
   });
   return data.data;
+}
+
+/** Load every service page (API max limit is 200 per request). */
+export async function fetchAllServices(
+  params: Omit<ListServicesParams, "page" | "limit"> = {},
+): Promise<ServiceRecord[]> {
+  const limit = LIST_WORKING_LIMIT;
+  const first = await fetchServices({ ...params, page: 1, limit });
+  if (first.totalPages <= 1) return first.items;
+
+  const rest = await Promise.all(
+    Array.from({ length: first.totalPages - 1 }, (_, i) =>
+      fetchServices({ ...params, page: i + 2, limit }),
+    ),
+  );
+  return [...first.items, ...rest.flatMap((page) => page.items)];
 }
 
 export async function createService(payload: CreateServicePayload): Promise<ServiceRecord> {

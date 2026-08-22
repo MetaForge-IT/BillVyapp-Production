@@ -578,6 +578,7 @@ export function WalkInBilling() {
             submitting={submitting}
             onPay={() => void handlePay()}
             onConfirmOnly={() => void handleConfirmOnly()}
+            onCancel={resetWizard}
             discountTools={discountTools}
             onToggleTool={(tool, enabled) =>
               setDiscountTools((prev) => ({ ...prev, [tool]: enabled }))

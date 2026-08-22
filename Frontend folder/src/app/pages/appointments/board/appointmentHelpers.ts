@@ -73,5 +73,5 @@ export function totalDurationForServices(catalog: CatalogService[], names: strin
 }
 
 export function customerInitials(name: string) {
-  return name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
+  return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
 }
