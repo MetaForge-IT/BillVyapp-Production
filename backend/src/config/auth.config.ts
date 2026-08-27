@@ -48,8 +48,10 @@ export const authConfig = {
   emailVerificationLinkExpiresIn: optionalEnv("EMAIL_VERIFICATION_LINK_EXPIRES_IN", "24h"),
   emailVerificationOtpExpiresIn: optionalEnv("EMAIL_VERIFICATION_OTP_EXPIRES_IN", "10m"),
   loginOtpExpiresIn: optionalEnv("LOGIN_OTP_EXPIRES_IN", optionalEnv("EMAIL_VERIFICATION_OTP_EXPIRES_IN", "10m")),
-  // Independent of NODE_ENV so on-prem can return OTP until SMTP/SMS is wired.
+  // Dev/E2E only. Never return OTP in API responses when NODE_ENV=production,
+  // even if LOGIN_OTP_RETURN_IN_RESPONSE is accidentally set to true.
   loginOtpReturnInResponse:
+    !env.isProduction &&
     optionalEnv("LOGIN_OTP_RETURN_IN_RESPONSE", "false").toLowerCase() === "true",
   verificationResendCooldownSeconds: parsePositiveInt(
     optionalEnv("VERIFICATION_RESEND_COOLDOWN_SECONDS", "60"),
