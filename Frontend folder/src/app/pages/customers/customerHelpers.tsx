@@ -23,7 +23,7 @@ export const daysBetween = (isoDate: string): number | null => {
 export const membershipColors: Record<string, string> = {
   platinum: "bg-[#121212] text-[#D4AF37] border-[#D4AF37]/30",
   gold: "bg-[#D4AF37]/10 text-[#9a7d20] border-[#D4AF37]/25",
-  silver: "bg-[#FAF8F2] text-[#6b6b6b] border-black/[0.08]",
+  silver: "bg-[#FAF8F2] text-[#3f3f46] border-black/[0.08]",
   basic: "bg-[#f4f2ed] text-[#111118] border-black/[0.08]",
 };
 
@@ -118,10 +118,10 @@ export function formatLatestVisitDate(c: Customer): string {
 }
 
 export function getInactivityColor(days: number | null): string {
-  if (days == null) return "bg-[#f4f2ed] text-[#6b6b6b] border-black/[0.08]";
+  if (days == null) return "bg-[#f4f2ed] text-[#3f3f46] border-black/[0.08]";
   if (days <= 3) return "bg-[#D4AF37]/10 text-[#9a7d20] border-[#D4AF37]/25";
   if (days <= 14) return "bg-[#FFFBEB] text-[#9a7d20] border-[#D4AF37]/20";
-  if (days <= 30) return "bg-[#FAF8F2] text-[#6b6b6b] border-black/[0.08]";
+  if (days <= 30) return "bg-[#FAF8F2] text-[#3f3f46] border-black/[0.08]";
   return "bg-red-50 text-red-700 border-red-200";
 }
 
@@ -153,7 +153,7 @@ export const tierHeroGlow: Record<string, string> = {
 export function SourceBadge({ source }: { source?: string }) {
   if (source === "walk-in") {
     return (
-      <Badge className="border text-xs bg-[#FAF8F2] text-[#6b6b6b] border-black/[0.08]">
+      <Badge className="border text-xs bg-[#FAF8F2] text-[#3f3f46] border-black/[0.08]">
         🚶 Walk-in
       </Badge>
     );
@@ -228,7 +228,7 @@ export function InfoFieldCard({
           <Icon className="h-4 w-4 text-[#D4AF37]" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9a9a9a]">{label}</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#52525b]">{label}</p>
           <p className="mt-1 text-sm font-semibold text-[#111118] break-words">{value}</p>
         </div>
       </div>

@@ -79,9 +79,9 @@ export function Layout({ children }: { children: ReactNode }) {
 
             {/* ── Main column: header + scrollable content ── */}
             <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
-              {/* Phone / tablet header — hamburger opens the sidebar drawer */}
-              <header className="sticky top-0 z-50 grid h-20 shrink-0 grid-cols-[auto_1fr_auto] items-center overflow-visible border-b border-white/[0.08] bg-[#0a0a10] safe-area-top lg:hidden">
-                <div className="flex shrink-0 items-center gap-2 bg-[#0a0a10] px-3">
+              {/* Phone / tablet header — hamburger opens the sidebar drawer (no tagline) */}
+              <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center justify-between overflow-visible border-b border-white/[0.08] bg-[#0a0a10] safe-area-top px-3 sm:h-20 sm:px-4 lg:hidden">
+                <div className="flex shrink-0 items-center gap-2">
                   <button
                     type="button"
                     className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#D4AF37]/30 bg-[#0a0a10] text-[#D4AF37]"
@@ -91,14 +91,11 @@ export function Layout({ children }: { children: ReactNode }) {
                   </button>
                   {showBack && <PageBackButton onClick={goBack} />}
                 </div>
-                <div className="flex min-w-0 items-center justify-center px-1 sm:px-2">
-                  <HeaderSalonTagline />
-                </div>
-                <div className="flex min-w-0 shrink items-center justify-end pr-3 sm:pr-5">
+                <div className="flex min-w-0 items-center justify-end">
                   <img
                     src={BRAND.clientLogo}
                     alt={BRAND.clientName}
-                    className="h-auto max-h-[5.25rem] w-auto max-w-[min(100%,9.5rem)] object-contain object-right sm:max-h-[5.5rem] sm:max-w-[min(100%,13rem)]"
+                    className="h-auto max-h-[4.5rem] w-auto max-w-[min(100%,9.5rem)] object-contain object-right sm:max-h-[5.5rem] sm:max-w-[min(100%,13rem)]"
                   />
                 </div>
               </header>
@@ -132,7 +129,7 @@ export function Layout({ children }: { children: ReactNode }) {
                     "mx-auto w-full max-w-[1800px] safe-area-bottom",
                     isWalkInBilling
                       ? "h-full min-h-0"
-                      : "px-6 py-6 lg:px-8",
+                      : "layout-page-pad px-6 py-6 lg:px-8",
                   )}
                 >
                   <div className={isWalkInBilling ? "h-full min-h-0" : undefined}>

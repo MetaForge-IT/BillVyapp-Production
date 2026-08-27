@@ -6,7 +6,7 @@ export const colors = {
   ivoryWhite: "#FAF8F2",
   pearlWhite: "#FFFFFF",
   revenueEmerald: "#00C896",
-  mutedText: "#6B6B6B",
+  mutedText: "#3f3f46",
   borderSubtle: "rgba(18, 18, 18, 0.08)",
   goldMuted: "rgba(212, 175, 55, 0.15)",
 } as const;

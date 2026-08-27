@@ -7,9 +7,18 @@ export const createServiceCategorySchema = z.object({
   icon: z.string().trim().max(100).optional().nullable(),
   status: z.enum([SERVICE_CATEGORY_STATUS.ACTIVE, SERVICE_CATEGORY_STATUS.INACTIVE]).optional(),
   sortOrder: z.number().int().min(0).max(32767).optional(),
+  /** Franchise admin: create category for a specific shop. */
+  salonId: z.string().uuid().optional(),
 });
 
-export const updateServiceCategorySchema = createServiceCategorySchema.partial();
+export const updateServiceCategorySchema = createServiceCategorySchema
+  .omit({ salonId: true })
+  .partial();
+
+export const listServiceCategoriesQuerySchema = z.object({
+  salonId: z.string().uuid().optional(),
+});
 
 export type CreateServiceCategoryInput = z.infer<typeof createServiceCategorySchema>;
 export type UpdateServiceCategoryInput = z.infer<typeof updateServiceCategorySchema>;
+export type ListServiceCategoriesQuery = z.infer<typeof listServiceCategoriesQuerySchema>;

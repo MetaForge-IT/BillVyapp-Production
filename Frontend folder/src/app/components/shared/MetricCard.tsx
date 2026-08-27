@@ -100,7 +100,7 @@ export function MetricCard({
         </div>
 
         {/* Label */}
-        <p className="text-[10px] font-medium text-[#6b6b6b] uppercase tracking-wider">{label}</p>
+        <p className="text-[10px] font-medium text-[#3f3f46] uppercase tracking-wider">{label}</p>
 
         {/* Value */}
         <p className="mt-1 text-2xl font-bold tracking-tight leading-none text-[#111118]">
@@ -108,7 +108,7 @@ export function MetricCard({
         </p>
 
         {/* Comparison */}
-        <p className="mt-1 text-[11px] text-[#9a9a9a]">{comparison}</p>
+        <p className="mt-1 text-[11px] text-[#52525b]">{comparison}</p>
 
         {/* Sparkline */}
         <div className="mt-auto h-8">

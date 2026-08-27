@@ -34,7 +34,7 @@ export async function getFranchiseSalonIds(franchiseId: string): Promise<string[
   return salons.map((salon) => salon.id);
 }
 
-/** KPI cards and dashboard aggregates — all franchise shops for admin. */
+/** KPI cards and dashboard aggregates — all franchise shops for admin (when no shop filter). */
 export async function resolveKpiSalonIds(auth: AuthContext): Promise<string[]> {
   const franchiseId = await resolveAuthFranchiseId(auth);
   if (auth.role === "admin" && franchiseId) {

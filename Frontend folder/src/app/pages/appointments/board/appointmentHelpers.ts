@@ -20,8 +20,8 @@ export function toApiStatus(status: AppointmentStatus | WalkinStatus): ApptStatu
 export const DIRECT_BILL_TIER_BADGE: Record<string, string> = {
   Platinum: "bg-[#111118] text-[#D4AF37] border-transparent",
   Gold: "bg-[#D4AF37]/15 text-[#B8962E] border-[#D4AF37]/20",
-  Silver: "bg-black/[0.06] text-[#6b6b6b] border-black/[0.08]",
-  Basic: "bg-black/[0.04] text-[#9a9a9a] border-black/[0.05]",
+  Silver: "bg-black/[0.06] text-[#3f3f46] border-black/[0.08]",
+  Basic: "bg-black/[0.04] text-[#52525b] border-black/[0.05]",
 };
 
 export function membershipTierLabel(tier: string): string {

@@ -327,7 +327,7 @@ export function PaymentMethodPicker({
     <div className={cn(fluid && "md:flex md:min-h-0 md:flex-col", className)}>
       {showHeader && (
         <div className="mb-2 flex shrink-0 items-center justify-between">
-          <h4 className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a9a9a]">Payment Method</h4>
+          <h4 className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525b]">Payment Method</h4>
           <span className="rounded-full border border-[#D4AF37]/30 bg-[#FFFBEB] px-2.5 py-0.5 text-[10px] font-bold text-[#9a7a1e]">
             Due {formatInr(amountDue)}
           </span>
@@ -370,7 +370,7 @@ export function PaymentMethodPicker({
                   "flex flex-col items-center gap-1 rounded-lg border py-2 transition-all",
                   value.method === id
                     ? "border-[#111118] bg-[#111118] text-[#D4AF37] shadow-sm"
-                    : "border-black/[0.08] bg-white text-[#9a9a9a] hover:border-[#D4AF37]/30 hover:text-[#111118]",
+                    : "border-black/[0.08] bg-white text-[#52525b] hover:border-[#D4AF37]/30 hover:text-[#111118]",
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -384,11 +384,11 @@ export function PaymentMethodPicker({
           {value.method === "cash" && (
             <div className={cn("grid gap-3", collectMode ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-3")}>
               <div>
-                <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">
+                <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[#52525b]">
                   Amount Received
                 </p>
                 <div className="relative">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[12px] font-bold text-[#9a9a9a]">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[12px] font-bold text-[#52525b]">
                     ₹
                   </span>
                   <input
@@ -416,7 +416,7 @@ export function PaymentMethodPicker({
               {collectMode ? (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">
+                    <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[#52525b]">
                       Change to Return
                     </p>
                     <div
@@ -431,7 +431,7 @@ export function PaymentMethodPicker({
                     </div>
                   </div>
                   <div>
-                    <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">
+                    <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[#52525b]">
                       {amountFieldLabel}
                     </p>
                     <div className="flex h-10 items-center rounded-lg border border-[#D4AF37]/30 bg-[#FFFBEB] px-3 text-[14px] font-black tabular-nums text-[#9a7a1e]">
@@ -442,7 +442,7 @@ export function PaymentMethodPicker({
               ) : (
                 <>
                   <div>
-                    <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">
+                    <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[#52525b]">
                       Change to Return
                     </p>
                     <div
@@ -457,7 +457,7 @@ export function PaymentMethodPicker({
                     </div>
                   </div>
                   <div>
-                    <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">
+                    <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[#52525b]">
                       {amountFieldLabel}
                     </p>
                     <div className="flex h-10 items-center rounded-lg border border-[#D4AF37]/30 bg-[#FFFBEB] px-3 text-[14px] font-black tabular-nums text-[#9a7a1e]">

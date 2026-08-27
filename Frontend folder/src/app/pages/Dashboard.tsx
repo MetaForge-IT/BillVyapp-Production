@@ -12,7 +12,7 @@ export function Dashboard() {
 
   if (!isReady) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center text-[13px] text-[#9a9a9a]">
+      <div className="flex min-h-[40vh] items-center justify-center text-[13px] text-[#52525b]">
         Loading dashboard…
       </div>
     );

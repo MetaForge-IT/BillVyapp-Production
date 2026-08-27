@@ -5,6 +5,7 @@ import type {
   CheckoutInput,
   CollectPaymentInput,
   ConfirmOnlyInput,
+  InvoicesSummaryQuery,
   ListBillingQuery,
   RequestRefundInput,
 } from "./billing.validators";
@@ -36,8 +37,8 @@ export class BillingService {
     return billingRepository.listInvoices(auth, query);
   }
 
-  getInvoicesSummary(auth: AuthContext) {
-    return billingRepository.getInvoicesSummary(auth);
+  getInvoicesSummary(auth: AuthContext, query: InvoicesSummaryQuery = {}) {
+    return billingRepository.getInvoicesSummary(auth, query);
   }
 
   listRefunds(auth: AuthContext) {

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { Building2, MapPin, Plus, RefreshCw, UserPlus } from "lucide-react";
+import { Building2, MapPin, Plus, RefreshCw, Trash2, UserPlus } from "lucide-react";
 import {
   createFranchiseManager,
   createMyFranchiseShop,
+  deleteMyFranchiseShop,
   fetchMyFranchise,
   updateMyFranchiseShop,
   type MyFranchiseDetail,
@@ -13,6 +14,16 @@ import { useAuthStore } from "../../../../stores/authStore";
 import { getApiErrorMessage } from "../../../../lib/api";
 import { toast } from "../../../components/ui/hot-toast";
 import { FormSelect } from "../../../components/shared/FormSelect";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../../components/ui/alert-dialog";
 import { DashboardCard, DashboardCardHeader, SectionLabel } from "./DashboardCard";
 
 const emptyManagerForm = {
@@ -41,6 +52,8 @@ export function AdminFranchisePanel() {
   const [savingManager, setSavingManager] = useState(false);
   const [creatingShop, setCreatingShop] = useState(false);
   const [savingShopId, setSavingShopId] = useState<string | null>(null);
+  const [deletingShopId, setDeletingShopId] = useState<string | null>(null);
+  const [shopToDelete, setShopToDelete] = useState<MyFranchiseDetail["shops"][number] | null>(null);
   const [managerForm, setManagerForm] = useState(emptyManagerForm);
   const [shopForm, setShopForm] = useState(emptyShopForm);
   const [addressDrafts, setAddressDrafts] = useState<
@@ -162,12 +175,37 @@ export function AdminFranchisePanel() {
     }
   };
 
+  const handleDeleteShop = async () => {
+    if (!shopToDelete) return;
+    setDeletingShopId(shopToDelete.id);
+    try {
+      await deleteMyFranchiseShop(shopToDelete.id);
+      setManagerForm((f) => (f.salonId === shopToDelete.id ? { ...f, salonId: "" } : f));
+      setShopToDelete(null);
+      await reload();
+      try {
+        const refreshed = await authApi.refresh();
+        if (refreshed.data?.accessToken) {
+          clearCachedAuthUser();
+          useAuthStore.getState().setAccessToken(refreshed.data.accessToken);
+        }
+      } catch {
+        // Scope may already be fine; next refresh will pick up salon change.
+      }
+      toast.success("Branch deleted");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Failed to delete branch"));
+    } finally {
+      setDeletingShopId(null);
+    }
+  };
+
   if (loading && !franchise) {
     return (
       <section aria-label="Franchise management">
         <SectionLabel>Franchise Management</SectionLabel>
         <DashboardCard>
-          <p className="px-4 py-8 text-center text-[13px] text-[#9a9a9a]">Loading franchise…</p>
+          <p className="px-4 py-8 text-center text-[13px] text-[#52525b]">Loading franchise…</p>
         </DashboardCard>
       </section>
     );
@@ -178,7 +216,7 @@ export function AdminFranchisePanel() {
       <section aria-label="Franchise management">
         <SectionLabel>Franchise Management</SectionLabel>
         <DashboardCard>
-          <p className="px-4 py-8 text-center text-[13px] text-[#9a9a9a]">
+          <p className="px-4 py-8 text-center text-[13px] text-[#52525b]">
             No franchise is linked to this admin account.
           </p>
         </DashboardCard>
@@ -191,6 +229,7 @@ export function AdminFranchisePanel() {
     label: (shop.displayName || shop.name) + (shop.city ? ` · ${shop.city}` : ""),
     description: [shop.address, shop.state, shop.pincode].filter(Boolean).join(", ") || undefined,
   }));
+  const canDeleteShop = franchise.shops.length > 1;
 
   return (
     <section aria-label="Franchise management" className="space-y-4">
@@ -199,7 +238,7 @@ export function AdminFranchisePanel() {
         <button
           type="button"
           onClick={() => void reload()}
-          className="mb-2 inline-flex items-center gap-1.5 rounded-lg border border-black/[0.08] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#6b6b6b] hover:border-[#D4AF37]/30"
+          className="mb-2 inline-flex items-center gap-1.5 rounded-lg border border-black/[0.08] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#3f3f46] hover:border-[#D4AF37]/30"
         >
           <RefreshCw className="h-3 w-3" /> Refresh
         </button>
@@ -214,7 +253,7 @@ export function AdminFranchisePanel() {
             badge={`${franchise.managers.length} managers`}
           />
           <div className="space-y-3 p-4">
-            <p className="text-[12px] text-[#6b6b6b]">
+            <p className="text-[12px] text-[#3f3f46]">
               Create a shop manager for <span className="font-semibold text-[#111118]">{franchise.name}</span>.
               Pick the correct branch (e.g. Hyderabad) — that shop is saved on their account and shown in their sidebar.
             </p>
@@ -268,33 +307,44 @@ export function AdminFranchisePanel() {
             </button>
 
             <div className="border-t border-black/[0.05] pt-3">
-              <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-[#9a9a9a]">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-[#52525b]">
                 Current managers
               </p>
               {franchise.managers.length === 0 ? (
-                <p className="text-[12px] text-[#9a9a9a]">No managers yet</p>
+                <p className="text-[12px] text-[#52525b]">No managers yet</p>
               ) : (
-                <div className="max-h-40 space-y-2 overflow-y-auto">
+                <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
                   {franchise.managers.map((m) => {
-                    const location = [m.shopLabel, m.shopCity].filter(Boolean).join(" · ");
+                    const branchLabel = [m.shopLabel, m.shopCity].filter(Boolean).join(" · ");
                     const addressLine = [m.shopAddress, m.shopState, m.shopPincode]
                       .filter(Boolean)
                       .join(", ");
                     return (
                       <div
                         key={m.id}
-                        className="flex items-start justify-between gap-2 rounded-xl border border-black/[0.05] bg-[#f4f2ed]/70 px-3 py-2"
+                        className="rounded-xl border border-black/[0.06] bg-[#fafaf8] p-3"
                       >
-                        <div className="min-w-0">
-                          <p className="truncate text-[13px] font-semibold text-[#111118]">{m.fullName}</p>
-                          <p className="truncate text-[11px] text-[#9a9a9a]">{m.email}</p>
+                        <div className="flex items-start gap-2.5">
+                          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#D4AF37]/20 bg-[#D4AF37]/10">
+                            <UserPlus className="h-3.5 w-3.5 text-[#D4AF37]" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[13px] font-bold text-[#111118]">{m.fullName}</p>
+                            <p className="truncate text-[11px] text-[#52525b]">{m.email}</p>
+                            {m.phone ? (
+                              <p className="truncate text-[11px] text-[#3f3f46]">{m.phone}</p>
+                            ) : null}
+                          </div>
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-black/[0.05] pt-2">
+                          <span className="inline-flex max-w-full items-center gap-1 rounded-md border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-2 py-0.5 text-[10px] font-bold text-[#9a7d20]">
+                            <Building2 className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{branchLabel || "No shop assigned"}</span>
+                          </span>
                           {addressLine ? (
-                            <p className="mt-0.5 truncate text-[10px] text-[#6b6b6b]">{addressLine}</p>
+                            <p className="w-full truncate text-[10px] text-[#3f3f46]">{addressLine}</p>
                           ) : null}
                         </div>
-                        <span className="shrink-0 rounded-md border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-2 py-0.5 text-[10px] font-bold text-[#9a7d20]">
-                          {location || "—"}
-                        </span>
                       </div>
                     );
                   })}
@@ -312,7 +362,7 @@ export function AdminFranchisePanel() {
             badge={`${franchise.shops.length} shops`}
           />
           <div className="space-y-3 p-4">
-            <p className="text-[12px] text-[#6b6b6b]">
+            <p className="text-[12px] text-[#3f3f46]">
               Add a new branch for <span className="font-semibold text-[#111118]">{franchise.name}</span>{" "}
               or update an existing shop address. Everything is saved to the database.
             </p>
@@ -390,11 +440,11 @@ export function AdminFranchisePanel() {
               </button>
             </div>
 
-            <p className="text-[11px] font-bold uppercase tracking-wider text-[#9a9a9a]">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#52525b]">
               Existing shops
             </p>
             {franchise.shops.length === 0 ? (
-              <p className="py-4 text-center text-[12px] text-[#9a9a9a]">No shops yet — create one above</p>
+              <p className="py-4 text-center text-[12px] text-[#52525b]">No shops yet — create one above</p>
             ) : (
               <div className="max-h-[320px] space-y-3 overflow-y-auto pr-1">
                 {franchise.shops.map((shop) => {
@@ -410,16 +460,32 @@ export function AdminFranchisePanel() {
                       key={shop.id}
                       className="rounded-xl border border-black/[0.06] bg-[#fafaf8] p-3"
                     >
-                      <div className="mb-2 flex items-center gap-2">
-                        <Building2 className="h-3.5 w-3.5 text-[#D4AF37]" />
-                        <div className="min-w-0">
-                          <p className="text-[13px] font-bold text-[#111118]">
-                            {shop.displayName || shop.name}
-                          </p>
-                          <p className="text-[10px] font-medium text-[#9a7d20]">
-                            {[shop.city, shop.state].filter(Boolean).join(", ") || "No city set"}
-                          </p>
+                      <div className="mb-2 flex items-start justify-between gap-2">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <Building2 className="h-3.5 w-3.5 shrink-0 text-[#D4AF37]" />
+                          <div className="min-w-0">
+                            <p className="text-[13px] font-bold text-[#111118]">
+                              {shop.displayName || shop.name}
+                            </p>
+                            <p className="text-[10px] font-medium text-[#9a7d20]">
+                              {[shop.city, shop.state].filter(Boolean).join(", ") || "No city set"}
+                            </p>
+                          </div>
                         </div>
+                        <button
+                          type="button"
+                          title={
+                            canDeleteShop
+                              ? "Delete branch"
+                              : "Cannot delete the last branch"
+                          }
+                          disabled={!canDeleteShop || deletingShopId === shop.id}
+                          onClick={() => setShopToDelete(shop)}
+                          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-red-200 bg-white text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                          aria-label={`Delete ${shop.displayName || shop.name}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </div>
                       <div className="grid gap-2 sm:grid-cols-2">
                         <input
@@ -494,6 +560,37 @@ export function AdminFranchisePanel() {
           </div>
         </DashboardCard>
       </div>
+
+      <AlertDialog
+        open={shopToDelete != null}
+        onOpenChange={(open) => {
+          if (!open && !deletingShopId) setShopToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this branch?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {shopToDelete
+                ? `“${shopToDelete.displayName || shopToDelete.name}” will be deactivated and removed from your active shops. Managers assigned only to this branch will be deactivated. Billing history is kept.`
+                : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={!!deletingShopId}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!!deletingShopId}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleDeleteShop();
+              }}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              {deletingShopId ? "Deleting…" : "Delete branch"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }

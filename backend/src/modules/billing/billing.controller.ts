@@ -4,7 +4,7 @@ import { asyncHandler } from "../../utils/asyncHandler";
 import type { AuthenticatedRequest } from "../auth/auth.controller";
 import { billingService } from "./billing.service";
 import type { CheckoutInput, CollectPaymentInput, ConfirmOnlyInput, ApproveRefundInput, RequestRefundInput } from "./billing.validators";
-import { listBillingQuerySchema } from "./billing.validators";
+import { invoicesSummaryQuerySchema, listBillingQuerySchema } from "./billing.validators";
 
 export class BillingController {
   confirmOnly = asyncHandler(async (req: Request, res: Response): Promise<void> => {
@@ -65,7 +65,8 @@ export class BillingController {
 
   getInvoicesSummary = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const auth = (req as AuthenticatedRequest).auth;
-    const summary = await billingService.getInvoicesSummary(auth);
+    const query = invoicesSummaryQuerySchema.parse(req.query);
+    const summary = await billingService.getInvoicesSummary(auth, query);
 
     sendSuccess(res, {
       message: "Invoice summary retrieved",

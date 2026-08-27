@@ -49,6 +49,8 @@ export function LoginPage() {
   const [challengeId, setChallengeId] = useState<string | null>(null);
   const [phoneHint, setPhoneHint] = useState("");
   const [otpMessage, setOtpMessage] = useState("");
+  /** Present only when API returns OTP (LOGIN_OTP_RETURN_IN_RESPONSE) — E2E / local. */
+  const [devOtpHint, setDevOtpHint] = useState<string | null>(null);
   const [otp, setOtp] = useState("");
   const [otpResendState, setOtpResendState] = useState<"idle" | "sending" | "sent" | "cooldown">("idle");
   const [resendSecondsLeft, setResendSecondsLeft] = useState(0);
@@ -97,6 +99,7 @@ export function LoginPage() {
     setChallengeId(data.challengeId);
     setPhoneHint(readPhoneHint(data));
     setOtpMessage(data.message);
+    setDevOtpHint(data.otp?.trim() || null);
     setOtp("");
     setStep("otp");
     setError("");
@@ -399,6 +402,14 @@ export function LoginPage() {
                       Sent to{" "}
                       <span className="font-semibold text-[#D4AF37]">{phoneHint || "your phone"}</span>
                     </p>
+                    {devOtpHint ? (
+                      <p
+                        data-testid="dev-otp-hint"
+                        className="text-[11px] font-mono text-amber-300/90 pt-1"
+                      >
+                        Dev OTP: {devOtpHint}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
 

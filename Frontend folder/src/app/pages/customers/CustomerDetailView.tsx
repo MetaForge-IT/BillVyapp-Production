@@ -66,7 +66,7 @@ export function CustomerDetailView({
       ? "bg-[#FAF8F2] text-[#111118] border-black/[0.08]"
       : g === "female"
         ? "bg-[#FFFBEB] text-[#9a7d20] border-[#D4AF37]/20"
-        : "bg-[#f4f2ed] text-[#6b6b6b] border-black/[0.08]";
+        : "bg-[#f4f2ed] text-[#3f3f46] border-black/[0.08]";
   const inactiveDays = getInactiveDays(customer);
   const shopInfo = useReceiptShopInfo();
   const [visits, setVisits] = useState<CustomerVisit[]>([]);
@@ -114,14 +114,14 @@ export function CustomerDetailView({
           <button
             type="button"
             onClick={() => onNotify(customer)}
-            className="h-9 px-3 rounded-xl border border-black/[0.08] bg-white text-[11px] font-semibold text-[#6b6b6b] hover:border-[#D4AF37]/35 hover:bg-[#FAF8F2] inline-flex items-center gap-1.5 transition-all"
+            className="h-9 px-3 rounded-xl border border-black/[0.08] bg-white text-[11px] font-semibold text-[#3f3f46] hover:border-[#D4AF37]/35 hover:bg-[#FAF8F2] inline-flex items-center gap-1.5 transition-all"
           >
             <Bell className="h-3.5 w-3.5 text-[#D4AF37]" /> Notify
           </button>
           <button
             type="button"
             onClick={() => navigate(`/feedback?customer=${encodeURIComponent(customer.name)}`)}
-            className="h-9 px-3 rounded-xl border border-black/[0.08] bg-white text-[11px] font-semibold text-[#6b6b6b] hover:border-[#D4AF37]/35 hover:bg-[#FAF8F2] inline-flex items-center gap-1.5 transition-all"
+            className="h-9 px-3 rounded-xl border border-black/[0.08] bg-white text-[11px] font-semibold text-[#3f3f46] hover:border-[#D4AF37]/35 hover:bg-[#FAF8F2] inline-flex items-center gap-1.5 transition-all"
           >
             <MessageSquare className="h-3.5 w-3.5 text-[#D4AF37]" /> Feedback
           </button>
@@ -249,7 +249,7 @@ export function CustomerDetailView({
                   <User className="h-4 w-4 text-[#D4AF37]" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9a9a9a]">Address</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#52525b]">Address</p>
                   <p className="mt-1 text-sm font-medium text-[#111118]">{customer.address}</p>
                 </div>
               </div>
@@ -354,7 +354,7 @@ export function CustomerDetailView({
                       ) : (
                         <p className="text-sm font-semibold text-[#111118] truncate">{visit.label}</p>
                       )}
-                      <p className="text-[11px] text-[#9a9a9a] mt-0.5 truncate">
+                      <p className="text-[11px] text-[#52525b] mt-0.5 truncate">
                         {dateStr}
                         {" · "}
                         {visit.type === "appointment" ? "Appointment" : "Invoice"}
@@ -387,7 +387,7 @@ export function CustomerDetailView({
               <Crown className="h-6 w-6 text-[#D4AF37]" />
             </div>
             <p className="text-sm font-semibold text-[#111118]">Loyalty program</p>
-            <p className="mt-1 text-[12px] text-[#9a9a9a] max-w-sm mx-auto">
+            <p className="mt-1 text-[12px] text-[#52525b] max-w-sm mx-auto">
               View tier benefits, points history, and rewards for {customer.name}.
             </p>
             <button type="button" onClick={() => onLoyalty(customer)} className={`${financeGoldBtn} mt-5 inline-flex items-center gap-2`}>

@@ -132,7 +132,7 @@ export function MembershipPaymentConfirmDialog({
             amountFieldLabel="Plan Amount"
             upiNote={`${tier} membership — ${customerName}`}
           />
-          <p className="mt-3 text-center text-[11px] text-[#9a9a9a]">
+          <p className="mt-3 text-center text-[11px] text-[#52525b]">
             Confirm only after collecting {formatInr(amount)}. This activates the membership and records payment.
           </p>
         </div>
@@ -142,7 +142,7 @@ export function MembershipPaymentConfirmDialog({
             type="button"
             disabled={saving}
             onClick={() => onOpenChange(false)}
-            className="h-11 flex-1 rounded-xl border border-black/[0.08] text-[13px] font-semibold text-[#6b6b6b] transition-all hover:bg-[#faf9f7] disabled:opacity-40"
+            className="h-11 flex-1 rounded-xl border border-black/[0.08] text-[13px] font-semibold text-[#3f3f46] transition-all hover:bg-[#faf9f7] disabled:opacity-40"
           >
             Cancel
           </button>

@@ -118,9 +118,9 @@ export function MembershipTab({ onStatsChange }: { onStatsChange?: (stats: { act
       </FinanceStatGrid>
 
       <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9a9a9a] pointer-events-none" />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#52525b] pointer-events-none" />
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search customer or package..."
-          className="w-full h-10 pl-10 pr-4 rounded-xl border border-black/[0.07] text-[13px] bg-white shadow-sm focus:outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/12 transition-all placeholder:text-[#9a9a9a]" />
+          className="w-full h-10 pl-10 pr-4 rounded-xl border border-black/[0.07] text-[13px] bg-white shadow-sm focus:outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/12 transition-all placeholder:text-[#52525b]" />
       </div>
 
       <FinancePanel
@@ -128,10 +128,10 @@ export function MembershipTab({ onStatsChange }: { onStatsChange?: (stats: { act
         subtitle={`${filtered.length} record${filtered.length !== 1 ? "s" : ""} · oldest first (FIFO)`}
       >
         {loading && (
-          <div className="px-5 py-10 text-center text-[13px] text-[#9a9a9a]">Loading memberships...</div>
+          <div className="px-5 py-10 text-center text-[13px] text-[#52525b]">Loading memberships...</div>
         )}
         {!loading && paginatedMemberships.length === 0 && (
-          <div className="px-5 py-10 text-center text-[13px] text-[#9a9a9a]">
+          <div className="px-5 py-10 text-center text-[13px] text-[#52525b]">
             No customer memberships yet. Create a plan and assign it to a customer.
           </div>
         )}
@@ -159,14 +159,14 @@ export function MembershipTab({ onStatsChange }: { onStatsChange?: (stats: { act
                           {statusLabel}
                         </Badge>
                       </div>
-                      <p className="text-[11px] text-[#6b6b6b] truncate">{m.packageName} · {m.phone}</p>
+                      <p className="text-[11px] text-[#3f3f46] truncate">{m.packageName} · {m.phone}</p>
                     </div>
                   </div>
-                  <p className="text-[10px] text-[#9a9a9a] shrink-0">Exp {m.expiry}</p>
+                  <p className="text-[10px] text-[#52525b] shrink-0">Exp {m.expiry}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <div className="flex justify-between text-[11px] text-[#6b6b6b] mb-1">
+                    <div className="flex justify-between text-[11px] text-[#3f3f46] mb-1">
                       <span>Services</span>
                       <span className="font-bold text-[#111118]">{m.servicesUsed}/{m.servicesTotal || "—"}</span>
                     </div>
@@ -177,7 +177,7 @@ export function MembershipTab({ onStatsChange }: { onStatsChange?: (stats: { act
                     )}
                   </div>
                   <div>
-                    <div className="flex justify-between text-[11px] text-[#6b6b6b] mb-1">
+                    <div className="flex justify-between text-[11px] text-[#3f3f46] mb-1">
                       <span>Wallet</span>
                       <span className="font-bold text-[#111118]">
                         {m.walletTotal > 0 ? `${fmt(m.walletBalance)} left` : "—"}
@@ -195,8 +195,8 @@ export function MembershipTab({ onStatsChange }: { onStatsChange?: (stats: { act
                       <p className="text-[14px] font-black text-[#111118]">{fmt(m.amountPaid)}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a]">Started</p>
-                      <p className="text-[12px] font-semibold text-[#6b6b6b]">{m.startDate}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#52525b]">Started</p>
+                      <p className="text-[12px] font-semibold text-[#3f3f46]">{m.startDate}</p>
                     </div>
                   </div>
                 </div>

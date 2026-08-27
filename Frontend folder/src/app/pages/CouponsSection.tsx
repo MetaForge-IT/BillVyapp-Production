@@ -40,7 +40,7 @@ const emptyForm = {
 function statusBadge(status: CouponStatus, validTill: string) {
   const expired = new Date(validTill) < new Date();
   if (status === "disabled") {
-    return <Badge className="border border-black/[0.08] bg-[#f4f2ed] text-[10px] font-semibold text-[#9a9a9a]">Disabled</Badge>;
+    return <Badge className="border border-black/[0.08] bg-[#f4f2ed] text-[10px] font-semibold text-[#52525b]">Disabled</Badge>;
   }
   if (expired) {
     return <Badge className="border border-red-200 bg-red-50 text-[10px] font-semibold text-red-500">Expired</Badge>;
@@ -150,27 +150,31 @@ export function CouponsSection() {
   }
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-500">
-      {/* Toolbar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+    <div className="space-y-3 animate-in fade-in duration-500 sm:space-y-4">
+      {/* Toolbar — Create is icon-only on phones */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#D4AF37]">Promotions & Discounts</p>
-          <p className="text-[13px] text-[#9a9a9a]">Create, manage, and send discount coupons to customers</p>
+          <p className="mt-0.5 hidden text-[13px] text-[#52525b] sm:block">
+            Create, manage, and send discount coupons to customers
+          </p>
         </div>
         <Button
-          className="h-9 rounded-xl bg-[#111118] text-[#D4AF37] hover:bg-[#1a1a1a] shadow-sm"
+          aria-label="Create Coupon"
+          title="Create Coupon"
+          className="h-10 w-10 shrink-0 gap-0 rounded-xl bg-[#111118] p-0 text-[#D4AF37] shadow-sm hover:bg-[#1a1a1a] sm:h-9 sm:w-auto sm:gap-2 sm:px-4"
           onClick={() => {
             generateCode();
             setShowAdd(true);
           }}
         >
-          <Plus className="h-4 w-4 mr-2" />
-          Create Coupon
+          <Plus className="h-4 w-4 shrink-0" />
+          <span className="hidden sm:inline">Create Coupon</span>
         </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      {/* Stats — compact on phones */}
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
         {[
           { label: "Total Coupons", value: String(coupons.length), sub: `${activeCount} currently active`, Icon: Ticket },
           { label: "Active Coupons", value: String(activeCount), sub: "valid & enabled", Icon: Tag },
@@ -187,14 +191,18 @@ export function CouponsSection() {
           >
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#D4AF37]/60 to-transparent" />
             <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_60%_at_50%_0%,rgba(212,175,55,0.06),transparent)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-            <div className="relative flex items-start justify-between p-3.5">
-              <div className="min-w-0 flex-1 pr-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#6b6b6b]">{kpi.label}</p>
-                <p className="mt-1 text-xl font-bold leading-tight text-[#111118] tabular-nums">{kpi.value}</p>
-                <p className="mt-1 text-[11px] text-[#9a9a9a]">{kpi.sub}</p>
+            <div className="relative flex items-start justify-between gap-2 p-2.5 sm:p-3.5">
+              <div className="min-w-0 flex-1">
+                <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#3f3f46] sm:text-[10px] sm:tracking-[0.18em]">
+                  {kpi.label}
+                </p>
+                <p className="mt-0.5 text-lg font-bold leading-tight text-[#111118] tabular-nums sm:mt-1 sm:text-xl">
+                  {kpi.value}
+                </p>
+                <p className="mt-0.5 line-clamp-1 text-[10px] text-[#52525b] sm:mt-1 sm:text-[11px]">{kpi.sub}</p>
               </div>
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#D4AF37]/20 bg-[#D4AF37]/10">
-                <kpi.Icon className="h-4 w-4 text-[#D4AF37]" />
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#D4AF37]/20 bg-[#D4AF37]/10 sm:h-9 sm:w-9">
+                <kpi.Icon className="h-3.5 w-3.5 text-[#D4AF37] sm:h-4 sm:w-4" />
               </div>
             </div>
           </motion.div>
@@ -202,42 +210,148 @@ export function CouponsSection() {
       </div>
 
       {/* Search bar */}
-      <div className="flex flex-wrap items-center gap-2.5 rounded-2xl border border-black/[0.07] bg-white p-3 shadow-sm">
-        <div className="relative min-w-[180px] flex-1">
+      <div className="flex items-center gap-2 rounded-2xl border border-black/[0.07] bg-white p-2.5 shadow-sm sm:gap-2.5 sm:p-3">
+        <div className="relative min-w-0 flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#D4AF37]" />
           <input
-            placeholder="Search coupons by code or title…"
+            placeholder="Search coupons…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-9 w-full rounded-xl border border-black/[0.08] bg-[#fafaf8] pl-9 pr-3 text-[13px] text-[#111118] outline-none transition-all placeholder:text-[#9a9a9a] focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/10"
+            className="h-9 w-full rounded-xl border border-black/[0.08] bg-[#fafaf8] pl-9 pr-3 text-[13px] text-[#111118] outline-none transition-all placeholder:text-[#52525b] focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/10"
           />
         </div>
-        <span className="ml-auto text-[11px] font-medium text-[#9a9a9a]">
+        <span className="hidden shrink-0 text-[11px] font-medium text-[#52525b] sm:inline">
           {filtered.length} coupon{filtered.length !== 1 ? "s" : ""}
         </span>
       </div>
 
-      {/* Coupons Table */}
+      {/* Coupons list */}
       <div className="overflow-hidden rounded-xl border border-black/[0.07] bg-white shadow-sm">
-        <div className="flex items-center gap-3 bg-[#111118] px-5 py-3.5">
-          <Tag className="h-4 w-4 text-[#D4AF37]" />
+        <div className="flex items-center gap-2 bg-[#111118] px-3 py-3 sm:gap-3 sm:px-5 sm:py-3.5">
+          <Tag className="h-4 w-4 shrink-0 text-[#D4AF37]" />
           <p className="text-[13px] font-bold text-white">All Coupons</p>
           <Badge className="ml-auto border border-white/20 bg-white/10 text-[10px] font-semibold text-white">
             {filtered.length} of {coupons.length}
           </Badge>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Mobile / tablet cards */}
+        <div className="divide-y divide-black/[0.06] lg:hidden">
+          {paginatedCoupons.map((c) => (
+            <div key={c.id} className="space-y-2.5 p-3.5">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="rounded-md border border-[#D4AF37]/20 bg-[#D4AF37]/8 px-2 py-0.5 font-mono text-[12px] font-bold text-[#111118]">
+                      {c.code}
+                    </span>
+                    <button
+                      type="button"
+                      title="Copy code"
+                      aria-label="Copy code"
+                      onClick={() => navigator.clipboard?.writeText(c.code)}
+                      className="text-[#52525b] transition-colors hover:text-[#D4AF37]"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </button>
+                    {statusBadge(c.status, c.validTill)}
+                  </div>
+                  <p className="mt-1.5 text-[13px] font-semibold text-[#111118]">{c.title}</p>
+                  {c.description ? (
+                    <p className="mt-0.5 line-clamp-2 text-[11px] text-[#52525b]">{c.description}</p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div className="rounded-lg border border-black/[0.06] bg-[#fafaf8] px-2.5 py-2">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#52525b]">Discount</p>
+                  <p className="mt-0.5 flex items-center gap-1 font-semibold text-[#111118]">
+                    {c.type === "percentage" ? (
+                      <>
+                        <Percent className="h-3 w-3 text-[#D4AF37]" />
+                        {c.value}% off
+                      </>
+                    ) : (
+                      <>
+                        <IndianRupee className="h-3 w-3 text-[#D4AF37]" />
+                        ₹{c.value} off
+                      </>
+                    )}
+                  </p>
+                  {c.minSpend > 0 ? (
+                    <p className="mt-0.5 text-[#52525b]">Min ₹{c.minSpend}</p>
+                  ) : null}
+                </div>
+                <div className="rounded-lg border border-black/[0.06] bg-[#fafaf8] px-2.5 py-2">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#52525b]">Usage</p>
+                  <p className="mt-0.5 font-semibold text-[#111118]">
+                    {c.usedCount}
+                    {c.usageLimit > 0 ? ` / ${c.usageLimit}` : " / ∞"}
+                  </p>
+                  <p className="mt-0.5 text-[#52525b]">{c.sentTo.length} sent</p>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-[#3f3f46]">
+                {c.validFrom} → {c.validTill}
+              </p>
+
+              <div className="flex gap-1.5">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  aria-label="Send coupon"
+                  className="h-8 flex-1 border-[#D4AF37]/30 text-[#9a7d20] hover:bg-[#D4AF37]/8"
+                  onClick={() => openSend(c)}
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  <span className="ml-1.5">Send</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  aria-label="Edit coupon"
+                  className="h-8 w-8 shrink-0 border-black/[0.08] p-0 hover:border-[#D4AF37]/40 hover:bg-[#faf9f7]"
+                  onClick={() => setEditing({ ...c })}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  aria-label="Delete coupon"
+                  className="h-8 w-8 shrink-0 border-red-200 p-0 text-red-500 hover:bg-red-50"
+                  onClick={() => deleteCoupon(c.id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          ))}
+          {filtered.length === 0 && (
+            <div className="px-4 py-12 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl border border-dashed border-black/[0.1] bg-[#faf9f7]">
+                <Tag className="h-5 w-5 text-[#D4AF37]/35" />
+              </div>
+              <p className="text-[13px] font-semibold text-[#111118]">No coupons found</p>
+              <p className="mt-1 text-[11px] text-[#52525b]">Try adjusting your search or create a new coupon.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden overflow-x-auto lg:block">
           <Table>
             <TableHeader>
               <TableRow className="border-black/[0.06] bg-[#faf9f7] hover:bg-[#faf9f7]">
-                <TableHead className="text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a]">Code</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a]">Title</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a]">Discount</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a]">Validity</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a]">Usage</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a]">Status</TableHead>
-                <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a]">Actions</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase tracking-wider text-[#52525b]">Code</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase tracking-wider text-[#52525b]">Title</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase tracking-wider text-[#52525b]">Discount</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase tracking-wider text-[#52525b]">Validity</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase tracking-wider text-[#52525b]">Usage</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase tracking-wider text-[#52525b]">Status</TableHead>
+                <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider text-[#52525b]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -252,7 +366,7 @@ export function CouponsSection() {
                         type="button"
                         title="Copy code"
                         onClick={() => navigator.clipboard?.writeText(c.code)}
-                        className="text-[#9a9a9a] transition-colors hover:text-[#D4AF37]"
+                        className="text-[#52525b] transition-colors hover:text-[#D4AF37]"
                       >
                         <Copy className="h-3.5 w-3.5" />
                       </button>
@@ -261,7 +375,7 @@ export function CouponsSection() {
                   <TableCell>
                     <p className="text-[13px] font-semibold text-[#111118]">{c.title}</p>
                     {c.description && (
-                      <p className="mt-0.5 line-clamp-1 text-[11px] text-[#9a9a9a]">{c.description}</p>
+                      <p className="mt-0.5 line-clamp-1 text-[11px] text-[#52525b]">{c.description}</p>
                     )}
                   </TableCell>
                   <TableCell>
@@ -279,16 +393,16 @@ export function CouponsSection() {
                       )}
                     </span>
                     {c.minSpend > 0 && (
-                      <p className="mt-0.5 text-[11px] text-[#9a9a9a]">Min spend ₹{c.minSpend}</p>
+                      <p className="mt-0.5 text-[11px] text-[#52525b]">Min spend ₹{c.minSpend}</p>
                     )}
                   </TableCell>
-                  <TableCell className="text-[11px] text-[#6b6b6b]">
+                  <TableCell className="text-[11px] text-[#3f3f46]">
                     {c.validFrom} → {c.validTill}
                   </TableCell>
-                  <TableCell className="text-[11px] text-[#6b6b6b]">
+                  <TableCell className="text-[11px] text-[#3f3f46]">
                     <span className="font-semibold text-[#111118]">{c.usedCount}</span>
                     {c.usageLimit > 0 ? ` / ${c.usageLimit}` : " / ∞"}
-                    <p className="text-[#9a9a9a]">{c.sentTo.length} sent</p>
+                    <p className="text-[#52525b]">{c.sentTo.length} sent</p>
                   </TableCell>
                   <TableCell>{statusBadge(c.status, c.validTill)}</TableCell>
                   <TableCell>
@@ -328,14 +442,14 @@ export function CouponsSection() {
                       <Tag className="h-5 w-5 text-[#D4AF37]/35" />
                     </div>
                     <p className="text-[13px] font-semibold text-[#111118]">No coupons found</p>
-                    <p className="mt-1 text-[11px] text-[#9a9a9a]">Try adjusting your search or create a new coupon.</p>
+                    <p className="mt-1 text-[11px] text-[#52525b]">Try adjusting your search or create a new coupon.</p>
                   </TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
         </div>
-        <div className="border-t border-black/[0.06] px-4 py-3">
+        <div className="border-t border-black/[0.06] px-3 py-3 sm:px-4">
           <Pagination
             page={page}
             pageSize={pageSize}
@@ -366,7 +480,7 @@ export function CouponsSection() {
           <div className="max-h-[70vh] space-y-4 overflow-y-auto bg-[#faf9f7] px-6 py-5">
 
             {/* Coupon code + title */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Coupon Code <span className="text-[#d4af37]">*</span></p>
                 <div className="flex gap-2">
@@ -406,13 +520,13 @@ export function CouponsSection() {
             </div>
 
             {/* Discount type + value */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Discount Type</p>
                 <div className="flex gap-1.5 rounded-xl border border-black/[0.08] bg-[#f4f2ed] p-1">
                   {([{ v: "percentage", label: "% Percent" }, { v: "flat", label: "₹ Flat" }] as const).map(({ v, label }) => (
                     <button key={v} type="button" onClick={() => setForm((f) => ({ ...f, type: v as CouponType }))}
-                      className={cn("flex-1 h-8 rounded-lg text-[11px] font-bold transition-all", form.type === v ? "bg-[#111118] text-[#D4AF37] shadow-sm" : "text-[#9a9a9a] hover:text-[#111118]")}>
+                      className={cn("flex-1 h-8 rounded-lg text-[11px] font-bold transition-all", form.type === v ? "bg-[#111118] text-[#D4AF37] shadow-sm" : "text-[#52525b] hover:text-[#111118]")}>
                       {label}
                     </button>
                   ))}
@@ -438,7 +552,7 @@ export function CouponsSection() {
             </div>
 
             {/* Min spend + max cap */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Min. Spend (₹)</p>
                 <div className="relative">
@@ -466,7 +580,7 @@ export function CouponsSection() {
             </div>
 
             {/* Valid dates */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Valid From</p>
                 <input type="date" value={form.validFrom}
@@ -484,7 +598,7 @@ export function CouponsSection() {
             </div>
 
             {/* Usage limit + status */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Usage Limit <span className="text-gray-400 normal-case font-normal">(0 = unlimited)</span></p>
                 <input type="number" value={form.usageLimit}
@@ -498,7 +612,7 @@ export function CouponsSection() {
                 <div className="flex gap-1.5 rounded-xl border border-black/[0.08] bg-[#f4f2ed] p-1">
                   {([{ v: "active", label: "Active" }, { v: "disabled", label: "Disabled" }] as const).map(({ v, label }) => (
                     <button key={v} type="button" onClick={() => setForm((f) => ({ ...f, status: v as CouponStatus }))}
-                      className={cn("flex-1 h-8 rounded-lg text-[11px] font-bold transition-all", form.status === v ? "bg-[#111118] text-[#D4AF37] shadow-sm" : "text-[#9a9a9a] hover:text-[#111118]")}>
+                      className={cn("flex-1 h-8 rounded-lg text-[11px] font-bold transition-all", form.status === v ? "bg-[#111118] text-[#D4AF37] shadow-sm" : "text-[#52525b] hover:text-[#111118]")}>
                       {label}
                     </button>
                   ))}
@@ -510,7 +624,7 @@ export function CouponsSection() {
           {/* Footer */}
           <div className="flex items-center justify-end gap-2 border-t border-black/[0.06] bg-white px-6 py-4">
             <button onClick={resetForm}
-              className="h-10 rounded-xl border border-black/[0.08] bg-white px-5 text-[13px] font-semibold text-[#6b6b6b] transition-all hover:bg-[#faf9f7]">
+              className="h-10 rounded-xl border border-black/[0.08] bg-white px-5 text-[13px] font-semibold text-[#3f3f46] transition-all hover:bg-[#faf9f7]">
               Cancel
             </button>
             <button onClick={handleCreate}
@@ -545,7 +659,7 @@ export function CouponsSection() {
               {/* Code + Title */}
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-[#b8962e] mb-3">Coupon Identity</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Coupon Code <span className="text-[#d4af37]">*</span></p>
                     <input
@@ -580,14 +694,14 @@ export function CouponsSection() {
               {/* Discount */}
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-[#b8962e] mb-3">Discount</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Discount Type</p>
                     <div className="flex gap-1.5 rounded-xl border border-black/[0.08] bg-[#f4f2ed] p-1">
                       {([{ v: "percentage", label: "% Percent" }, { v: "flat", label: "₹ Flat" }] as const).map(({ v, label }) => (
                         <button key={v} type="button"
                           onClick={() => setEditing((cur) => cur && { ...cur, type: v as CouponType })}
-                          className={cn("flex-1 h-8 rounded-lg text-[11px] font-bold transition-all", editing.type === v ? "bg-[#111118] text-[#D4AF37] shadow-sm" : "text-[#9a9a9a] hover:text-[#111118]")}>
+                          className={cn("flex-1 h-8 rounded-lg text-[11px] font-bold transition-all", editing.type === v ? "bg-[#111118] text-[#D4AF37] shadow-sm" : "text-[#52525b] hover:text-[#111118]")}>
                           {label}
                         </button>
                       ))}
@@ -609,7 +723,7 @@ export function CouponsSection() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 mt-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 mt-3">
                   <div className="space-y-1.5">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Min. Spend (₹)</p>
                     <div className="relative">
@@ -640,7 +754,7 @@ export function CouponsSection() {
               {/* Validity */}
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-[#b8962e] mb-3">Validity</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Valid From</p>
                     <input type="date" value={editing.validFrom}
@@ -661,7 +775,7 @@ export function CouponsSection() {
               {/* Usage & Status */}
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-[#b8962e] mb-3">Usage & Status</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Usage Limit <span className="text-gray-400 normal-case font-normal">(0 = ∞)</span></p>
                     <input type="number" value={editing.usageLimit}
@@ -676,7 +790,7 @@ export function CouponsSection() {
                       {([{ v: "active", label: "Active" }, { v: "disabled", label: "Disabled" }] as const).map(({ v, label }) => (
                         <button key={v} type="button"
                           onClick={() => setEditing((cur) => cur && { ...cur, status: v as CouponStatus })}
-                          className={cn("flex-1 h-8 rounded-lg text-[11px] font-bold transition-all", editing.status === v ? "bg-[#111118] text-[#D4AF37] shadow-sm" : "text-[#9a9a9a] hover:text-[#111118]")}>
+                          className={cn("flex-1 h-8 rounded-lg text-[11px] font-bold transition-all", editing.status === v ? "bg-[#111118] text-[#D4AF37] shadow-sm" : "text-[#52525b] hover:text-[#111118]")}>
                           {label}
                         </button>
                       ))}
@@ -687,11 +801,11 @@ export function CouponsSection() {
                 {/* Usage stats read-only */}
                 <div className="mt-3 flex gap-3">
                   <div className="flex-1 rounded-xl border border-black/[0.08] bg-white px-4 py-3 text-center">
-                    <p className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a]">Used</p>
+                    <p className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-[#52525b]">Used</p>
                     <p className="text-lg font-bold text-[#111118]">{editing.usedCount}</p>
                   </div>
                   <div className="flex-1 rounded-xl border border-black/[0.08] bg-white px-4 py-3 text-center">
-                    <p className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a]">Sent To</p>
+                    <p className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-[#52525b]">Sent To</p>
                     <p className="text-lg font-bold text-[#111118]">{editing.sentTo.length}</p>
                   </div>
                 </div>
@@ -702,7 +816,7 @@ export function CouponsSection() {
           {/* Footer */}
           <div className="flex items-center justify-end gap-2 border-t border-black/[0.06] bg-white px-6 py-4">
             <button onClick={() => setEditing(null)}
-              className="h-10 rounded-xl border border-black/[0.08] bg-white px-5 text-[13px] font-semibold text-[#6b6b6b] transition-all hover:bg-[#faf9f7]">
+              className="h-10 rounded-xl border border-black/[0.08] bg-white px-5 text-[13px] font-semibold text-[#3f3f46] transition-all hover:bg-[#faf9f7]">
               Cancel
             </button>
             <button onClick={saveEdit}

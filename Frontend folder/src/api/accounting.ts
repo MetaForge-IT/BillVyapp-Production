@@ -6,6 +6,8 @@ export type BudgetLineType = "fixed" | "variable";
 
 export interface AccountingExpense {
   id: string;
+  salonId?: string;
+  salonName?: string | null;
   date: string;
   category: ExpenseCategory | string;
   sub: string;
@@ -35,6 +37,8 @@ export interface CreateExpensePayload {
   source: ExpenseSource;
   /** Compulsory note (validated on API + Joi form). */
   remarks: string;
+  /** Franchise admin: assign expense to a shop. */
+  salonId?: string;
 }
 
 export type UpdateExpensePayload = Partial<CreateExpensePayload>;
@@ -146,9 +150,15 @@ interface ApiEnvelope<T> {
   data: T;
 }
 
-export async function fetchAccountingOverview(date?: string): Promise<AccountingOverview> {
+export async function fetchAccountingOverview(
+  date?: string,
+  params?: { salonId?: string },
+): Promise<AccountingOverview> {
   const { data } = await apiClient.get<ApiEnvelope<AccountingOverview>>("/accounting/overview", {
-    params: date ? { date } : undefined,
+    params: {
+      ...(date ? { date } : {}),
+      salonId: params?.salonId || undefined,
+    },
   });
   return data.data;
 }
@@ -157,6 +167,7 @@ export async function fetchExpenses(params?: {
   from?: string;
   to?: string;
   category?: string;
+  salonId?: string;
 }): Promise<AccountingExpense[]> {
   const { data } = await apiClient.get<ApiEnvelope<AccountingExpense[]>>("/accounting/expenses", {
     params,

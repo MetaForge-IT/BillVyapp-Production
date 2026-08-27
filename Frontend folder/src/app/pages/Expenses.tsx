@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Check,
   Banknote,
@@ -8,6 +9,8 @@ import {
   Plus,
   QrCode,
   Receipt,
+  Store,
+  Tags,
   Trash2,
   Wallet,
   X,
@@ -24,9 +27,9 @@ import {
   type ExpenseCategory,
   type ExpenseSource,
 } from "../../api/accounting";
+import { fetchMyFranchise } from "../../api/franchises";
 import { getApiErrorMessage } from "../../lib/api";
 import {
-  EXPENSE_CATEGORIES,
   EXPENSE_SOURCES,
   expenseToFormValues,
   parseExpenseRemarks,
@@ -34,6 +37,8 @@ import {
   validateExpenseForm,
   type ExpenseFormValues,
 } from "../../lib/expenseForm";
+import { FilterSelect } from "../components/shared/FilterSelect";
+import { FormSelect } from "../components/shared/FormSelect";
 import { Pagination } from "../components/shared/Pagination";
 import { useTablePagination } from "../hooks/useTablePagination";
 import { toast } from "../components/ui/hot-toast";
@@ -45,6 +50,13 @@ const SOURCE_ICON: Record<ExpenseSource, typeof Banknote> = {
   UPI: QrCode,
   Card: CreditCard,
 };
+
+const CATEGORY_OPTIONS = [
+  { value: "Operational", label: "Operational", description: "Rent, utilities, maintenance" },
+  { value: "Inventory", label: "Inventory", description: "Products & supplies" },
+  { value: "Payroll", label: "Payroll", description: "Salary, advance, incentives" },
+  { value: "Transfer", label: "Transfer", description: "Cash to bank / internal moves" },
+] as const satisfies ReadonlyArray<{ value: ExpenseCategory; label: string; description: string }>;
 
 function emptyForm(): ExpenseFormValues {
   return {
@@ -77,18 +89,38 @@ export function Expenses() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ExpenseFormValues>(emptyForm);
   const [fieldError, setFieldError] = useState<string | undefined>();
+  const [shopFilter, setShopFilter] = useState("all");
+  const [formSalonId, setFormSalonId] = useState("");
+
+  const franchiseQuery = useQuery({
+    queryKey: ["my-franchise"],
+    queryFn: fetchMyFranchise,
+    enabled: admin,
+  });
+  const franchiseShops = franchiseQuery.data?.shops ?? [];
+  const showShopColumn = admin && shopFilter === "all" && franchiseShops.length > 1;
+  const shopSelectOptions = useMemo(
+    () =>
+      franchiseShops.map((shop) => ({
+        value: shop.id,
+        label: shop.displayName?.trim() || shop.name,
+      })),
+    [franchiseShops],
+  );
 
   const resetForm = () => {
     setForm(emptyForm());
     setFieldError(undefined);
     setEditingId(null);
     setShowForm(false);
+    setFormSalonId(shopFilter !== "all" ? shopFilter : "");
   };
 
   const openCreateForm = () => {
     setForm(emptyForm());
     setFieldError(undefined);
     setEditingId(null);
+    setFormSalonId(shopFilter !== "all" ? shopFilter : "");
     setShowForm(true);
   };
 
@@ -97,15 +129,17 @@ export function Expenses() {
     setForm(expenseToFormValues(expense));
     setFieldError(undefined);
     setEditingId(expense.id);
+    setFormSalonId(expense.salonId ?? "");
     setShowForm(true);
   };
 
   const load = useCallback(async () => {
     setLoading(true);
+    const salonId = admin && shopFilter !== "all" ? shopFilter : undefined;
     try {
       const [rows, overview] = await Promise.all([
-        fetchExpenses(),
-        fetchAccountingOverview(todayIsoDate()),
+        fetchExpenses({ salonId }),
+        fetchAccountingOverview(todayIsoDate(), { salonId }),
       ]);
       setExpenses(rows);
       setIsClosed(overview.isClosed);
@@ -114,14 +148,14 @@ export function Expenses() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [admin, shopFilter]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   const totalAmount = expenses.reduce((s, e) => s + e.amount, 0);
-  const pagination = useTablePagination(expenses.length);
+  const pagination = useTablePagination(expenses.length, [shopFilter]);
   const pageRows = useMemo(() => pagination.paginate(expenses), [expenses, pagination]);
 
   const patchForm = <K extends keyof ExpenseFormValues>(key: K, value: ExpenseFormValues[K]) => {
@@ -144,18 +178,28 @@ export function Expenses() {
       toast.error(result.error);
       return;
     }
+    if (admin && franchiseShops.length > 1 && !editingId && !formSalonId) {
+      setFieldError("salonId");
+      toast.error("Select a shop for this expense");
+      return;
+    }
     setSaving(true);
     try {
+      const payload = {
+        ...result.value,
+        ...(admin && formSalonId ? { salonId: formSalonId } : {}),
+      };
       if (editingId) {
         const updated = await updateExpense(editingId, result.value);
         setExpenses((prev) => prev.map((e) => (e.id === editingId ? updated : e)));
         resetForm();
         toast.success("Expense updated");
       } else {
-        const created = await createExpense(result.value);
+        const created = await createExpense(payload);
         setExpenses((prev) => [created, ...prev]);
         resetForm();
         toast.success("Expense saved");
+        void load();
       }
     } catch (error) {
       toast.error(
@@ -257,7 +301,7 @@ export function Expenses() {
               onClick={() => openEditForm(e)}
               aria-label="Edit expense"
               className={cn(
-                "flex items-center justify-center gap-1.5 rounded-lg border border-black/[0.08] text-[#6b6b6b] transition-colors hover:border-[#D4AF37]/35 hover:text-[#9a7d20] disabled:opacity-30",
+                "flex items-center justify-center gap-1.5 rounded-lg border border-black/[0.08] text-[#3f3f46] transition-colors hover:border-[#D4AF37]/35 hover:text-[#9a7d20] disabled:opacity-30",
                 compact ? "h-8 w-8" : "h-9 px-3 text-[12px] font-semibold",
               )}
             >
@@ -271,8 +315,8 @@ export function Expenses() {
             onClick={() => void remove(e)}
             aria-label={admin ? "Delete expense" : "Request delete"}
             className={cn(
-              "flex items-center justify-center gap-1.5 rounded-lg border border-black/[0.08] text-[#9a9a9a] transition-colors hover:border-[#D4AF37]/35 hover:text-[#111118] disabled:opacity-30",
-              compact ? "h-8 w-8" : "h-9 px-3 text-[12px] font-semibold text-[#6b6b6b]",
+              "flex items-center justify-center gap-1.5 rounded-lg border border-black/[0.08] text-[#52525b] transition-colors hover:border-[#D4AF37]/35 hover:text-[#111118] disabled:opacity-30",
+              compact ? "h-8 w-8" : "h-9 px-3 text-[12px] font-semibold text-[#3f3f46]",
             )}
           >
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
@@ -291,7 +335,7 @@ export function Expenses() {
             Finance
           </p>
           <h1 className="text-2xl font-bold tracking-tight text-[#111118] sm:text-3xl">Expenses</h1>
-          <p className="mt-1 text-[12px] text-[#6b6b6b] sm:text-[13px]">
+          <p className="mt-1 text-[12px] text-[#3f3f46] sm:text-[13px]">
             Track salon expenses — every entry needs a note.
           </p>
         </div>
@@ -307,18 +351,40 @@ export function Expenses() {
       </div>
 
       {isClosed && (
-        <div className="shrink-0 rounded-xl border border-[#D4AF37]/30 bg-[#FAF8F2] px-3 py-2.5 text-[12px] text-[#6b6b6b] sm:px-4 sm:py-3">
+        <div className="shrink-0 rounded-xl border border-[#D4AF37]/30 bg-[#FAF8F2] px-3 py-2.5 text-[12px] text-[#3f3f46] sm:px-4 sm:py-3">
           Today is closed — expenses are read-only until the next open day.
+        </div>
+      )}
+
+      {admin && franchiseShops.length > 0 && (
+        <div className="shrink-0">
+          <FilterSelect
+            value={shopFilter}
+            onValueChange={setShopFilter}
+            icon={Store}
+            active={shopFilter !== "all"}
+            className="sm:max-w-xs"
+            options={[
+              { value: "all", label: `All Shops (${franchiseShops.length})` },
+              ...franchiseShops.map((shop) => ({
+                value: shop.id,
+                label: shop.displayName?.trim() || shop.name,
+              })),
+            ]}
+          />
         </div>
       )}
 
       <div className="grid shrink-0 grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3">
         <div className="rounded-2xl border border-black/[0.07] bg-white p-3 sm:p-4">
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Entries</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#52525b]">Entries</p>
           <p className="mt-1 text-xl font-black text-[#111118] sm:text-2xl">{expenses.length}</p>
+          <p className="mt-0.5 text-[10px] text-[#52525b]">
+            {shopFilter === "all" ? "All shops" : "Selected shop"}
+          </p>
         </div>
         <div className="rounded-2xl border border-black/[0.07] bg-white p-3 sm:col-span-2 sm:p-4">
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Total</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#52525b]">Total</p>
           <p className="mt-1 truncate text-xl font-black tabular-nums text-[#111118] sm:text-2xl">
             ₹{totalAmount.toLocaleString("en-IN")}
           </p>
@@ -333,15 +399,35 @@ export function Expenses() {
               <p className="text-[13px] font-bold text-[#111118]">
                 {editingId ? "Edit Expense" : "New Expense"}
               </p>
-              <p className="text-[11px] text-[#6b6b6b]">
+              <p className="text-[11px] text-[#3f3f46]">
                 {editingId ? "Admin only — update this entry" : "Note is compulsory"}
               </p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
+            {admin && franchiseShops.length > 1 && !editingId ? (
+              <label className="space-y-1.5 min-[480px]:col-span-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#3f3f46]">Shop *</span>
+                <FormSelect
+                  value={formSalonId}
+                  onValueChange={setFormSalonId}
+                  options={shopSelectOptions}
+                  placeholder="Select shop / branch"
+                  icon={Store}
+                  highlightWhenSet={false}
+                  aria-label="Expense shop"
+                  triggerClassName={cn(
+                    "bg-white",
+                    fieldError === "salonId"
+                      ? "border-red-400 focus-visible:border-red-400 focus-visible:ring-red-400/20"
+                      : undefined,
+                  )}
+                />
+              </label>
+            ) : null}
             <label className="space-y-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#6b6b6b]">Date *</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#3f3f46]">Date *</span>
               <input
                 type="date"
                 value={form.date}
@@ -353,24 +439,25 @@ export function Expenses() {
               />
             </label>
             <label className="space-y-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#6b6b6b]">Category *</span>
-              <select
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#3f3f46]">Category *</span>
+              <FormSelect
                 value={form.category}
-                onChange={(e) => patchForm("category", e.target.value as ExpenseCategory)}
-                className={cn(
-                  "h-10 w-full min-w-0 rounded-xl border bg-white px-3 text-[13px] outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/15",
-                  fieldError === "category" ? "border-red-400" : "border-black/[0.08]",
+                onValueChange={(value) => patchForm("category", value as ExpenseCategory)}
+                options={CATEGORY_OPTIONS}
+                placeholder="Select category"
+                icon={Tags}
+                highlightWhenSet={false}
+                aria-label="Expense category"
+                triggerClassName={cn(
+                  "bg-white",
+                  fieldError === "category"
+                    ? "border-red-400 focus-visible:border-red-400 focus-visible:ring-red-400/20"
+                    : undefined,
                 )}
-              >
-                {EXPENSE_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
+              />
             </label>
             <label className="space-y-1.5 min-[480px]:col-span-2 lg:col-span-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#6b6b6b]">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#3f3f46]">
                 Sub Category *
               </span>
               <input
@@ -385,9 +472,9 @@ export function Expenses() {
             </label>
             {form.category === "Payroll" && (
               <label className="space-y-1.5 min-[480px]:col-span-2 lg:col-span-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#6b6b6b]">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#3f3f46]">
                   Employee Name{" "}
-                  <span className="font-medium normal-case tracking-normal text-[#9a9a9a]">(optional)</span>
+                  <span className="font-medium normal-case tracking-normal text-[#52525b]">(optional)</span>
                 </span>
                 <input
                   value={form.employeeName}
@@ -401,9 +488,9 @@ export function Expenses() {
               </label>
             )}
             <label className="space-y-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#6b6b6b]">Amount *</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#3f3f46]">Amount *</span>
               <div className="relative">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] font-bold text-[#9a9a9a]">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] font-bold text-[#52525b]">
                   ₹
                 </span>
                 <input
@@ -423,7 +510,7 @@ export function Expenses() {
           </div>
 
           <div className="space-y-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#6b6b6b]">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#3f3f46]">
               Paid via *
             </span>
             <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-black/[0.08] bg-white p-1">
@@ -438,7 +525,7 @@ export function Expenses() {
                       "flex h-9 min-w-0 items-center justify-center gap-1 rounded-lg px-1 text-[11px] font-bold transition-all sm:gap-1.5",
                       form.source === s
                         ? "bg-[#111118] text-[#D4AF37]"
-                        : "text-[#6b6b6b] hover:text-[#111118]",
+                        : "text-[#3f3f46] hover:text-[#111118]",
                     )}
                   >
                     <Icon className="h-3.5 w-3.5 shrink-0" />
@@ -450,8 +537,8 @@ export function Expenses() {
           </div>
 
           <label className="block space-y-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#6b6b6b]">
-              Note * <span className="font-medium normal-case tracking-normal text-[#9a9a9a]">(required)</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#3f3f46]">
+              Note * <span className="font-medium normal-case tracking-normal text-[#52525b]">(required)</span>
             </span>
             <textarea
               value={form.note}
@@ -464,14 +551,14 @@ export function Expenses() {
                 fieldError === "note" ? "border-red-400" : "border-black/[0.08]",
               )}
             />
-            <span className="text-[10px] text-[#9a9a9a]">{form.note.trim().length}/500</span>
+            <span className="text-[10px] text-[#52525b]">{form.note.trim().length}/500</span>
           </label>
 
           <div className="flex flex-col-reverse gap-2 min-[400px]:flex-row min-[400px]:flex-wrap min-[400px]:justify-end">
             <button
               type="button"
               onClick={resetForm}
-              className="h-10 rounded-xl border border-black/[0.08] px-4 text-[12px] font-semibold text-[#6b6b6b]"
+              className="h-10 rounded-xl border border-black/[0.08] px-4 text-[12px] font-semibold text-[#3f3f46]"
             >
               Cancel
             </button>
@@ -490,13 +577,13 @@ export function Expenses() {
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-black/[0.07] bg-white">
         {loading ? (
-          <div className="flex items-center justify-center gap-2 py-16 text-[13px] text-[#9a9a9a]">
+          <div className="flex items-center justify-center gap-2 py-16 text-[13px] text-[#52525b]">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading expenses…
           </div>
         ) : expenses.length === 0 ? (
           <div className="py-16 text-center">
             <Receipt className="mx-auto mb-2 h-8 w-8 text-[#D4AF37]/35" />
-            <p className="text-[13px] text-[#9a9a9a]">No expenses yet</p>
+            <p className="text-[13px] text-[#52525b]">No expenses yet</p>
           </div>
         ) : (
           <>
@@ -515,8 +602,9 @@ export function Expenses() {
                         <p className="truncate text-[14px] font-bold text-[#111118]">
                           {e.subCategory || e.sub}
                         </p>
-                        <p className="mt-0.5 text-[11px] text-[#9a9a9a]">
+                        <p className="mt-0.5 text-[11px] text-[#52525b]">
                           {formatDisplayDate(e.date)} · {e.source}
+                          {showShopColumn && e.salonName ? ` · ${e.salonName}` : ""}
                         </p>
                       </div>
                       <p className="shrink-0 text-[14px] font-black tabular-nums text-[#111118]">
@@ -524,7 +612,12 @@ export function Expenses() {
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-1.5 pl-0 sm:pl-12">
-                      <span className="rounded-full bg-[#f4f2ed] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#6b6b6b]">
+                      {showShopColumn && e.salonName ? (
+                        <span className="rounded-full border border-[#D4AF37]/25 bg-[#FFFBEB] px-2 py-0.5 text-[10px] font-semibold text-[#9a7d20]">
+                          {e.salonName}
+                        </span>
+                      ) : null}
+                      <span className="rounded-full bg-[#f4f2ed] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#3f3f46]">
                         {e.category}
                       </span>
                       {parsed.employeeName && (
@@ -534,7 +627,7 @@ export function Expenses() {
                       )}
                     </div>
                     {parsed.note ? (
-                      <p className="text-[12px] leading-snug text-[#6b6b6b] sm:pl-12">{parsed.note}</p>
+                      <p className="text-[12px] leading-snug text-[#3f3f46] sm:pl-12">{parsed.note}</p>
                     ) : null}
                     {e.deleteRequested ? (
                       <p className="text-[11px] font-semibold text-amber-700 sm:pl-12">
@@ -558,14 +651,17 @@ export function Expenses() {
               <table className="w-full text-sm">
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b border-black/[0.06] bg-[#FAF8F2]">
-                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#6b6b6b] xl:px-4">Date</th>
-                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#6b6b6b] xl:px-4">Category</th>
-                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#6b6b6b] xl:px-4">Sub Category</th>
-                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#6b6b6b] xl:px-4">Employee</th>
-                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#6b6b6b] xl:px-4">Source</th>
-                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#6b6b6b] xl:px-4">Note</th>
-                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#6b6b6b] xl:px-4">Amount</th>
-                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#6b6b6b] xl:px-4">Actions</th>
+                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#3f3f46] xl:px-4">Date</th>
+                    {showShopColumn ? (
+                      <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#3f3f46] xl:px-4">Shop</th>
+                    ) : null}
+                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#3f3f46] xl:px-4">Category</th>
+                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#3f3f46] xl:px-4">Sub Category</th>
+                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#3f3f46] xl:px-4">Employee</th>
+                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#3f3f46] xl:px-4">Source</th>
+                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#3f3f46] xl:px-4">Note</th>
+                    <th className="px-3 py-3 text-right text-[11px] font-semibold text-[#3f3f46] xl:px-4">Amount</th>
+                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#3f3f46] xl:px-4">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -582,19 +678,24 @@ export function Expenses() {
                         <td className="whitespace-nowrap px-3 py-3 text-[12px] tabular-nums text-[#111118] xl:px-4">
                           {formatDisplayDate(e.date)}
                         </td>
+                        {showShopColumn ? (
+                          <td className="max-w-[9rem] truncate px-3 py-3 text-[12px] font-semibold text-[#9a7d20] xl:px-4">
+                            {e.salonName || "—"}
+                          </td>
+                        ) : null}
                         <td className="px-3 py-3 xl:px-4">
-                          <span className="rounded-full bg-[#f4f2ed] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#6b6b6b]">
+                          <span className="rounded-full bg-[#f4f2ed] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#3f3f46]">
                             {e.category}
                           </span>
                         </td>
                         <td className="max-w-[10rem] truncate px-3 py-3 text-[13px] font-semibold text-[#111118] xl:max-w-[14rem] xl:px-4">
                           {e.subCategory || e.sub}
                         </td>
-                        <td className="max-w-[8rem] truncate px-3 py-3 text-[12px] text-[#6b6b6b] xl:px-4">
+                        <td className="max-w-[8rem] truncate px-3 py-3 text-[12px] text-[#3f3f46] xl:px-4">
                           {parsed.employeeName || "—"}
                         </td>
-                        <td className="px-3 py-3 text-[12px] text-[#6b6b6b] xl:px-4">{e.source}</td>
-                        <td className="max-w-[12rem] truncate px-3 py-3 text-[12px] text-[#6b6b6b] xl:max-w-[16rem] xl:px-4" title={parsed.note}>
+                        <td className="px-3 py-3 text-[12px] text-[#3f3f46] xl:px-4">{e.source}</td>
+                        <td className="max-w-[12rem] truncate px-3 py-3 text-[12px] text-[#3f3f46] xl:max-w-[16rem] xl:px-4" title={parsed.note}>
                           {parsed.note || "—"}
                         </td>
                         <td className="whitespace-nowrap px-3 py-3 text-right text-[13px] font-bold tabular-nums text-[#111118] xl:px-4">

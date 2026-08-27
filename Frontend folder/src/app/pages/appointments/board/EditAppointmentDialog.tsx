@@ -77,7 +77,7 @@ export function EditAppointmentDialog({
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[14px] font-bold text-[#111118]">{editAppt.customer || "Unnamed customer"}</p>
-                <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[#9a9a9a]">
+                <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[#52525b]">
                   <Phone className="h-3 w-3 shrink-0 text-[#D4AF37]" />
                   {editAppt.phone || "No phone number on file"}
                 </p>
@@ -103,7 +103,7 @@ export function EditAppointmentDialog({
                   className="rounded-xl border border-black/[0.06] bg-white px-3 py-2.5 text-center shadow-sm"
                 >
                   <Icon className="mx-auto mb-1 h-3.5 w-3.5 text-[#D4AF37]" />
-                  <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-[#9a9a9a]">{label}</p>
+                  <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-[#52525b]">{label}</p>
                   <p className="mt-0.5 truncate text-[12px] font-semibold text-[#111118]">{value}</p>
                 </div>
               ))}
@@ -112,9 +112,9 @@ export function EditAppointmentDialog({
             {/* Contact */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <Label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Customer Name</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#52525b]">Customer Name</Label>
                 <div className="relative mt-1.5">
-                  <User className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
+                  <User className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#52525b]" />
                   <Input
                     value={editAppt.customer}
                     onChange={e => setEditAppt(a => a ? { ...a, customer: e.target.value } : a)}
@@ -123,9 +123,9 @@ export function EditAppointmentDialog({
                 </div>
               </div>
               <div>
-                <Label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Phone</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#52525b]">Phone</Label>
                 <div className="relative mt-1.5">
-                  <Phone className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
+                  <Phone className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#52525b]" />
                   <Input
                     value={editAppt.phone}
                     onChange={e => setEditAppt(a => a ? { ...a, phone: e.target.value } : a)}
@@ -138,7 +138,7 @@ export function EditAppointmentDialog({
             {/* Services — multi-select */}
             <div className="space-y-3 rounded-xl border border-black/[0.06] bg-white p-3.5">
               <div className="flex items-center justify-between gap-2">
-                <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">
+                <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#52525b]">
                   <Scissors className="h-3 w-3 text-[#D4AF37]" />
                   Services
                 </p>
@@ -192,7 +192,7 @@ export function EditAppointmentDialog({
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[12.5px] font-semibold text-[#111118]">{s.name}</p>
-                        <p className="mt-0.5 text-[10px] text-[#9a9a9a]">
+                        <p className="mt-0.5 text-[10px] text-[#52525b]">
                           {s.duration} min · {formatInr(s.price)}
                         </p>
                       </div>
@@ -204,7 +204,7 @@ export function EditAppointmentDialog({
 
             {/* Status */}
             <div className="rounded-xl border border-black/[0.06] bg-white p-3.5">
-              <p className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Appointment Status</p>
+              <p className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#52525b]">Appointment Status</p>
               <div className="flex flex-wrap gap-2">
                 {(
                   [
@@ -225,7 +225,7 @@ export function EditAppointmentDialog({
                         "rounded-lg border px-3 py-1.5 text-[11px] font-semibold capitalize transition-all",
                         active
                           ? "border-[#D4AF37]/40 bg-[#FFFBEB] text-[#9a7a1e] shadow-sm ring-1 ring-[#D4AF37]/20"
-                          : "border-black/[0.08] bg-[#faf9f7] text-[#6b6b6b] hover:border-[#D4AF37]/25 hover:bg-white",
+                          : "border-black/[0.08] bg-[#faf9f7] text-[#3f3f46] hover:border-[#D4AF37]/25 hover:bg-white",
                       )}
                     >
                       {label}

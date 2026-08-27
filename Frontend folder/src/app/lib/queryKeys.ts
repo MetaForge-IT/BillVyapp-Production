@@ -19,7 +19,12 @@ export const queryKeys = {
       dateTo?: string;
       paymentMethod?: string;
     }) => ["billing", "invoices", params ?? { page: 1, limit: 200 }] as const,
-    invoicesSummary: () => ["billing", "invoices", "summary"] as const,
+    invoicesSummary: (params?: {
+      salonId?: string;
+      date?: string;
+      dateFrom?: string;
+      dateTo?: string;
+    }) => ["billing", "invoices", "summary", params ?? {}] as const,
     pending: (params?: { page?: number; limit?: number; search?: string }) =>
       ["billing", "pending", params ?? { page: 1, limit: 200 }] as const,
   },

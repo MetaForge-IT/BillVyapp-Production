@@ -168,7 +168,7 @@ export function Vendors({ onVendorsChanged }: { onVendorsChanged?: () => void } 
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-[#121212]">Vendors</h1>
-            <p className="text-sm text-[#6B6B6B]">Manage vendor relationships</p>
+            <p className="text-sm text-[#3f3f46]">Manage vendor relationships</p>
           </div>
         </div>
         {role !== "admin" && (
@@ -216,7 +216,7 @@ export function Vendors({ onVendorsChanged }: { onVendorsChanged?: () => void } 
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-[15px] font-bold text-[#111118]">{vendor.name}</p>
-                      <p className="truncate text-[12px] text-[#6b6b6b]">{vendor.contact}</p>
+                      <p className="truncate text-[12px] text-[#3f3f46]">{vendor.contact}</p>
                     </div>
                   </div>
                   <Badge className={vendor.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
@@ -226,11 +226,11 @@ export function Vendors({ onVendorsChanged }: { onVendorsChanged?: () => void } 
                 <div className="space-y-2 rounded-xl border border-black/[0.06] bg-[#FAF8F2] p-3">
                   <p className="flex items-center gap-2 text-[12px] text-[#3d3d3d]"><Phone className="h-3.5 w-3.5 text-[#D4AF37]" />{vendor.phone}</p>
                   <p className="flex items-center gap-2 text-[12px] text-[#3d3d3d]"><Mail className="h-3.5 w-3.5 text-[#D4AF37]" />{vendor.email}</p>
-                  <p className="flex items-start gap-2 text-[12px] text-[#6b6b6b]"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#D4AF37]" />{vendor.address}</p>
+                  <p className="flex items-start gap-2 text-[12px] text-[#3f3f46]"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#D4AF37]" />{vendor.address}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-xl bg-[#FAF8F2] px-3 py-2.5">
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Category</p>
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-[#52525b]">Category</p>
                     <p className="mt-1 truncate text-[13px] font-bold">{vendor.category}</p>
                   </div>
                   <div className="rounded-xl border border-[#D4AF37]/20 bg-[#FFFBEB] px-3 py-2.5">

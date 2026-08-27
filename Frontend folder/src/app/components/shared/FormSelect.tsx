@@ -77,7 +77,7 @@ export function FormSelect({
               <span className="flex min-w-0 flex-col gap-0.5">
                 <span className="truncate font-semibold">{option.label}</span>
                 {option.description ? (
-                  <span className="truncate text-[11px] font-normal text-[#9a9a9a]">
+                  <span className="truncate text-[11px] font-normal text-[#52525b]">
                     {option.description}
                   </span>
                 ) : null}

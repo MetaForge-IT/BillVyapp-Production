@@ -9,7 +9,8 @@ import { listServicesQuerySchema } from "./services.validators";
 export class ServicesController {
   listCatalog = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const auth = (req as AuthenticatedRequest).auth;
-    const catalog = await servicesService.listCatalog(auth);
+    const salonId = typeof req.query.salonId === "string" ? req.query.salonId : undefined;
+    const catalog = await servicesService.listCatalog(auth, salonId);
     sendSuccess(res, { message: "Service catalog retrieved", data: catalog });
   });
 

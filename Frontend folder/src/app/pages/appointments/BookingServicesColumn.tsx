@@ -259,7 +259,7 @@ export function BookingServicesColumn({
                     : tab === "Products"
                       ? "bg-[#111118] text-[#D4AF37] shadow-sm"
                       : "bg-[#111118] text-[#D4AF37] shadow-sm"
-                  : "text-[#9a9a9a] hover:text-[#111118]",
+                  : "text-[#52525b] hover:text-[#111118]",
               )}
             >
               {tab}
@@ -268,7 +268,7 @@ export function BookingServicesColumn({
         </div>
 
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#52525b]" />
           <Input
             placeholder={
               serviceTab === "Packages"
@@ -299,7 +299,7 @@ export function BookingServicesColumn({
                   return (
                     <div key={groupKey} className="space-y-2">
                       {showCategoryLabel && (
-                        <p className="px-1 pt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a9a9a]">
+                        <p className="px-1 pt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525b]">
                           {categoryName}
                         </p>
                       )}
@@ -318,7 +318,7 @@ export function BookingServicesColumn({
                             )}
                           />
                           <span className="text-[12px] font-bold text-[#111118]">{accordionTitle}</span>
-                          <span className="ml-auto text-[10px] text-[#9a9a9a]">{services.length}</span>
+                          <span className="ml-auto text-[10px] text-[#52525b]">{services.length}</span>
                         </button>
                         {open && (
                           <div className="space-y-1.5 border-t border-black/[0.05] px-2 py-2">
@@ -339,20 +339,20 @@ export function BookingServicesColumn({
                                     <div
                                       className={cn(
                                         "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br",
-                                        service.tone ?? "from-[#9a9a9a] to-[#6b6b6b]",
+                                        service.tone ?? "from-[#52525b] to-[#3f3f46]",
                                       )}
                                     >
                                       <Scissors className="h-4 w-4 text-white/90" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-[#9a9a9a]">
+                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-[#52525b]">
                                         {service.categoryLabel || categoryName}
                                         {service.serviceGroup ? ` · ${service.serviceGroup}` : ""}
                                       </p>
                                       <p className="text-[12.5px] font-semibold leading-tight text-[#111118]">
                                         {service.displayName || service.name}
                                       </p>
-                                      <p className="mt-0.5 flex items-center gap-1 text-[10.5px] text-[#9a9a9a]">
+                                      <p className="mt-0.5 flex items-center gap-1 text-[10.5px] text-[#52525b]">
                                         <Clock className="h-3 w-3" /> {service.duration} min
                                       </p>
                                     </div>
@@ -403,20 +403,20 @@ export function BookingServicesColumn({
                         <div
                           className={cn(
                             "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br",
-                            service.tone ?? "from-[#9a9a9a] to-[#6b6b6b]",
+                            service.tone ?? "from-[#52525b] to-[#3f3f46]",
                           )}
                         >
                           <Scissors className="h-4 w-4 text-white/90" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-[10px] font-semibold uppercase tracking-wide text-[#9a9a9a]">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-[#52525b]">
                             {service.categoryLabel}
                             {service.serviceGroup ? ` · ${service.serviceGroup}` : ""}
                           </p>
                           <p className="text-[12.5px] font-semibold leading-tight text-[#111118]">
                             {service.displayName || service.name}
                           </p>
-                          <p className="mt-0.5 flex items-center gap-1 text-[10.5px] text-[#9a9a9a]">
+                          <p className="mt-0.5 flex items-center gap-1 text-[10.5px] text-[#52525b]">
                             <Clock className="h-3 w-3" /> {service.duration} min
                           </p>
                         </div>
@@ -446,7 +446,7 @@ export function BookingServicesColumn({
             {catalogListTotal > SERVICES_PAGE_SIZE &&
               (serviceTab === "Male" || serviceTab === "Female" || serviceTab === "Others") && (
                 <div className="flex items-center justify-between gap-2 pt-1">
-                  <p className="text-[11px] font-medium text-[#9a9a9a]">
+                  <p className="text-[11px] font-medium text-[#52525b]">
                     {catalogPageStart}–{catalogPageEnd} of {catalogListTotal}
                     {useGroupedServiceList ? " groups" : " services"}
                   </p>
@@ -537,14 +537,14 @@ export function BookingServicesColumn({
                         {pkg.gender}
                       </span>
                     </div>
-                    <p className="mt-0.5 flex items-center gap-1 text-[10.5px] text-[#9a9a9a]">
+                    <p className="mt-0.5 flex items-center gap-1 text-[10.5px] text-[#52525b]">
                       <Clock className="h-3 w-3" /> {pkg.duration} min
                     </p>
                     <div className="mt-1.5 flex flex-wrap gap-1">
                       {pkg.includes.map((i) => (
                         <span
                           key={i}
-                          className="rounded-full border border-black/[0.06] bg-[#f4f2ed] px-1.5 py-0.5 text-[9px] text-[#6b6b6b]"
+                          className="rounded-full border border-black/[0.06] bg-[#f4f2ed] px-1.5 py-0.5 text-[9px] text-[#3f3f46]"
                         >
                           {i}
                         </span>
@@ -573,7 +573,7 @@ export function BookingServicesColumn({
             })}
             {filteredPackages.length > SERVICES_PAGE_SIZE && (
               <div className="flex items-center justify-between gap-2 pt-1">
-                <p className="text-[11px] font-medium text-[#9a9a9a]">
+                <p className="text-[11px] font-medium text-[#52525b]">
                   {catalogPageStart}–{catalogPageEnd} of {filteredPackages.length}
                 </p>
                 <div className="flex items-center gap-1.5">
@@ -690,7 +690,7 @@ export function BookingServicesColumn({
             })}
             {filteredProducts.length > SERVICES_PAGE_SIZE && (
               <div className="flex items-center justify-between gap-2 pt-1">
-                <p className="text-[11px] font-medium text-[#9a9a9a]">
+                <p className="text-[11px] font-medium text-[#52525b]">
                   {catalogPageStart}–{catalogPageEnd} of {filteredProducts.length}
                 </p>
                 <div className="flex items-center gap-1.5">
@@ -740,7 +740,7 @@ export function BookingServicesColumn({
               </div>
               <span className="text-[11.5px] font-semibold text-[#111118]">selected</span>
               {estimatedDuration > 0 && (
-                <span className="ml-auto flex items-center gap-1 text-[10.5px] text-[#9a9a9a]">
+                <span className="ml-auto flex items-center gap-1 text-[10.5px] text-[#52525b]">
                   <Clock className="h-3 w-3 text-[#D4AF37]" /> ~{estimatedDuration} min
                 </span>
               )}
@@ -753,7 +753,7 @@ export function BookingServicesColumn({
                   onClick={() => setSelectedServices((prev) => prev.filter((x) => x.id !== s.id))}
                   className="flex items-center gap-1 rounded-full border border-black/[0.06] bg-[#f4f2ed] px-2 py-0.5 text-[10px] font-medium text-[#111118] hover:border-[#D4AF37]/30"
                 >
-                  {s.name} <span className="ml-0.5 text-[#9a9a9a]">✕</span>
+                  {s.name} <span className="ml-0.5 text-[#52525b]">✕</span>
                 </button>
               ))}
               {selectedPackages.map((p) => (
@@ -772,7 +772,7 @@ export function BookingServicesColumn({
                   key={p.id}
                   type="button"
                   onClick={() => setSelectedProducts((prev) => prev.filter((x) => x.id !== p.id))}
-                  className="flex items-center gap-1 rounded-full border border-black/[0.1] bg-[#111118]/[0.06] px-2 py-0.5 text-[10px] font-medium text-[#6b6b6b] hover:border-black/20"
+                  className="flex items-center gap-1 rounded-full border border-black/[0.1] bg-[#111118]/[0.06] px-2 py-0.5 text-[10px] font-medium text-[#3f3f46] hover:border-black/20"
                 >
                   {p.name} <span className="ml-0.5">✕</span>
                 </button>

@@ -67,8 +67,8 @@ type ReceiptResult = {
 const TIER_BADGE: Record<string, string> = {
   Platinum: "bg-[#111118] text-[#D4AF37] border-transparent",
   Gold: "bg-[#D4AF37]/15 text-[#B8962E] border-[#D4AF37]/20",
-  Silver: "bg-black/[0.06] text-[#6b6b6b] border-black/[0.08]",
-  Basic: "bg-black/[0.04] text-[#9a9a9a] border-black/[0.05]",
+  Silver: "bg-black/[0.06] text-[#3f3f46] border-black/[0.08]",
+  Basic: "bg-black/[0.04] text-[#52525b] border-black/[0.05]",
 };
 
 function membershipTierLabel(tier: string): string {
@@ -507,7 +507,7 @@ export function DirectBillDialog({
                     </div>
                     <div>
                       <p className="text-[12px] font-bold text-[#111118]">Customer</p>
-                      <p className="text-[10px] text-[#9a9a9a]">Search existing or add new</p>
+                      <p className="text-[10px] text-[#52525b]">Search existing or add new</p>
                     </div>
                   </div>
 
@@ -527,7 +527,7 @@ export function DirectBillDialog({
                           "flex items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-semibold transition-all",
                           customerMode === mode
                             ? "bg-[#111118] text-[#D4AF37] shadow-sm"
-                            : "text-[#9a9a9a] hover:text-[#111118]",
+                            : "text-[#52525b] hover:text-[#111118]",
                         )}
                       >
                         {mode === "search" ? (
@@ -546,7 +546,7 @@ export function DirectBillDialog({
                   {customerMode === "search" ? (
                     <div className="space-y-2">
                       <div className="relative">
-                        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#52525b]" />
                         <Input
                           value={customerSearch}
                           onChange={(e) => {
@@ -564,7 +564,7 @@ export function DirectBillDialog({
                               setCustomerSelected(false);
                               setCustomer({ name: "", phone: "" });
                             }}
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#9a9a9a] hover:text-[#111118]"
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#52525b] hover:text-[#111118]"
                           >
                             <X className="h-3.5 w-3.5" />
                           </button>
@@ -594,7 +594,7 @@ export function DirectBillDialog({
                                   </div>
                                   <div className="min-w-0 flex-1">
                                     <p className="truncate text-[12px] font-semibold text-[#111118]">{row.name}</p>
-                                    <p className="text-[10px] text-[#9a9a9a]">
+                                    <p className="text-[10px] text-[#52525b]">
                                       {row.phone} · {row.totalVisits} visits
                                     </p>
                                   </div>
@@ -606,7 +606,7 @@ export function DirectBillDialog({
                             })}
                           </div>
                         ) : (
-                          <div className="rounded-xl border border-black/[0.06] bg-[#faf9f7] px-3 py-3 text-center text-[11px] text-[#9a9a9a]">
+                          <div className="rounded-xl border border-black/[0.06] bg-[#faf9f7] px-3 py-3 text-center text-[11px] text-[#52525b]">
                             No customer found — try a different search or add new
                           </div>
                         )
@@ -632,7 +632,7 @@ export function DirectBillDialog({
                                 </Badge>
                               )}
                             </div>
-                            <p className="mt-0.5 truncate text-[10.5px] text-[#9a9a9a]">{customer.phone}</p>
+                            <p className="mt-0.5 truncate text-[10.5px] text-[#52525b]">{customer.phone}</p>
                           </div>
                           <button
                             type="button"
@@ -642,7 +642,7 @@ export function DirectBillDialog({
                               setCustomer({ name: "", phone: "" });
                               setLoyaltyAvailable(0);
                             }}
-                            className="shrink-0 rounded-lg p-1 text-[#9a9a9a] transition-colors hover:bg-white hover:text-[#111118]"
+                            className="shrink-0 rounded-lg p-1 text-[#52525b] transition-colors hover:bg-white hover:text-[#111118]"
                           >
                             <X className="h-3.5 w-3.5" />
                           </button>
@@ -652,7 +652,7 @@ export function DirectBillDialog({
                   ) : (
                     <div className="space-y-2.5">
                       <div className="relative">
-                        <User className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
+                        <User className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#52525b]" />
                         <Input
                           value={customer.name}
                           onChange={(e) => setCustomer((c) => ({ ...c, name: e.target.value }))}
@@ -661,7 +661,7 @@ export function DirectBillDialog({
                         />
                       </div>
                       <div className="flex gap-2">
-                        <span className="inline-flex shrink-0 items-center rounded-xl border border-black/[0.08] bg-[#faf9f7] px-2.5 text-[12px] text-[#6b6b6b]">
+                        <span className="inline-flex shrink-0 items-center rounded-xl border border-black/[0.08] bg-[#faf9f7] px-2.5 text-[12px] text-[#3f3f46]">
                           +91
                         </span>
                         <Input
@@ -678,7 +678,7 @@ export function DirectBillDialog({
                       {customer.name.trim() && (
                         <div className="flex items-center gap-2 rounded-xl border border-black/[0.06] bg-[#faf9f7] px-3 py-2">
                           <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#D4AF37]" />
-                          <p className="text-[11px] text-[#6b6b6b]">New customer — details will be saved with this bill</p>
+                          <p className="text-[11px] text-[#3f3f46]">New customer — details will be saved with this bill</p>
                         </div>
                       )}
                     </div>
@@ -688,13 +688,13 @@ export function DirectBillDialog({
                 {/* Quick search */}
                 <div className="border-b border-black/[0.06] bg-white px-4 pb-0 pt-3">
                   <div className="relative">
-                    <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9a9a]" />
+                    <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#52525b]" />
                     <input
                       type="text"
                       placeholder="Search service or product to add…"
                       value={itemSearch}
                       onChange={(e) => setItemSearch(e.target.value)}
-                      className="h-10 w-full rounded-xl border border-black/[0.08] bg-white pl-10 pr-9 text-[12px] font-medium outline-none transition-colors placeholder:font-normal placeholder:text-[#9a9a9a] focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/10"
+                      className="h-10 w-full rounded-xl border border-black/[0.08] bg-white pl-10 pr-9 text-[12px] font-medium outline-none transition-colors placeholder:font-normal placeholder:text-[#52525b] focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/10"
                     />
                     {itemSearch && (
                       <button
@@ -757,8 +757,8 @@ export function DirectBillDialog({
                         <Receipt className="h-6 w-6 text-[#D4AF37]/50" />
                       </div>
                       <div>
-                        <p className="text-[13px] font-semibold text-[#6b6b6b]">No items in cart</p>
-                        <p className="mt-0.5 text-[11px] text-[#9a9a9a]">
+                        <p className="text-[13px] font-semibold text-[#3f3f46]">No items in cart</p>
+                        <p className="mt-0.5 text-[11px] text-[#52525b]">
                           Browse products or search above to add
                         </p>
                       </div>
@@ -781,13 +781,13 @@ export function DirectBillDialog({
                                   "shrink-0 rounded px-1 py-0.5 text-[8px] font-bold uppercase",
                                   item.type === "service"
                                     ? "bg-[#D4AF37]/12 text-[#9a7a1e]"
-                                    : "bg-black/[0.06] text-[#6b6b6b]",
+                                    : "bg-black/[0.06] text-[#3f3f46]",
                                 )}
                               >
                                 {item.type === "service" ? "Svc" : "Prd"}
                               </span>
                             </div>
-                            <p className="mt-0.5 text-[10px] text-[#9a9a9a]">
+                            <p className="mt-0.5 text-[10px] text-[#52525b]">
                               ₹{item.price.toLocaleString()} / unit
                             </p>
                           </div>
@@ -795,7 +795,7 @@ export function DirectBillDialog({
                             <button
                               type="button"
                               onClick={() => updateQuantity(idx, item.qty - 1)}
-                              className="flex h-7 w-7 items-center justify-center rounded-lg border border-black/[0.08] bg-[#faf9f7] text-[#6b6b6b] transition-all hover:border-[#111118] hover:bg-[#111118] hover:text-white"
+                              className="flex h-7 w-7 items-center justify-center rounded-lg border border-black/[0.08] bg-[#faf9f7] text-[#3f3f46] transition-all hover:border-[#111118] hover:bg-[#111118] hover:text-white"
                             >
                               −
                             </button>
@@ -818,7 +818,7 @@ export function DirectBillDialog({
                             onClick={() =>
                               setItems((current) => current.filter((_, i) => i !== idx))
                             }
-                            className="flex h-7 w-8 shrink-0 items-center justify-center rounded-lg text-[#9a9a9a] transition-colors hover:bg-red-50 hover:text-red-500"
+                            className="flex h-7 w-8 shrink-0 items-center justify-center rounded-lg text-[#52525b] transition-colors hover:bg-red-50 hover:text-red-500"
                           >
                             <X className="h-3.5 w-3.5" />
                           </button>
@@ -845,7 +845,7 @@ export function DirectBillDialog({
                 <div className="shrink-0 border-b border-black/[0.06] px-4 py-3">
                   <div className="mb-2 flex items-center justify-between">
                     <p className="text-[12px] font-bold text-[#111118]">Add to bill</p>
-                    <p className="text-[10px] text-[#9a9a9a]">Tap an item to add</p>
+                    <p className="text-[10px] text-[#52525b]">Tap an item to add</p>
                   </div>
                   <div className="grid grid-cols-2 gap-1.5 rounded-xl border border-black/[0.07] bg-[#f4f2ed] p-1">
                     {(["products", "services"] as const).map((tab) => (
@@ -857,7 +857,7 @@ export function DirectBillDialog({
                           "rounded-lg py-2 text-[11px] font-semibold capitalize transition-all",
                           catalogTab === tab
                             ? "bg-[#111118] text-[#D4AF37] shadow-sm"
-                            : "text-[#9a9a9a] hover:text-[#111118]",
+                            : "text-[#52525b] hover:text-[#111118]",
                         )}
                       >
                         {tab}
@@ -867,7 +867,7 @@ export function DirectBillDialog({
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto p-3">
                   {catalogItems.length === 0 ? (
-                    <div className="flex h-full min-h-[120px] items-center justify-center text-[12px] text-[#9a9a9a]">
+                    <div className="flex h-full min-h-[120px] items-center justify-center text-[12px] text-[#52525b]">
                       No {catalogTab} available
                     </div>
                   ) : (
@@ -893,7 +893,7 @@ export function DirectBillDialog({
                                 "rounded px-1.5 py-0.5 text-[9px] font-bold uppercase",
                                 item.type === "service"
                                   ? "bg-[#D4AF37]/15 text-[#9a7a1e]"
-                                  : "bg-black/[0.06] text-[#6b6b6b]",
+                                  : "bg-black/[0.06] text-[#3f3f46]",
                               )}
                             >
                               {item.type === "service" ? "Svc" : "Prd"}
@@ -903,7 +903,7 @@ export function DirectBillDialog({
                             </div>
                           </div>
                           <p className="line-clamp-2 text-[12px] font-semibold text-[#111118]">{item.name}</p>
-                          <p className="mt-1 text-[10px] text-[#9a9a9a]">{item.meta}</p>
+                          <p className="mt-1 text-[10px] text-[#52525b]">{item.meta}</p>
                           <p className="mt-2 text-[13px] font-black tabular-nums text-[#111118]">
                             ₹{item.price.toLocaleString()}
                           </p>
@@ -1353,7 +1353,7 @@ export function DirectBillDialog({
                 <h2 className="text-xl font-bold text-[#111118]">
                   {receipt.pending ? "Direct Bill Confirmed" : "Payment Successful"}
                 </h2>
-                <p className="mt-1 text-sm text-[#9a9a9a]">
+                <p className="mt-1 text-sm text-[#52525b]">
                   {receipt.receiptNumber} · {receipt.customer}
                 </p>
               </div>

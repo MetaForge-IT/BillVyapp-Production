@@ -2,6 +2,8 @@ import { apiClient } from "../lib/axios";
 
 export interface ServiceCategory {
   id: string;
+  salonId?: string;
+  salonName?: string | null;
   name: string;
   description: string;
   icon?: string | null;
@@ -18,6 +20,7 @@ export interface CreateServiceCategoryPayload {
   icon?: string | null;
   status?: "active" | "inactive";
   sortOrder?: number;
+  salonId?: string;
 }
 
 interface ApiEnvelope<T> {
@@ -26,8 +29,12 @@ interface ApiEnvelope<T> {
   data: T;
 }
 
-export async function fetchServiceCategories(): Promise<ServiceCategory[]> {
-  const { data } = await apiClient.get<ApiEnvelope<ServiceCategory[]>>("/service-categories");
+export async function fetchServiceCategories(params?: {
+  salonId?: string;
+}): Promise<ServiceCategory[]> {
+  const { data } = await apiClient.get<ApiEnvelope<ServiceCategory[]>>("/service-categories", {
+    params,
+  });
   return data.data;
 }
 

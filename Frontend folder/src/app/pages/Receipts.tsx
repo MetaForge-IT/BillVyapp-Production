@@ -10,6 +10,7 @@ import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from "../components/ui/table";
 import { Input } from "../components/ui/input";
+import { Switch } from "../components/ui/switch";
 import {
   Receipt, Search, Mail, Eye, IndianRupee, FileCheck,
   Printer, Download, Send, Check, X, Paperclip, User,
@@ -69,10 +70,11 @@ function paymentMethodLabel(method: ReceiptRecord["paymentMethod"] | undefined):
 }
 
 const DATE_OPTIONS = [
-  { value: "all",   label: "All Time" },
+  { value: "all", label: "All Time" },
   { value: "today", label: "Today" },
-  { value: "week",  label: "This Week" },
+  { value: "week", label: "Last 7 Days" },
   { value: "month", label: "This Month" },
+  { value: "custom", label: "Custom Range" },
 ];
 const METHOD_OPTIONS = [
   { value: "all",    label: "All Methods" },
@@ -95,8 +97,11 @@ export function Receipts() {
   const dateParam = searchParams.get("date");
   const [search,       setSearch]       = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [showSearchFilters, setShowSearchFilters] = useState(false);
   const [methodFilter, setMethodFilter] = useState("all");
-  const [dateFilter,   setDateFilter]   = useState("all");
+  const [dateFilter,   setDateFilter]   = useState("month");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
   const [listPage, setListPage] = useState(1);
   const [listPageSize, setListPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [viewReceipt,  setViewReceipt]  = useState<ReceiptRecord | null>(null);
@@ -118,7 +123,7 @@ export function Receipts() {
 
   useEffect(() => {
     setListPage(1);
-  }, [debouncedSearch, listPageSize, shopFilter, methodFilter, dateFilter, dateParam]);
+  }, [debouncedSearch, listPageSize, shopFilter, methodFilter, dateFilter, dateParam, customFrom, customTo]);
 
   const franchiseQuery = useQuery({
     queryKey: ["my-franchise"],
@@ -132,14 +137,23 @@ export function Receipts() {
     if (dateFilter === "today") return { date: TODAY };
     if (dateFilter === "week") return { dateFrom: addDaysToDateKey(TODAY, -6), dateTo: TODAY };
     if (dateFilter === "month") return { dateFrom: `${TODAY.slice(0, 7)}-01`, dateTo: TODAY };
+    if (dateFilter === "custom" && customFrom && customTo) {
+      const from = customFrom <= customTo ? customFrom : customTo;
+      const to = customFrom <= customTo ? customTo : customFrom;
+      return { dateFrom: from, dateTo: to };
+    }
+    if (dateFilter === "custom" && customFrom) return { dateFrom: customFrom, dateTo: customFrom };
     return {};
-  }, [dateParam, dateFilter, TODAY]);
+  }, [dateParam, dateFilter, TODAY, customFrom, customTo]);
+
+  const salonIdParam =
+    isFranchiseAdmin && shopFilter !== "all" ? shopFilter : undefined;
 
   const invoiceParams = {
     page: listPage,
     limit: listPageSize,
     search: debouncedSearch || undefined,
-    salonId: isFranchiseAdmin && shopFilter !== "all" ? shopFilter : undefined,
+    salonId: salonIdParam,
     paymentMethod: methodFilter !== "all" ? methodFilter : undefined,
     ...dateQueryParams,
   };
@@ -147,9 +161,13 @@ export function Receipts() {
     queryKey: queryKeys.billing.invoices(invoiceParams),
     queryFn: () => fetchReceiptRecords(invoiceParams),
   });
+  const summaryParams = {
+    salonId: salonIdParam,
+    ...dateQueryParams,
+  };
   const summaryQuery = useQuery({
-    queryKey: queryKeys.billing.invoicesSummary(),
-    queryFn: fetchInvoicesSummary,
+    queryKey: queryKeys.billing.invoicesSummary(summaryParams),
+    queryFn: () => fetchInvoicesSummary(summaryParams),
     enabled: !isManager,
   });
   const receipts = receiptsQuery.data?.items ?? [];
@@ -173,6 +191,22 @@ export function Receipts() {
   const avgBill = summaryQuery.data?.avgBill ?? 0;
   const totalReceiptsCount = summaryQuery.data?.totalReceipts ?? receiptsTotal;
 
+  const rangeLabel = useMemo(() => {
+    if (dateParam) return dateParam;
+    if (dateFilter === "today") return "Today";
+    if (dateFilter === "week") return "Last 7 days";
+    if (dateFilter === "month") return "This month";
+    if (dateFilter === "custom" && (customFrom || customTo)) {
+      const from = customFrom || customTo;
+      const to = customTo || customFrom;
+      return from === to ? from! : `${from} → ${to}`;
+    }
+    return "All time";
+  }, [dateParam, dateFilter, customFrom, customTo]);
+
+  const periodRevenueLabel =
+    dateFilter === "all" && !dateParam ? "Total Revenue" : "Period Revenue";
+
   const reportRefreshing =
     receiptsQuery.isFetching || (!isManager && summaryQuery.isFetching);
 
@@ -193,11 +227,14 @@ export function Receipts() {
     methodFilter !== "all" ||
     dateFilter !== "all" ||
     Boolean(dateParam) ||
+    Boolean(customFrom || customTo) ||
     (isFranchiseAdmin && shopFilter !== "all");
   const clearFilters = () => {
     setSearch("");
     setMethodFilter("all");
-    setDateFilter("all");
+    setDateFilter("month");
+    setCustomFrom("");
+    setCustomTo("");
     if (isFranchiseAdmin) setShopFilter("all");
     if (dateParam) {
       setSearchParams((prev) => {
@@ -283,7 +320,7 @@ export function Receipts() {
           </div>
           <div className="min-w-0">
             <h2 className="text-lg font-bold text-[#111118]">Sales Receipts</h2>
-            <p className="text-xs text-[#9a9a9a] mt-0.5">All completed transactions and payment history</p>
+            <p className="text-xs text-[#52525b] mt-0.5">All completed transactions and payment history</p>
           </div>
         </div>
         {!isManager && (
@@ -308,12 +345,11 @@ export function Receipts() {
         <div className="shrink-0">
           <FinanceStatGrid>
             <FinanceStatCard
-              label="Total Revenue"
+              label={periodRevenueLabel}
               value={`₹${totalRevenue.toLocaleString()}`}
-              sub="View all receipts"
+              sub={rangeLabel}
               icon={IndianRupee}
               index={0}
-              onClick={clearFilters}
             />
             <FinanceStatCard
               label="Today's Revenue"
@@ -321,32 +357,68 @@ export function Receipts() {
               sub="Filter today's bills"
               icon={TrendingUp}
               index={1}
-              onClick={() => { setDateFilter("today"); setMethodFilter("all"); setSearch(""); }}
+              onClick={() => {
+                setShowSearchFilters(true);
+                setDateFilter("today");
+                setCustomFrom("");
+                setCustomTo("");
+                setMethodFilter("all");
+                setSearch("");
+              }}
             />
             <FinanceStatCard
               label="Avg. Bill Value"
               value={`₹${avgBill.toLocaleString()}`}
-              sub="View this month"
+              sub={`In ${rangeLabel.toLowerCase()}`}
               icon={FileCheck}
               index={2}
-              onClick={() => { setDateFilter("month"); setMethodFilter("all"); setSearch(""); }}
             />
             <FinanceStatCard
-              label="Total Receipts"
+              label="Receipts"
               value={totalReceiptsCount}
-              sub={`All paid · ₹${totalRevenue.toLocaleString()}`}
+              sub={`Paid · ₹${totalRevenue.toLocaleString()}`}
               icon={Receipt}
               index={3}
-              onClick={clearFilters}
             />
           </FinanceStatGrid>
         </div>
       )}
 
-      {/* ── Filter bar ── */}
+      {/* ── Filter bar — search toggled on phones, always open from md up ── */}
       <div className={`${financeFilterBar} shrink-0`}>
-        <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+        <div className="flex items-center justify-between gap-3 md:hidden">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#D4AF37]/25 bg-[#D4AF37]/10">
+              <Filter className="h-4 w-4 text-[#D4AF37]" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[13px] font-bold text-[#111118]">Search &amp; filters</p>
+              <p className="text-[11px] text-[#52525b]">
+                {showSearchFilters ? "Turn off to hide and reset" : "Turn on to search or filter receipts"}
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className={`text-[11px] font-semibold ${showSearchFilters ? "text-[#9a7d20]" : "text-[#52525b]"}`}>
+              {showSearchFilters ? "On" : "Off"}
+            </span>
+            <Switch
+              checked={showSearchFilters}
+              onCheckedChange={(checked) => {
+                setShowSearchFilters(checked);
+                if (!checked) clearFilters();
+              }}
+              className="data-[state=checked]:bg-[#D4AF37] data-[state=unchecked]:bg-[#e0dbd0]"
+              aria-label="Toggle search and filters"
+            />
+          </div>
+        </div>
 
+        <div
+          className={`flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 ${
+            showSearchFilters ? "mt-3 flex md:mt-0" : "hidden md:flex"
+          }`}
+        >
           {/* Search */}
           <div className="relative min-w-0 flex-1 sm:min-w-[200px]">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
@@ -389,40 +461,71 @@ export function Receipts() {
             )}
             <FilterSelect
               value={dateFilter}
-              onValueChange={setDateFilter}
+              onValueChange={(value) => {
+                setDateFilter(value);
+                if (value !== "custom") {
+                  setCustomFrom("");
+                  setCustomTo("");
+                } else if (!customFrom && !customTo) {
+                  setCustomFrom(addDaysToDateKey(TODAY, -6));
+                  setCustomTo(TODAY);
+                }
+                if (dateParam) {
+                  setSearchParams((prev) => {
+                    const next = new URLSearchParams(prev);
+                    next.delete("date");
+                    return next;
+                  }, { replace: true });
+                }
+              }}
               icon={CalendarDays}
               active={dateFilter !== "all"}
-              options={[
-                { value: "all", label: `All Time (${receipts.length})` },
-                {
-                  value: "today",
-                  label: `Today (${receipts.filter((r) => r.date === TODAY).length})`,
-                },
-                {
-                  value: "week",
-                  label: `This Week (${receipts.filter((r) => (new Date(TODAY).getTime() - new Date(r.date).getTime()) / 86400000 < 7).length})`,
-                },
-                {
-                  value: "month",
-                  label: `This Month (${receipts.filter((r) => r.date.startsWith(TODAY.slice(0, 7))).length})`,
-                },
-              ]}
+              options={DATE_OPTIONS}
             />
             <FilterSelect
               value={methodFilter}
               onValueChange={setMethodFilter}
               icon={Filter}
               active={methodFilter !== "all"}
-              options={[
-                { value: "all", label: `All Methods (${receipts.length})` },
-                { value: "cash", label: `Cash (${receipts.filter((r) => r.paymentMethod === "cash").length})` },
-                { value: "upi", label: `UPI (${receipts.filter((r) => r.paymentMethod === "upi").length})` },
-                { value: "card", label: `Card (${receipts.filter((r) => r.paymentMethod === "card").length})` },
-                { value: "wallet", label: `Wallet (${receipts.filter((r) => r.paymentMethod === "wallet").length})` },
-              ]}
+              options={METHOD_OPTIONS}
             />
+            {hasActiveFilter && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-black/[0.08] bg-white px-3 text-[12px] font-semibold text-[#3f3f46] hover:border-[#D4AF37]/35"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Reset
+              </button>
+            )}
           </div>
 
+          {dateFilter === "custom" && (
+            <div className="flex w-full flex-col gap-2 min-[420px]:flex-row min-[420px]:items-center">
+              <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-black/[0.08] bg-white px-3 py-1.5">
+                <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-[#52525b]">From</span>
+                <Input
+                  type="date"
+                  value={customFrom}
+                  max={customTo || TODAY}
+                  onChange={(e) => setCustomFrom(e.target.value)}
+                  className="h-8 border-0 bg-transparent px-0 text-[13px] shadow-none focus-visible:ring-0"
+                />
+              </label>
+              <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-black/[0.08] bg-white px-3 py-1.5">
+                <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-[#52525b]">To</span>
+                <Input
+                  type="date"
+                  value={customTo}
+                  min={customFrom || undefined}
+                  max={TODAY}
+                  onChange={(e) => setCustomTo(e.target.value)}
+                  className="h-8 border-0 bg-transparent px-0 text-[13px] shadow-none focus-visible:ring-0"
+                />
+              </label>
+            </div>
+          )}
         </div>
       </div>
 
@@ -431,7 +534,7 @@ export function Receipts() {
         <div className={`${financePanelHeader} shrink-0 border-b border-black/[0.07]`}>
           <div className="flex items-center gap-2">
             <h2 className={financePanelTitle}>Receipt List</h2>
-            <span className="text-[11px] font-semibold text-[#9a9a9a] bg-[#FAF8F2] border border-black/[0.07] px-2 py-0.5 rounded-full">{receiptsTotal}</span>
+            <span className="text-[11px] font-semibold text-[#52525b] bg-[#FAF8F2] border border-black/[0.07] px-2 py-0.5 rounded-full">{receiptsTotal}</span>
           </div>
         </div>
 
@@ -451,12 +554,12 @@ export function Receipts() {
                 >
                   <p className="font-mono text-[13px] font-bold text-[#b8962e]">{r.receiptNo}</p>
                   <p className="mt-0.5 text-[12px] font-semibold text-[#111118]">{r.customer}</p>
-                  <p className="text-[11px] text-[#9a9a9a]">{r.phone}</p>
+                  <p className="text-[11px] text-[#52525b]">{r.phone}</p>
                 </button>
                 <div className="shrink-0 text-right">
                   <p className="text-[15px] font-black tabular-nums text-[#111118]">₹{r.total.toLocaleString()}</p>
-                  <p className="mt-0.5 text-[11px] text-[#9a9a9a]">{r.date}</p>
-                  <p className="text-[11px] text-[#9a9a9a]">{r.time}</p>
+                  <p className="mt-0.5 text-[11px] text-[#52525b]">{r.date}</p>
+                  <p className="text-[11px] text-[#52525b]">{r.time}</p>
                 </div>
               </div>
 
@@ -673,13 +776,13 @@ export function Receipts() {
                   <div className="border-b border-dashed border-[#D4AF37]/25 pb-3 mb-3 space-y-0.5">
                     {([["Receipt No.", viewReceipt.receiptNo], ["Date", `${viewReceipt.date}  ${viewReceipt.time}`], ["Customer", viewReceipt.customer], ["Payment", paymentMethodLabel(viewReceipt.paymentMethod).toUpperCase()]] as [string, string][]).map(([k, v]) => (
                       <div key={k} className="flex justify-between gap-3 text-[11px]">
-                        <span className="text-[#9a9a9a]">{k}</span>
+                        <span className="text-[#52525b]">{k}</span>
                         <span className="font-bold text-right">{v}</span>
                       </div>
                     ))}
                   </div>
                   <div className="border-b border-dashed border-[#D4AF37]/25 pb-3 mb-3">
-                    <div className="mb-2 flex border-b border-black/[0.08] pb-1 text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a]">
+                    <div className="mb-2 flex border-b border-black/[0.08] pb-1 text-[10px] font-bold uppercase tracking-wider text-[#52525b]">
                       <span className="flex-1">Description</span>
                       <span className="w-16 text-right">Amount</span>
                     </div>
@@ -695,16 +798,16 @@ export function Receipts() {
                     ))}
                   </div>
                   <div className="border-b border-dashed border-[#D4AF37]/25 pb-3 mb-3 space-y-0.5">
-                    <div className="flex justify-between text-[11px]"><span className="text-[#9a9a9a]">Subtotal</span><span>&#x20b9;{viewReceipt.subtotal.toLocaleString()}</span></div>
+                    <div className="flex justify-between text-[11px]"><span className="text-[#52525b]">Subtotal</span><span>&#x20b9;{viewReceipt.subtotal.toLocaleString()}</span></div>
                     {viewReceipt.discount > 0 && (
                       <div className="flex justify-between text-[11px]">
-                        <span className="text-[#9a9a9a]">Discount</span>
+                        <span className="text-[#52525b]">Discount</span>
                         <span className="font-bold text-[#9a7d20]">-&#x20b9;{viewReceipt.discount.toLocaleString()}</span>
                       </div>
                     )}
                     {viewReceipt.gst > 0 && (
                       <div className="flex justify-between text-[11px]">
-                        <span className="text-[#9a9a9a]">GST</span>
+                        <span className="text-[#52525b]">GST</span>
                         <span>+&#x20b9;{viewReceipt.gst.toLocaleString()}</span>
                       </div>
                     )}
@@ -713,27 +816,27 @@ export function Receipts() {
                       <span className="text-[#9a7d20]">&#x20b9;{viewReceipt.total.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-[11px] font-semibold">
-                      <span className="text-[#9a9a9a]">Paid ({paymentMethodLabel(viewReceipt.paymentMethod)})</span>
+                      <span className="text-[#52525b]">Paid ({paymentMethodLabel(viewReceipt.paymentMethod)})</span>
                       <span>&#x20b9;{viewReceipt.total.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-[11px]">
-                      <span className="text-[#9a9a9a]">Balance Due</span>
+                      <span className="text-[#52525b]">Balance Due</span>
                       <span className="font-bold">&#x20b9;0.00</span>
                     </div>
                   </div>
                   <div className="border-b border-dashed border-[#D4AF37]/25 pb-3 mb-3">
                     <div className="flex justify-between text-[11px]">
-                      <span className="text-[#9a9a9a]">Loyalty Points Earned</span>
+                      <span className="text-[#52525b]">Loyalty Points Earned</span>
                       <span className="font-bold text-[#9a7d20]">+{Math.floor(viewReceipt.total / 10)} pts</span>
                     </div>
-                    <div className="flex justify-between text-[9px] text-[#9a9a9a]">
+                    <div className="flex justify-between text-[9px] text-[#52525b]">
                       <span>Redeem on next visit</span>
                       <span>1 pt = &#x20b9;0.50</span>
                     </div>
                   </div>
                   <div className="space-y-1 text-center">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-[#D4AF37]">{RECEIPT_FOOTER.thankYou}</p>
-                    <p className="text-[9px] text-[#9a9a9a]">{RECEIPT_FOOTER.revisit}</p>
+                    <p className="text-[9px] text-[#52525b]">{RECEIPT_FOOTER.revisit}</p>
                     <div className="mx-auto mt-2 h-px w-16 bg-gradient-to-r from-transparent via-[#D4AF37]/40 to-transparent" />
                   </div>
                 </SalonReceiptPaper>
@@ -749,7 +852,7 @@ export function Receipts() {
                     key={label}
                     type="button"
                     onClick={action}
-                    className="flex flex-col items-center gap-1 border-r border-black/[0.06] py-3 text-[11px] font-semibold text-[#6b6b6b] transition-colors last:border-r-0 hover:bg-[#faf9f7] hover:text-[#9a7d20]"
+                    className="flex flex-col items-center gap-1 border-r border-black/[0.06] py-3 text-[11px] font-semibold text-[#3f3f46] transition-colors last:border-r-0 hover:bg-[#faf9f7] hover:text-[#9a7d20]"
                   >
                     <Icon className="h-4 w-4 text-[#D4AF37]" />
                     {label}
@@ -793,7 +896,7 @@ export function Receipts() {
                 </DialogDescription>
               </DialogHeader>
               <div className="bg-[#faf9f7] px-5 py-4 space-y-3">
-                <p className="text-[11px] text-[#6b6b6b]">
+                <p className="text-[11px] text-[#3f3f46]">
                   This sends the refund to Finance → Receipts → Refunds for manager approval. The receipt will be removed from sales once submitted.
                 </p>
                 <div className="space-y-1.5">
@@ -839,7 +942,7 @@ export function Receipts() {
                 </div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D4AF37]">Delivered</p>
                 <p className="text-xl font-bold text-[#111118] mt-1">Email Sent Successfully</p>
-                <p className="text-sm text-[#6b6b6b] mt-2 max-w-xs mx-auto leading-relaxed">
+                <p className="text-sm text-[#3f3f46] mt-2 max-w-xs mx-auto leading-relaxed">
                   Receipt{" "}
                   <span className="font-mono font-bold text-[#b8962e]">{emailReceipt?.receiptNo}</span>{" "}
                   was sent to{" "}
@@ -896,7 +999,7 @@ export function Receipts() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-bold text-[#111118] truncate">{emailReceipt.customer}</p>
-                    <p className="text-[11px] text-[#9a9a9a] mt-0.5">{emailReceipt.phone}</p>
+                    <p className="text-[11px] text-[#52525b] mt-0.5">{emailReceipt.phone}</p>
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {emailReceipt.services.map((s, i) => (
                         <span key={i} className={financeBadgeGold + " rounded-full px-2 py-0.5 text-[10px] font-medium"}>
@@ -906,7 +1009,7 @@ export function Receipts() {
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a]">Total</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#52525b]">Total</p>
                     <p className="text-[15px] font-black text-[#111118] tabular-nums">₹{emailReceipt.total.toLocaleString()}</p>
                     <span className={financeBadgeGold + " inline-flex items-center gap-1 rounded-full px-2 py-0.5 mt-1 [&_svg]:text-[#D4AF37]"}>
                       {methodIcon(emailReceipt.paymentMethod)}
@@ -922,7 +1025,7 @@ export function Receipts() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[12px] font-semibold text-[#111118] truncate">{emailReceipt.receiptNo}.pdf</p>
-                    <p className="text-[10px] text-[#9a9a9a]">Receipt attachment · will be included</p>
+                    <p className="text-[10px] text-[#52525b]">Receipt attachment · will be included</p>
                   </div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#b8962e] shrink-0">PDF</span>
                 </div>
@@ -934,7 +1037,7 @@ export function Receipts() {
                   <p className="text-[10px] font-bold uppercase tracking-widest text-[#b8962e] mb-3">Compose Email</p>
                   <div className="space-y-3">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-[#6b6b6b]">Recipient</label>
+                      <label className="text-xs font-semibold text-[#3f3f46]">Recipient</label>
                       <div className="relative">
                         <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#D4AF37]/60 pointer-events-none" />
                         <input
@@ -947,7 +1050,7 @@ export function Receipts() {
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-[#6b6b6b]">Subject</label>
+                      <label className="text-xs font-semibold text-[#3f3f46]">Subject</label>
                       <input
                         type="text"
                         value={emailSubject}
@@ -956,7 +1059,7 @@ export function Receipts() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-[#6b6b6b]">Message</label>
+                      <label className="text-xs font-semibold text-[#3f3f46]">Message</label>
                       <textarea
                         rows={5}
                         value={emailMessage}
@@ -973,7 +1076,7 @@ export function Receipts() {
                 <button
                   type="button"
                   onClick={() => setEmailReceipt(null)}
-                  className="flex-1 h-10 rounded-xl border border-black/[0.08] bg-white text-[13px] font-semibold text-[#6b6b6b] hover:bg-[#FAF8F2] hover:border-[#D4AF37]/20 transition-all"
+                  className="flex-1 h-10 rounded-xl border border-black/[0.08] bg-white text-[13px] font-semibold text-[#3f3f46] hover:bg-[#FAF8F2] hover:border-[#D4AF37]/20 transition-all"
                 >
                   Cancel
                 </button>

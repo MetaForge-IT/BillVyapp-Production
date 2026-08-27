@@ -8,6 +8,8 @@ export const createExpenseSchema = z.object({
   amount: z.number().min(0.01),
   source: z.enum(EXPENSE_SOURCES),
   remarks: z.string().trim().min(1, "Note is required").max(500),
+  /** Franchise admin: create expense for a specific shop. */
+  salonId: z.string().uuid().optional(),
 });
 
 export const updateExpenseSchema = z.object({
@@ -17,6 +19,18 @@ export const updateExpenseSchema = z.object({
   amount: z.number().min(0.01).optional(),
   source: z.enum(EXPENSE_SOURCES).optional(),
   remarks: z.string().trim().min(1, "Note is required").max(500).optional(),
+});
+
+export const listExpensesQuerySchema = z.object({
+  from: z.string().date().optional(),
+  to: z.string().date().optional(),
+  category: z.string().trim().min(1).max(100).optional(),
+  salonId: z.string().uuid().optional(),
+});
+
+export const accountingOverviewQuerySchema = z.object({
+  date: z.string().date().optional(),
+  salonId: z.string().uuid().optional(),
 });
 
 export const upsertBudgetSchema = z.object({
@@ -46,5 +60,7 @@ export const createDayCloseSchema = z.object({
 
 export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;
 export type UpdateExpenseInput = z.infer<typeof updateExpenseSchema>;
+export type ListExpensesQuery = z.infer<typeof listExpensesQuerySchema>;
+export type AccountingOverviewQuery = z.infer<typeof accountingOverviewQuerySchema>;
 export type UpsertBudgetInput = z.infer<typeof upsertBudgetSchema>;
 export type CreateDayCloseInput = z.infer<typeof createDayCloseSchema>;

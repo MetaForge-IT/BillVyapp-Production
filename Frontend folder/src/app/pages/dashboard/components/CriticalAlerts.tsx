@@ -30,9 +30,9 @@ export function CriticalAlerts() {
           />
           <div className="p-3 space-y-2">
             {loading && alerts.length === 0 ? (
-              <p className="text-[12px] text-[#6b6b6b] text-center py-6">Loading alerts...</p>
+              <p className="text-[12px] text-[#3f3f46] text-center py-6">Loading alerts...</p>
             ) : alerts.length === 0 ? (
-              <p className="text-[12px] text-[#6b6b6b] text-center py-6">No alerts right now</p>
+              <p className="text-[12px] text-[#3f3f46] text-center py-6">No alerts right now</p>
             ) : alerts.map((alert) => {
               const cfg = notificationCategoryConfig[alert.category] ?? notificationCategoryConfig.system;
               const Icon = cfg.icon;
@@ -56,7 +56,7 @@ export function CriticalAlerts() {
                       ? "bg-[#D4AF37]/12 border border-[#D4AF37]/22"
                       : "bg-black/[0.04] border border-black/[0.07]"
                   }`}>
-                    <Icon className={`h-3.5 w-3.5 ${urgent ? "text-[#D4AF37]" : "text-[#9a9a9a]"}`} />
+                    <Icon className={`h-3.5 w-3.5 ${urgent ? "text-[#D4AF37]" : "text-[#52525b]"}`} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
@@ -67,8 +67,8 @@ export function CriticalAlerts() {
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-[#6b6b6b] mt-0.5 leading-snug">{alert.message}</p>
-                    <p className="text-[10px] text-[#9a9a9a] mt-1">{alert.timestamp}</p>
+                    <p className="text-[11px] text-[#3f3f46] mt-0.5 leading-snug">{alert.message}</p>
+                    <p className="text-[10px] text-[#52525b] mt-1">{alert.timestamp}</p>
                   </div>
                 </button>
               );

@@ -56,10 +56,16 @@ export function FloorStatusPanel() {
   const maxBookings = Math.max(1, ...topBooked.map((s) => s.bookings));
 
   return (
-    <section aria-label="Floor status" className="flex h-full flex-col">
+    <section aria-label="Floor status" className="flex h-full min-w-0 max-w-full flex-col">
       <SectionLabel>Floor Status</SectionLabel>
-      <motion.div variants={dashboardFadeUp} initial="hidden" whileInView="show" viewport={DASHBOARD_VIEWPORT} className="min-h-0 flex-1">
-        <DashboardCard className="h-full">
+      <motion.div
+        variants={dashboardFadeUp}
+        initial="hidden"
+        whileInView="show"
+        viewport={DASHBOARD_VIEWPORT}
+        className="min-h-0 min-w-0 max-w-full flex-1"
+      >
+        <DashboardCard className="h-full min-w-0">
           <DashboardCardHeader
             icon={Activity}
             title="Today on the floor"
@@ -67,14 +73,14 @@ export function FloorStatusPanel() {
             action="Schedule"
             onAction={() => navigate("/appointments")}
           />
-          <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3">
+          <div className="grid min-w-0 max-w-full grid-cols-2 gap-1.5 p-2.5 sm:grid-cols-3 sm:gap-2 sm:p-3">
             {chips.map((chip) => (
               <button
                 key={chip.label}
                 type="button"
                 onClick={() => navigate(chip.href)}
                 className={cn(
-                  "rounded-xl border px-3 py-2.5 text-left transition-colors hover:border-[#D4AF37]/40",
+                  "min-w-0 max-w-full overflow-hidden rounded-xl border px-2 py-2 text-left transition-colors hover:border-[#D4AF37]/40 sm:px-3 sm:py-2.5",
                   chip.tone === "gold" && "border-[#D4AF37]/20 bg-[#D4AF37]/08",
                   chip.tone === "warn" && chip.value > 0
                     ? "border-[#111118]/15 bg-[#111118]/[0.03]"
@@ -83,26 +89,30 @@ export function FloorStatusPanel() {
                       : "border-black/[0.06] bg-[#f4f2ed]",
                 )}
               >
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a]">{chip.label}</p>
-                <p className="mt-0.5 text-[20px] font-bold tabular-nums tracking-tight text-[#111118]">{chip.value}</p>
+                <p className="truncate text-[10px] font-bold uppercase tracking-wider text-[#52525b]">
+                  {chip.label}
+                </p>
+                <p className="mt-0.5 truncate text-[18px] font-bold tabular-nums tracking-tight text-[#111118] sm:text-[20px]">
+                  {chip.value}
+                </p>
               </button>
             ))}
           </div>
 
-          <div className="border-t border-black/[0.05] px-4 py-3">
-            <div className="mb-2.5 flex items-center gap-2">
-              <Scissors className="h-3.5 w-3.5 text-[#D4AF37]" />
-              <p className="text-[12px] font-semibold text-[#111118]">Most booked services</p>
+          <div className="min-w-0 max-w-full overflow-hidden border-t border-black/[0.05] px-2.5 py-3 sm:px-4">
+            <div className="mb-2.5 flex min-w-0 items-center gap-2">
+              <Scissors className="h-3.5 w-3.5 shrink-0 text-[#D4AF37]" />
+              <p className="truncate text-[12px] font-semibold text-[#111118]">Most booked services</p>
             </div>
             {topBooked.length === 0 ? (
-              <p className="py-4 text-center text-[12px] text-[#9a9a9a]">No service bookings this week yet</p>
+              <p className="py-4 text-center text-[12px] text-[#52525b]">No service bookings this week yet</p>
             ) : (
-              <div className="space-y-2">
+              <div className="min-w-0 space-y-2">
                 {topBooked.map((service) => (
                   <div key={service.name} className="min-w-0">
-                    <div className="mb-1 flex items-center justify-between gap-2">
-                      <p className="truncate text-[12px] font-medium text-[#111118]">{service.name}</p>
-                      <span className="shrink-0 text-[11px] font-bold tabular-nums text-[#6b6b6b]">
+                    <div className="mb-1 flex min-w-0 items-center justify-between gap-2">
+                      <p className="min-w-0 truncate text-[12px] font-medium text-[#111118]">{service.name}</p>
+                      <span className="shrink-0 text-[11px] font-bold tabular-nums text-[#3f3f46]">
                         {service.bookings}
                       </span>
                     </div>

@@ -115,12 +115,12 @@ export function GradientKPICard({
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#D4AF37] to-[#D4AF37]/40" />
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="text-sm font-medium text-[#6B6B6B]">{title}</p>
+          <p className="text-sm font-medium text-[#3f3f46]">{title}</p>
           <div className="text-3xl font-bold mt-2 tracking-tight text-[#121212]">
             {animate ? <AnimatedValue value={value} /> : value}
           </div>
           {(subtitle || trend) && (
-            <p className="text-xs text-[#6B6B6B] flex items-center gap-1.5 mt-2">
+            <p className="text-xs text-[#3f3f46] flex items-center gap-1.5 mt-2">
               {trend && (
                 <span className={cn("font-semibold", trend.positive !== false ? "text-[#121212]" : "text-red-500")}>
                   {trend.value}

@@ -39,7 +39,7 @@ export function UsageLogTab({
                   <div className="flex max-w-full items-center gap-2 overflow-x-auto pb-1">
                     {(["all", "Service Used", "Retail Sale", "Manual Adjustment"] as const).map(f => (
                       <button key={f} onClick={() => setLogFilter(f)}
-                        className={`h-7 shrink-0 whitespace-nowrap px-3 rounded-full text-[11px] font-semibold transition-all ${logFilter === f ? "bg-[#121212] text-[#D4AF37]" : "bg-[#FAF8F2] text-[#6b6b6b] hover:bg-[#f4f2ed] border border-black/[0.06]"}`}>
+                        className={`h-7 shrink-0 whitespace-nowrap px-3 rounded-full text-[11px] font-semibold transition-all ${logFilter === f ? "bg-[#121212] text-[#D4AF37]" : "bg-[#FAF8F2] text-[#3f3f46] hover:bg-[#f4f2ed] border border-black/[0.06]"}`}>
                         {f === "all" ? "All" : f}
                       </button>
                     ))}
@@ -62,26 +62,26 @@ export function UsageLogTab({
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="truncate text-[14px] font-bold text-[#111118]">{log.productName}</p>
-                            <p className="mt-0.5 font-mono text-[10px] text-[#9a9a9a]">{log.sku}</p>
+                            <p className="mt-0.5 font-mono text-[10px] text-[#52525b]">{log.sku}</p>
                           </div>
                           <span className={cn(
                             "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-bold",
                             log.type === "Service Used" ? "border-black/[0.08] bg-[#FAF8F2] text-[#111118]"
                               : log.type === "Retail Sale" ? "border-[#D4AF37]/20 bg-[#FFFBEB] text-[#9a7d20]"
                                 : log.type === "Manual Adjustment" ? "border-[#D4AF37]/25 bg-[#D4AF37]/10 text-[#9a7d20]"
-                                  : "border-black/[0.08] bg-[#f4f2ed] text-[#6b6b6b]",
+                                  : "border-black/[0.08] bg-[#f4f2ed] text-[#3f3f46]",
                           )}>
                             {log.type}
                           </span>
                         </div>
                         <div className="grid grid-cols-3 gap-2">
                           <div className="rounded-xl bg-[#FAF8F2] px-2.5 py-2">
-                            <p className="text-[9px] font-bold uppercase text-[#9a9a9a]">Date</p>
+                            <p className="text-[9px] font-bold uppercase text-[#52525b]">Date</p>
                             <p className="mt-1 text-[11px] font-semibold">{log.date}</p>
-                            <p className="text-[10px] text-[#9a9a9a]">{log.time}</p>
+                            <p className="text-[10px] text-[#52525b]">{log.time}</p>
                           </div>
                           <div className="rounded-xl bg-[#FAF8F2] px-2.5 py-2 text-center">
-                            <p className="text-[9px] font-bold uppercase text-[#9a9a9a]">Change</p>
+                            <p className="text-[9px] font-bold uppercase text-[#52525b]">Change</p>
                             <p className={cn("mt-1 text-[16px] font-black", log.qtyChange < 0 ? "text-red-500" : "text-[#9a7d20]")}>
                               {log.qtyChange > 0 ? "+" : ""}{log.qtyChange}
                             </p>
@@ -92,7 +92,7 @@ export function UsageLogTab({
                           </div>
                         </div>
                         {(log.ref || log.note) && (
-                          <p className="rounded-lg bg-gray-50 px-3 py-2 text-[11px] text-[#6b6b6b]">
+                          <p className="rounded-lg bg-gray-50 px-3 py-2 text-[11px] text-[#3f3f46]">
                             {log.ref || ""}{log.note ? (log.ref ? " · " : "") + log.note : ""}
                           </p>
                         )}
@@ -123,7 +123,7 @@ export function UsageLogTab({
                                 log.type === "Service Used" ? "bg-[#FAF8F2] text-[#111118] border-black/[0.08]"
                                 : log.type === "Retail Sale" ? "bg-[#FFFBEB] text-[#9a7d20] border-[#D4AF37]/20"
                                 : log.type === "Manual Adjustment" ? "bg-[#D4AF37]/10 text-[#9a7d20] border-[#D4AF37]/25"
-                                : "bg-[#f4f2ed] text-[#6b6b6b] border-black/[0.08]"
+                                : "bg-[#f4f2ed] text-[#3f3f46] border-black/[0.08]"
                               }`}>
                                 {log.type === "Service Used" && <Scissors className="h-2.5 w-2.5" />}
                                 {log.type === "Retail Sale" && <ShoppingCart className="h-2.5 w-2.5" />}

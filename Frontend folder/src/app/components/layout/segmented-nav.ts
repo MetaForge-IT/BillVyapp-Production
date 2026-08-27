@@ -10,4 +10,4 @@ export const SEGMENTED_PILL_BADGE =
   "ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums";
 
 export const SEGMENTED_PILL_BADGE_ACTIVE = "bg-[#D4AF37]/20 text-[#D4AF37]";
-export const SEGMENTED_PILL_BADGE_INACTIVE = "bg-[rgba(18,18,18,0.06)] text-[#6B6B6B]";
+export const SEGMENTED_PILL_BADGE_INACTIVE = "bg-[rgba(18,18,18,0.06)] text-[#3f3f46]";

@@ -35,7 +35,7 @@ export function BookingStepNav({
           <ChevronRight className="h-4 w-4" />
         </Button>
       ) : (
-        <p className="flex-1 text-center text-[11.5px] font-medium text-[#9a9a9a]">
+        <p className="flex-1 text-center text-[11.5px] font-medium text-[#52525b]">
           Review the summary above, then save
         </p>
       )}

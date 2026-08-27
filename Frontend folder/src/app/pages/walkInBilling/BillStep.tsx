@@ -120,7 +120,7 @@ export function BillStep(props: BillStepProps) {
                 <ArrowLeft className="h-4 w-4" />
                 Back to bill
               </button>
-              <span className="text-[11px] font-semibold text-[#9a9a9a]">
+              <span className="text-[11px] font-semibold text-[#52525b]">
                 Grand total{" "}
                 <span className="font-black tabular-nums text-[#111118]">
                   ₹{total.toLocaleString("en-IN")}
@@ -153,7 +153,7 @@ export function BillStep(props: BillStepProps) {
         ) : (
           <div className="space-y-4">
             <div className="rounded-2xl border border-[#D4AF37]/25 bg-white p-4">
-              <p className="mb-3 text-[9.5px] font-bold uppercase tracking-[0.15em] text-[#9a9a9a]">
+              <p className="mb-3 text-[9.5px] font-bold uppercase tracking-[0.15em] text-[#52525b]">
                 Customer
               </p>
               <div className="flex items-center gap-3">
@@ -162,13 +162,13 @@ export function BillStep(props: BillStepProps) {
                 </div>
                 <div>
                   <p className="text-[13px] font-bold text-[#111118]">{customerName || "—"}</p>
-                  <p className="text-[11px] text-[#9a9a9a]">{formatDisplayPhone(phoneDigits)}</p>
+                  <p className="text-[11px] text-[#52525b]">{formatDisplayPhone(phoneDigits)}</p>
                 </div>
               </div>
             </div>
 
             <div className="rounded-2xl border border-black/[0.07] bg-white p-4">
-              <p className="mb-3 flex items-center gap-1.5 text-[9.5px] font-bold uppercase tracking-[0.15em] text-[#9a9a9a]">
+              <p className="mb-3 flex items-center gap-1.5 text-[9.5px] font-bold uppercase tracking-[0.15em] text-[#52525b]">
                 <Scissors className="h-3 w-3 text-[#D4AF37]" /> Services
               </p>
               <div className="space-y-2">
@@ -184,7 +184,7 @@ export function BillStep(props: BillStepProps) {
                   </div>
                 ))}
                 {estimatedDuration > 0 && (
-                  <div className="flex items-center justify-between border-t border-black/[0.04] pt-2 text-[10.5px] text-[#9a9a9a]">
+                  <div className="flex items-center justify-between border-t border-black/[0.04] pt-2 text-[10.5px] text-[#52525b]">
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3 text-[#D4AF37]" /> Est. duration
                     </span>
@@ -269,7 +269,7 @@ export function BillStep(props: BillStepProps) {
             <Button
               variant="outline"
               onClick={onCancel}
-              className="h-10 w-full rounded-xl border-black/[0.1] text-[13px] font-medium text-[#9a9a9a]"
+              className="h-10 w-full rounded-xl border-black/[0.1] text-[13px] font-medium text-[#52525b]"
             >
               Cancel
             </Button>

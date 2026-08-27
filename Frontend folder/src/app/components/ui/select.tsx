@@ -44,12 +44,12 @@ function SelectTrigger({
         "flex w-full items-center justify-between gap-2 rounded-xl border border-[rgba(17,17,24,0.12)] bg-white px-3 text-[13px] font-semibold text-[#111118] whitespace-nowrap shadow-none transition-[color,box-shadow,border-color,background-color] outline-none",
         "hover:border-[rgba(212,175,55,0.5)]",
         "focus-visible:border-[rgba(212,175,55,0.7)] focus-visible:ring-[3px] focus-visible:ring-[rgba(212,175,55,0.16)]",
-        "data-[placeholder]:text-[#6b6b6b]",
+        "data-[placeholder]:text-[#3f3f46]",
         "disabled:cursor-not-allowed disabled:opacity-45 disabled:bg-[#f4f2ed]",
         "aria-invalid:border-destructive aria-invalid:ring-destructive/20",
         "data-[size=default]:h-10 data-[size=sm]:h-9",
         "*:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2",
-        "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-[#6b6b6b]",
+        "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-[#3f3f46]",
         className,
       )}
       {...props}
@@ -105,7 +105,7 @@ function SelectLabel({
   return (
     <SelectPrimitive.Label
       data-slot="select-label"
-      className={cn("px-2 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#9a9a9a]", className)}
+      className={cn("px-2 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#52525b]", className)}
       {...props}
     />
   );
@@ -125,7 +125,7 @@ function SelectItem({
         "data-[highlighted]:bg-[#FAF8F2] data-[highlighted]:text-[#111118]",
         "data-[state=checked]:bg-[#FFFBEB] data-[state=checked]:text-[#9a7d20]",
         "data-[disabled]:pointer-events-none data-[disabled]:opacity-45",
-        "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-[#6b6b6b]",
+        "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-[#3f3f46]",
         "*:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
         className,
       )}
@@ -162,7 +162,7 @@ function SelectScrollUpButton({
     <SelectPrimitive.ScrollUpButton
       data-slot="select-scroll-up-button"
       className={cn(
-        "flex cursor-default items-center justify-center py-1 text-[#6b6b6b]",
+        "flex cursor-default items-center justify-center py-1 text-[#3f3f46]",
         className,
       )}
       {...props}
@@ -180,7 +180,7 @@ function SelectScrollDownButton({
     <SelectPrimitive.ScrollDownButton
       data-slot="select-scroll-down-button"
       className={cn(
-        "flex cursor-default items-center justify-center py-1 text-[#6b6b6b]",
+        "flex cursor-default items-center justify-center py-1 text-[#3f3f46]",
         className,
       )}
       {...props}

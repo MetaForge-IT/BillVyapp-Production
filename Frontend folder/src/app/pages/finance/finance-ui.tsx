@@ -5,7 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import { cn } from "../../components/ui/utils";
 
 export const financeBadge =
-  "border border-black/[0.07] bg-[#FAF8F2] text-[#6B6B6B] text-[10px]";
+  "border border-black/[0.07] bg-[#FAF8F2] text-[#3f3f46] text-[10px]";
 export const financeBadgeGold =
   "border border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#9a7d20] text-[10px]";
 export const financeIconWrap =
@@ -54,13 +54,13 @@ export function FinanceStatCard({
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none bg-[radial-gradient(ellipse_80%_60%_at_50%_0%,rgba(212,175,55,0.06),transparent)]" />
       <div className="relative p-3.5 flex items-start justify-between text-left w-full">
         <div>
-          <p className="text-[10px] font-semibold text-[#6B6B6B] uppercase tracking-[0.18em]">
+          <p className="text-[10px] font-semibold text-[#3f3f46] uppercase tracking-[0.18em]">
             {label}
           </p>
           <p className="mt-1 text-2xl font-bold text-[#111118] leading-none tabular-nums">
             {value}
           </p>
-          {sub && <p className="mt-1 text-[11px] text-[#9a9a9a]">{sub}</p>}
+          {sub && <p className="mt-1 text-[11px] text-[#52525b]">{sub}</p>}
         </div>
         <div className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0 bg-[#D4AF37]/10 border border-[#D4AF37]/20">
           <Icon className="h-4 w-4 text-[#D4AF37]" />
@@ -156,7 +156,7 @@ export function FinancePanel({
         <div>
           <p className={financePanelTitle}>{title}</p>
           {subtitle && (
-            <p className="text-[10px] text-[#9a9a9a] mt-0.5">{subtitle}</p>
+            <p className="text-[10px] text-[#52525b] mt-0.5">{subtitle}</p>
           )}
         </div>
         {badge}

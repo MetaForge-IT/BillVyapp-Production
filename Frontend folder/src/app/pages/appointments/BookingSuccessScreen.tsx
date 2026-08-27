@@ -51,7 +51,7 @@ export function BookingSuccessScreen({
         <h2 className="mb-1.5 text-xl font-bold text-[#111118]">
           {isWalkInPage ? "Walk-in Saved!" : "Appointment Booked!"}
         </h2>
-        <p className="mb-7 text-[13px] leading-relaxed text-[#9a9a9a]">
+        <p className="mb-7 text-[13px] leading-relaxed text-[#52525b]">
           <span className="font-semibold text-[#111118]">{displayName || "Customer"}</span>
           {isWalkInPage ? " is checked in." : "'s slot is confirmed."}
         </p>
@@ -69,7 +69,7 @@ export function BookingSuccessScreen({
             .filter(Boolean)
             .map((row) => (
               <div key={row!.label} className="flex justify-between">
-                <span className="text-[11px] text-[#9a9a9a]">{row!.label}</span>
+                <span className="text-[11px] text-[#52525b]">{row!.label}</span>
                 <span className="text-[12px] font-semibold text-[#111118]">{row!.value}</span>
               </div>
             ))}

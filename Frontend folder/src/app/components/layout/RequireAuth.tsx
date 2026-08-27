@@ -20,7 +20,7 @@ export function RequireAuth() {
 
   if (!isReady) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f4f2ed] text-sm text-[#6b6b6b]">
+      <div className="flex min-h-screen items-center justify-center bg-[#f4f2ed] text-sm text-[#3f3f46]">
         Restoring your session…
       </div>
     );

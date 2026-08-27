@@ -27,7 +27,7 @@ export function PageHeader({ title, subtitle, actions }: PageHeaderProps) {
         <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-[#111118] via-[#1a1a1a] to-[#d4af37] bg-clip-text text-transparent">
           {title}
         </h1>
-        {subtitle && <p className="text-[#6b6b6b] mt-1 text-sm">{subtitle}</p>}
+        {subtitle && <p className="text-[#3f3f46] mt-1 text-sm">{subtitle}</p>}
       </div>
       {actions && actions.length > 0 && (
         <div className="flex gap-2 flex-wrap">
@@ -111,9 +111,9 @@ export function PremiumStatCard({ label, value, sub, icon, accent = "#d4af37" }:
       />
       <div className="relative p-5 flex items-start justify-between">
         <div>
-          <p className="text-xs font-medium text-[#6b6b6b] uppercase tracking-wider">{label}</p>
+          <p className="text-xs font-medium text-[#3f3f46] uppercase tracking-wider">{label}</p>
           <p className="mt-2 text-3xl font-bold text-[#111118] leading-none">{value}</p>
-          {sub && <p className="mt-1.5 text-xs text-[#9a9a9a]">{sub}</p>}
+          {sub && <p className="mt-1.5 text-xs text-[#52525b]">{sub}</p>}
         </div>
         <div
           className="flex h-12 w-12 items-center justify-center rounded-xl"

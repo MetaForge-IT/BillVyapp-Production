@@ -184,7 +184,7 @@ export function CustomerReceiptsModal({
               <div className="px-6 py-14 text-center">
                 <Receipt className="mx-auto h-10 w-10 text-[#d4af37]/35" />
                 <p className="mt-3 text-sm font-semibold text-[#111118]">No receipts yet</p>
-                <p className="mt-1 text-[12px] text-[#9a9a9a]">
+                <p className="mt-1 text-[12px] text-[#52525b]">
                   Paid bills for this customer will appear here with date and download.
                 </p>
               </div>
@@ -200,12 +200,12 @@ export function CustomerReceiptsModal({
                       >
                         {row.receiptNo}
                       </button>
-                      <p className="mt-0.5 text-[11px] text-[#9a9a9a]">
+                      <p className="mt-0.5 text-[11px] text-[#52525b]">
                         {row.dateStr}
                         {row.timeStr ? ` · ${row.timeStr}` : ""}
                       </p>
                       {row.services.length > 0 && (
-                        <p className="mt-1 truncate text-[11px] text-[#6b6b6b]">
+                        <p className="mt-1 truncate text-[11px] text-[#3f3f46]">
                           {row.services.join(", ")}
                         </p>
                       )}
@@ -229,7 +229,7 @@ export function CustomerReceiptsModal({
             )}
           </div>
 
-          <div className="border-t border-black/[0.06] bg-white px-6 py-3 text-center text-[11px] text-[#9a9a9a]">
+          <div className="border-t border-black/[0.06] bg-white px-6 py-3 text-center text-[11px] text-[#52525b]">
             {receipts.length > 0
               ? `${receipts.length} receipt${receipts.length === 1 ? "" : "s"} for ${customer?.name}`
               : "Receipts are generated when a bill is paid"}
@@ -258,7 +258,7 @@ export function CustomerReceiptsModal({
                 </DialogDescription>
               </div>
               <div className="space-y-3 bg-[#faf9f7] px-5 py-4">
-                <p className="text-[11px] text-[#6b6b6b]">
+                <p className="text-[11px] text-[#3f3f46]">
                   This sends the refund for manager approval. The receipt will be removed from sales
                   once submitted.
                 </p>
@@ -280,7 +280,7 @@ export function CustomerReceiptsModal({
                   type="button"
                   onClick={() => setRefundReceipt(null)}
                   disabled={refundSubmitting}
-                  className="rounded-xl border border-black/[0.08] px-4 py-2 text-[13px] font-semibold text-[#6b6b6b]"
+                  className="rounded-xl border border-black/[0.08] px-4 py-2 text-[13px] font-semibold text-[#3f3f46]"
                 >
                   Cancel
                 </button>
@@ -314,7 +314,7 @@ export function CustomerReceiptsModal({
                   Delivered
                 </p>
                 <p className="mt-1 text-xl font-bold text-[#111118]">Email Sent Successfully</p>
-                <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-[#6b6b6b]">
+                <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-[#3f3f46]">
                   Receipt{" "}
                   <span className="font-mono font-bold text-[#b8962e]">{emailReceipt?.receiptNo}</span>{" "}
                   was sent to <span className="font-semibold text-[#111118]">{emailTo}</span>
@@ -370,7 +370,7 @@ export function CustomerReceiptsModal({
                       <p className="truncate text-[13px] font-bold text-[#111118]">
                         {emailReceipt.customer}
                       </p>
-                      <p className="mt-0.5 text-[11px] text-[#9a9a9a]">{emailReceipt.phone}</p>
+                      <p className="mt-0.5 text-[11px] text-[#52525b]">{emailReceipt.phone}</p>
                     </div>
                     <div className="shrink-0 text-right">
                       <p className="text-[15px] font-black tabular-nums text-[#111118]">
@@ -380,7 +380,7 @@ export function CustomerReceiptsModal({
                   </div>
                   <div className="space-y-3">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-[#6b6b6b]">Recipient</label>
+                      <label className="text-xs font-semibold text-[#3f3f46]">Recipient</label>
                       <input
                         type="email"
                         value={emailTo}
@@ -389,7 +389,7 @@ export function CustomerReceiptsModal({
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-[#6b6b6b]">Subject</label>
+                      <label className="text-xs font-semibold text-[#3f3f46]">Subject</label>
                       <input
                         type="text"
                         value={emailSubject}
@@ -398,7 +398,7 @@ export function CustomerReceiptsModal({
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-[#6b6b6b]">Message</label>
+                      <label className="text-xs font-semibold text-[#3f3f46]">Message</label>
                       <textarea
                         rows={5}
                         value={emailMessage}
@@ -412,7 +412,7 @@ export function CustomerReceiptsModal({
                   <button
                     type="button"
                     onClick={() => setEmailReceipt(null)}
-                    className="h-10 flex-1 rounded-xl border border-black/[0.08] bg-white text-[13px] font-semibold text-[#6b6b6b] transition-all hover:border-[#D4AF37]/20 hover:bg-[#FAF8F2]"
+                    className="h-10 flex-1 rounded-xl border border-black/[0.08] bg-white text-[13px] font-semibold text-[#3f3f46] transition-all hover:border-[#D4AF37]/20 hover:bg-[#FAF8F2]"
                   >
                     Cancel
                   </button>

@@ -25,6 +25,7 @@ export class MyFranchiseService {
       where: { id: franchiseId },
       include: {
         shops: {
+          where: { isActive: true },
           orderBy: [{ city: "asc" }, { name: "asc" }],
           select: {
             id: true,
@@ -170,7 +171,7 @@ export class MyFranchiseService {
     const franchiseId = await resolveAdminFranchiseId(auth);
 
     const shop = await prisma.salon.findFirst({
-      where: { id: input.salonId, franchiseId },
+      where: { id: input.salonId, franchiseId, isActive: true },
     });
     if (!shop) {
       throw new AppError(400, "Shop does not belong to your franchise", {
@@ -219,7 +220,7 @@ export class MyFranchiseService {
     const franchiseId = await resolveAdminFranchiseId(auth);
 
     const shop = await prisma.salon.findFirst({
-      where: { id: shopId, franchiseId },
+      where: { id: shopId, franchiseId, isActive: true },
     });
     if (!shop) {
       throw new NotFoundError("Shop not found in your franchise");
@@ -253,6 +254,65 @@ export class MyFranchiseService {
     });
 
     return updated;
+  }
+
+  /**
+   * Soft-delete a shop/branch: sets isActive=false so operational history is kept.
+   * Deactivates managers assigned only to that shop and reassigns the admin primary salon if needed.
+   */
+  async deleteShop(auth: AuthContext, shopId: string) {
+    const franchiseId = await resolveAdminFranchiseId(auth);
+
+    const shop = await prisma.salon.findFirst({
+      where: { id: shopId, franchiseId, isActive: true },
+    });
+    if (!shop) {
+      throw new NotFoundError("Shop not found in your franchise");
+    }
+
+    const activeShopCount = await prisma.salon.count({
+      where: { franchiseId, isActive: true },
+    });
+    if (activeShopCount <= 1) {
+      throw new AppError(400, "Cannot delete the last active branch in your franchise", {
+        code: "LAST_SHOP",
+      });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.salon.update({
+        where: { id: shopId },
+        data: { isActive: false },
+      });
+
+      await tx.user.updateMany({
+        where: {
+          franchiseId,
+          salonId: shopId,
+          role: "manager",
+          isActive: true,
+        },
+        data: { isActive: false },
+      });
+
+      const adminUser = await tx.user.findUnique({
+        where: { id: auth.userId },
+        select: { salonId: true },
+      });
+      if (adminUser?.salonId === shopId) {
+        const fallback = await tx.salon.findFirst({
+          where: { franchiseId, isActive: true, id: { not: shopId } },
+          orderBy: [{ city: "asc" }, { name: "asc" }],
+          select: { id: true },
+        });
+        await tx.user.update({
+          where: { id: auth.userId },
+          data: { salonId: fallback?.id ?? null },
+        });
+      }
+    });
+
+    return { id: shopId, isActive: false as const };
   }
 }
 

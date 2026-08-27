@@ -6,12 +6,12 @@ import type {
 } from "./service-categories.validators";
 
 export class ServiceCategoriesService {
-  list(auth: AuthContext) {
-    return serviceCategoriesRepository.list(auth.salonId);
+  list(auth: AuthContext, salonId?: string) {
+    return serviceCategoriesRepository.list(auth, salonId);
   }
 
   getById(auth: AuthContext, categoryId: string) {
-    return serviceCategoriesRepository.getById(auth.salonId, categoryId);
+    return serviceCategoriesRepository.getById(auth, categoryId);
   }
 
   create(auth: AuthContext, input: CreateServiceCategoryInput) {

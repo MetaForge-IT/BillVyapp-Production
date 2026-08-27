@@ -70,7 +70,7 @@ export function Finance() {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-[#1a1a1a] to-[#d4af37] bg-clip-text text-transparent">
             {meta.title}
           </h1>
-          <p className="mt-1 text-[13px] text-[#9a9a9a]">{meta.subtitle}</p>
+          <p className="mt-1 text-[13px] text-[#52525b]">{meta.subtitle}</p>
         </div>
       </div>
 

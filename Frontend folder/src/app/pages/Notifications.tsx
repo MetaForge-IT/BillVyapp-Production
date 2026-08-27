@@ -97,7 +97,7 @@ export function Notifications() {
           <button
             type="button"
             onClick={() => void refresh()}
-            className="h-8 px-3 rounded-xl text-[11px] font-semibold border border-black/[0.08] bg-white text-[#6B6B6B] hover:border-[#D4AF37]/35 transition-all"
+            className="h-8 px-3 rounded-xl text-[11px] font-semibold border border-black/[0.08] bg-white text-[#3f3f46] hover:border-[#D4AF37]/35 transition-all"
           >
             Refresh
           </button>
@@ -108,7 +108,7 @@ export function Notifications() {
               "h-8 px-3 rounded-xl text-[11px] font-semibold border transition-all",
               showUnreadOnly
                 ? "bg-[#121212] text-[#D4AF37] border-[#D4AF37]/30"
-                : "bg-white text-[#6B6B6B] border-black/[0.08] hover:border-[#D4AF37]/35",
+                : "bg-white text-[#3f3f46] border-black/[0.08] hover:border-[#D4AF37]/35",
             )}
           >
             Unread only
@@ -137,7 +137,7 @@ export function Notifications() {
               <Bell className="h-3.5 w-3.5 text-[#D4AF37]" />
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#6B6B6B]">{s.label}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#3f3f46]">{s.label}</p>
               <p className="text-lg font-bold text-[#111118] tabular-nums leading-tight">{s.value}</p>
             </div>
           </div>
@@ -161,7 +161,7 @@ export function Notifications() {
                 "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-xl border border-transparent px-3 text-[11px] font-semibold whitespace-nowrap transition-all",
                 active
                   ? "bg-[#121212] text-[#D4AF37] shadow-sm"
-                  : "bg-transparent text-[#6B6B6B] hover:bg-[#FAF8F2] hover:text-[#111118]",
+                  : "bg-transparent text-[#3f3f46] hover:bg-[#FAF8F2] hover:text-[#111118]",
               )}
             >
               <Icon className="h-3.5 w-3.5" />
@@ -170,7 +170,7 @@ export function Notifications() {
                 <span
                   className={cn(
                     "h-4 min-w-[16px] px-1 rounded-full text-[9px] font-bold flex items-center justify-center",
-                    active ? "bg-[#D4AF37]/20 text-[#D4AF37]" : "bg-black/[0.06] text-[#6B6B6B]",
+                    active ? "bg-[#D4AF37]/20 text-[#D4AF37]" : "bg-black/[0.06] text-[#3f3f46]",
                   )}
                 >
                   {unread}
@@ -195,7 +195,7 @@ export function Notifications() {
                 <Bell className="h-5 w-5 text-[#D4AF37]" />
               </div>
               <p className="font-semibold text-[#111118] text-sm">No notifications</p>
-              <p className="text-xs text-[#9a9a9a] mt-1">
+              <p className="text-xs text-[#52525b] mt-1">
                 {error ? "Could not reach the server. Try Refresh." : "You're all caught up!"}
               </p>
             </motion.div>
@@ -232,15 +232,15 @@ export function Notifications() {
                     <p
                       className={cn(
                         "text-[12px] font-semibold leading-snug",
-                        n.read ? "text-[#9a9a9a]" : "text-[#111118]",
+                        n.read ? "text-[#52525b]" : "text-[#111118]",
                       )}
                     >
                       {n.title}
                     </p>
-                    <span className="text-[10px] text-[#9a9a9a] whitespace-nowrap shrink-0">{n.timestamp}</span>
+                    <span className="text-[10px] text-[#52525b] whitespace-nowrap shrink-0">{n.timestamp}</span>
                   </div>
 
-                  <p className="text-[11px] text-[#6B6B6B] leading-relaxed line-clamp-2">{n.message}</p>
+                  <p className="text-[11px] text-[#3f3f46] leading-relaxed line-clamp-2">{n.message}</p>
 
                   <div className="flex items-center gap-2 mt-2">
                     <span className={cn(financeBadgeGold, "inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold")}>
@@ -254,7 +254,7 @@ export function Notifications() {
                           e.stopPropagation();
                           void markAsRead(n.id);
                         }}
-                        className="text-[10px] text-[#9a9a9a] hover:text-[#D4AF37] font-medium transition-colors"
+                        className="text-[10px] text-[#52525b] hover:text-[#D4AF37] font-medium transition-colors"
                       >
                         Mark read
                       </button>
@@ -273,7 +273,7 @@ export function Notifications() {
                     e.stopPropagation();
                     void dismiss(n.id);
                   }}
-                  className="absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 flex items-center justify-center rounded-lg bg-[#FAF8F2] hover:bg-[#121212]/5 text-[#9a9a9a] hover:text-[#111118] border border-black/[0.06]"
+                  className="absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 flex items-center justify-center rounded-lg bg-[#FAF8F2] hover:bg-[#121212]/5 text-[#52525b] hover:text-[#111118] border border-black/[0.06]"
                   title="Dismiss"
                 >
                   <Trash2 className="h-3 w-3" />

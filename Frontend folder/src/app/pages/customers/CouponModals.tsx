@@ -86,7 +86,7 @@ export function CouponModals({
             </DialogHeader>
           </div>
           <div className="space-y-4 bg-[#f4f2ed] p-6">
-            <p className="text-[13px] text-[#6b6b6b]">
+            <p className="text-[13px] text-[#3f3f46]">
               {todayBirthdays.length} customer{todayBirthdays.length !== 1 ? "s have" : " has"} a birthday today.
             </p>
             <div className="max-h-40 space-y-2 overflow-y-auto rounded-xl border border-black/[0.06] bg-white p-3">
@@ -101,7 +101,7 @@ export function CouponModals({
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[12px] font-semibold text-[#111118]">{c.name}</p>
-                    <p className="text-[10px] text-[#9a9a9a]">
+                    <p className="text-[10px] text-[#52525b]">
                       {c.phone} · {c.membershipTier}
                     </p>
                   </div>
@@ -109,7 +109,7 @@ export function CouponModals({
                 </div>
               ))}
               {todayBirthdays.length === 0 && (
-                <p className="py-4 text-center text-[12px] text-[#9a9a9a]">No birthdays today</p>
+                <p className="py-4 text-center text-[12px] text-[#52525b]">No birthdays today</p>
               )}
             </div>
             <div className="flex gap-2.5 pt-1">
@@ -123,7 +123,7 @@ export function CouponModals({
               </Button>
               <Button
                 variant="outline"
-                className="h-11 rounded-xl border-black/[0.1] bg-white text-[13px] font-semibold text-[#6b6b6b] hover:border-[#D4AF37]/30"
+                className="h-11 rounded-xl border-black/[0.1] bg-white text-[13px] font-semibold text-[#3f3f46] hover:border-[#D4AF37]/30"
                 onClick={() => setBdayCouponOpen(false)}
               >
                 Cancel

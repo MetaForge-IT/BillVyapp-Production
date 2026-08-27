@@ -2,6 +2,7 @@ import type { Prisma, Service, ServiceCategory, ServiceGender } from "@prisma/cl
 import { prisma } from "../../config/prisma";
 import type { AuthContext } from "../auth/auth.types";
 import { AppError, ConflictError } from "../../utils/errors";
+import { resolveListSalonIds, salonIdFilter } from "../../utils/salonScope";
 import { SERVICE_ERROR_CODES, SERVICE_STATUS } from "./services.constants";
 import {
   buildSearchableName,
@@ -16,6 +17,7 @@ import type {
 
 type ServiceWithCategory = Service & {
   category: Pick<ServiceCategory, "id" | "name" | "icon">;
+  salon?: { id: string; name: string; displayName: string | null } | null;
 };
 
 function mapStatus(isActive: boolean): "active" | "inactive" {
@@ -29,8 +31,12 @@ function mapGenderTag(gender: ServiceGender): "Male" | "Female" | undefined {
 }
 
 function mapService(service: ServiceWithCategory) {
+  const shopName =
+    service.salon?.displayName?.trim() || service.salon?.name?.trim() || null;
   return {
     id: service.id,
+    salonId: service.salonId,
+    salonName: shopName,
     serviceCode: service.serviceCode,
     name: service.name,
     displayName: service.displayName,
@@ -105,9 +111,21 @@ async function uniqueCodeForSalon(
 }
 
 export class ServicesRepository {
-  async listCatalog(salonId: string) {
+  private async findScopedService(auth: AuthContext, serviceId: string) {
+    const salonIds = await resolveListSalonIds(auth);
+    return prisma.service.findFirst({
+      where: { id: serviceId, ...salonIdFilter(salonIds), deletedAt: null },
+      include: {
+        category: { select: { id: true, name: true, icon: true } },
+        salon: { select: { id: true, name: true, displayName: true } },
+      },
+    });
+  }
+
+  async listCatalog(auth: AuthContext, querySalonId?: string) {
+    const salonIds = await resolveListSalonIds(auth, querySalonId);
     const categories = await prisma.serviceCategory.findMany({
-      where: { salonId, isActive: true },
+      where: { ...salonIdFilter(salonIds), isActive: true },
       include: {
         services: {
           where: { isActive: true, deletedAt: null },
@@ -134,13 +152,16 @@ export class ServicesRepository {
         tax: service.tax != null ? Number(service.tax) : null,
         gender: service.gender,
         tag: mapGenderTag(service.gender),
+        salonId: service.salonId,
       })),
     );
   }
 
-  async list(salonId: string, query: ListServicesQuery) {
+  async list(auth: AuthContext, query: ListServicesQuery) {
+    const salonIds = await resolveListSalonIds(auth, query.salonId);
+    const multiShop = salonIds.length > 1;
     const where: Prisma.ServiceWhereInput = {
-      salonId,
+      ...salonIdFilter(salonIds),
       deletedAt: null,
     };
 
@@ -186,6 +207,9 @@ export class ServicesRepository {
         where,
         include: {
           category: { select: { id: true, name: true, icon: true } },
+          ...(multiShop
+            ? { salon: { select: { id: true, name: true, displayName: true } } }
+            : {}),
         },
         orderBy: [sortMap[query.sort ?? "sortOrder"] ?? { sortOrder: "asc" }, { displayName: "asc" }],
         skip,
@@ -194,7 +218,7 @@ export class ServicesRepository {
     ]);
 
     return {
-      items: services.map(mapService),
+      items: services.map((service) => mapService(service as ServiceWithCategory)),
       page,
       limit,
       total,
@@ -202,23 +226,26 @@ export class ServicesRepository {
     };
   }
 
-  async getById(salonId: string, serviceId: string) {
-    const service = await prisma.service.findFirst({
-      where: { id: serviceId, salonId, deletedAt: null },
-      include: {
-        category: { select: { id: true, name: true, icon: true } },
-      },
-    });
-
+  async getById(auth: AuthContext, serviceId: string) {
+    const service = await this.findScopedService(auth, serviceId);
     if (!service) {
       throw new AppError(404, "Service not found", { code: SERVICE_ERROR_CODES.NOT_FOUND });
     }
-
     return mapService(service);
   }
 
   async create(auth: AuthContext, input: CreateServiceInput) {
-    const category = await assertCategoryExists(auth.salonId, input.categoryId);
+    const salonIds = await resolveListSalonIds(auth, input.salonId);
+    const category = await prisma.serviceCategory.findFirst({
+      where: { id: input.categoryId, ...salonIdFilter(salonIds) },
+    });
+    if (!category) {
+      throw new AppError(404, "Service category not found", {
+        code: SERVICE_ERROR_CODES.CATEGORY_NOT_FOUND,
+      });
+    }
+    const salonId = category.salonId;
+
     const displayName = (input.displayName ?? input.name)!.trim();
     const gender = input.gender ?? "UNISEX";
     const serviceGroup =
@@ -238,12 +265,12 @@ export class ServicesRepository {
         serviceGroup,
         displayName,
       });
-    const serviceCode = await uniqueCodeForSalon(auth.salonId, baseCode);
-    await assertUniqueServiceCode(auth.salonId, serviceCode);
+    const serviceCode = await uniqueCodeForSalon(salonId, baseCode);
+    await assertUniqueServiceCode(salonId, serviceCode);
 
     const service = await prisma.service.create({
       data: {
-        salonId: auth.salonId,
+        salonId,
         categoryId: input.categoryId,
         serviceCode,
         name,
@@ -262,6 +289,7 @@ export class ServicesRepository {
       },
       include: {
         category: { select: { id: true, name: true, icon: true } },
+        salon: { select: { id: true, name: true, displayName: true } },
       },
     });
 
@@ -269,10 +297,7 @@ export class ServicesRepository {
   }
 
   async update(auth: AuthContext, serviceId: string, input: UpdateServiceInput) {
-    const existing = await prisma.service.findFirst({
-      where: { id: serviceId, salonId: auth.salonId, deletedAt: null },
-      include: { category: true },
-    });
+    const existing = await this.findScopedService(auth, serviceId);
     if (!existing) {
       throw new AppError(404, "Service not found", { code: SERVICE_ERROR_CODES.NOT_FOUND });
     }
@@ -280,7 +305,7 @@ export class ServicesRepository {
     const categoryId = input.categoryId ?? existing.categoryId;
     const category =
       input.categoryId && input.categoryId !== existing.categoryId
-        ? await assertCategoryExists(auth.salonId, input.categoryId)
+        ? await assertCategoryExists(existing.salonId, input.categoryId)
         : existing.category;
 
     const displayName = input.displayName?.trim() ?? existing.displayName;
@@ -316,6 +341,7 @@ export class ServicesRepository {
       },
       include: {
         category: { select: { id: true, name: true, icon: true } },
+        salon: { select: { id: true, name: true, displayName: true } },
       },
     });
 
@@ -323,9 +349,7 @@ export class ServicesRepository {
   }
 
   async softDelete(auth: AuthContext, serviceId: string) {
-    const existing = await prisma.service.findFirst({
-      where: { id: serviceId, salonId: auth.salonId, deletedAt: null },
-    });
+    const existing = await this.findScopedService(auth, serviceId);
     if (!existing) {
       throw new AppError(404, "Service not found", { code: SERVICE_ERROR_CODES.NOT_FOUND });
     }

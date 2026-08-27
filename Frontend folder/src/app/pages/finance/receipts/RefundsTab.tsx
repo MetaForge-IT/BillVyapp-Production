@@ -147,13 +147,13 @@ export function RefundsTab({ onLoaded }: { onLoaded?: (refunds: RefundRecord[]) 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-[13px] font-bold text-[#111118]">{r.customer}</p>
-                  <span className="text-[10px] font-mono text-[#9a9a9a]">← {r.invoiceId}</span>
+                  <span className="text-[10px] font-mono text-[#52525b]">← {r.invoiceId}</span>
                   <Badge className={`text-[10px] ${r.status === "approved" ? financeBadgeGold : financeBadge}`}>
                     {r.status === "approved" ? "Approved" : "Pending"}
                   </Badge>
                 </div>
-                <p className="text-[11px] text-[#6b6b6b] mt-0.5">{r.reason}</p>
-                <p className="text-[10px] text-[#9a9a9a] mt-0.5">
+                <p className="text-[11px] text-[#3f3f46] mt-0.5">{r.reason}</p>
+                <p className="text-[10px] text-[#52525b] mt-0.5">
                   {r.status==="approved" ? `Approved by ${r.approvedBy}` : "Awaiting manager approval"} · {r.date}
                 </p>
               </div>
@@ -179,7 +179,7 @@ export function RefundsTab({ onLoaded }: { onLoaded?: (refunds: RefundRecord[]) 
                   </div>
                 )}
                 {r.status === "pending" && !canApprove && (
-                  <span className="text-[10px] text-[#9a9a9a]">Manager approval required</span>
+                  <span className="text-[10px] text-[#52525b]">Manager approval required</span>
                 )}
               </div>
             </div>
@@ -204,7 +204,7 @@ export function RefundsTab({ onLoaded }: { onLoaded?: (refunds: RefundRecord[]) 
               </div>
               <div>
                 <p className="text-[14px] font-bold text-[#111118]">Approve Refund</p>
-                <p className="text-[10px] text-[#9a9a9a] mt-0.5">Manager / Owner PIN required</p>
+                <p className="text-[10px] text-[#52525b] mt-0.5">Manager / Owner PIN required</p>
               </div>
             </div>
           </div>

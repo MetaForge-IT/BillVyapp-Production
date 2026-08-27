@@ -32,7 +32,7 @@ export function WalkInPanel() {
               <p className="text-[28px] font-bold text-[#111118] tabular-nums leading-none tracking-tight">
                 {display}
               </p>
-              <p className="mt-1.5 text-[12px] text-[#6b6b6b]">
+              <p className="mt-1.5 text-[12px] text-[#3f3f46]">
                 Walk-in customers checked in today
               </p>
             </div>

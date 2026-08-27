@@ -208,7 +208,7 @@ export function CreatePlanModal({
             <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Included Services</p>
             <div className="max-h-36 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2 space-y-1">
               {services.length === 0 ? (
-                <p className="text-[12px] text-[#9a9a9a] px-2 py-3 text-center">No services found in catalog</p>
+                <p className="text-[12px] text-[#52525b] px-2 py-3 text-center">No services found in catalog</p>
               ) : services.map((svc) => (
                 <label key={svc.id} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-[#faf8f2] cursor-pointer">
                   <input
@@ -218,7 +218,7 @@ export function CreatePlanModal({
                     className="rounded border-gray-300 text-[#d4af37] focus:ring-[#d4af37]/30"
                   />
                   <span className="text-[12px] text-[#111118] flex-1">{svc.name}</span>
-                  <span className="text-[10px] text-[#9a9a9a]">{fmt(svc.price)}</span>
+                  <span className="text-[10px] text-[#52525b]">{fmt(svc.price)}</span>
                 </label>
               ))}
             </div>

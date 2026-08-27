@@ -200,7 +200,7 @@ export function PendingTab() {
       >
         <div className="divide-y divide-gray-100">
           {loading ? (
-            <div className="px-5 py-10 text-center text-[13px] text-[#9a9a9a]">Loading pending invoices…</div>
+            <div className="px-5 py-10 text-center text-[13px] text-[#52525b]">Loading pending invoices…</div>
           ) : error ? (
             <div className="px-5 py-10 text-center space-y-3">
               <p className="text-[13px] text-red-600">{error}</p>
@@ -209,7 +209,7 @@ export function PendingTab() {
               </button>
             </div>
           ) : paginatedPending.length === 0 ? (
-            <div className="px-5 py-10 text-center text-[13px] text-[#9a9a9a]">No pending payments right now.</div>
+            <div className="px-5 py-10 text-center text-[13px] text-[#52525b]">No pending payments right now.</div>
           ) : paginatedPending.map((p) => {
             const over = isOverdue(p.dueDate);
             const pct = p.total > 0 ? Math.round((p.paidAmount / p.total) * 100) : 0;
@@ -219,18 +219,18 @@ export function PendingTab() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-[13px] font-bold text-[#111118]">{p.customer}</p>
-                      <span className="text-[10px] font-mono text-[#9a9a9a]">{p.invoiceId}</span>
+                      <span className="text-[10px] font-mono text-[#52525b]">{p.invoiceId}</span>
                       <Badge className={`text-[10px] ${financeBadge}`}>{p.status}</Badge>
                       {over && <Badge className={`text-[10px] ${financeBadgeGold}`}>Overdue</Badge>}
                     </div>
-                    <p className="text-[11px] text-[#6b6b6b] mt-0.5">{p.services.join(", ")}</p>
+                    <p className="text-[11px] text-[#3f3f46] mt-0.5">{p.services.join(", ")}</p>
                     <div className="flex items-center gap-4 mt-1.5">
-                      <span className="text-[10px] text-[#9a9a9a] flex items-center gap-1"><Calendar className="h-3 w-3" />Due {p.dueDate}</span>
-                      <span className="text-[10px] text-[#9a9a9a] flex items-center gap-1"><Phone className="h-3 w-3" />{p.phone}</span>
+                      <span className="text-[10px] text-[#52525b] flex items-center gap-1"><Calendar className="h-3 w-3" />Due {p.dueDate}</span>
+                      <span className="text-[10px] text-[#52525b] flex items-center gap-1"><Phone className="h-3 w-3" />{p.phone}</span>
                     </div>
                     {p.paidAmount > 0 && (
                       <div className="mt-2 space-y-1">
-                        <div className="flex justify-between text-[10px] text-[#9a9a9a]">
+                        <div className="flex justify-between text-[10px] text-[#52525b]">
                           <span>Paid {fmt(p.paidAmount)} of {fmt(p.total)}</span>
                           <span>{pct}%</span>
                         </div>
@@ -242,13 +242,13 @@ export function PendingTab() {
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-[15px] font-black text-[#111118]">{fmt(p.due)}</p>
-                    <p className="text-[10px] text-[#9a9a9a] mt-0.5">outstanding</p>
+                    <p className="text-[10px] text-[#52525b] mt-0.5">outstanding</p>
                     <div className="flex gap-1.5 mt-2 justify-end">
                       <button type="button" className={financePrimaryBtn} onClick={() => openCollect(p)}>Collect</button>
                       <button
                         type="button"
                         onClick={() => openMessage(p)}
-                        className="h-7 w-7 rounded-lg border border-black/[0.07] flex items-center justify-center text-[#9a9a9a] hover:text-[#D4AF37] hover:border-[#D4AF37]/30 transition-all"
+                        className="h-7 w-7 rounded-lg border border-black/[0.07] flex items-center justify-center text-[#52525b] hover:text-[#D4AF37] hover:border-[#D4AF37]/30 transition-all"
                         title="Send payment reminder"
                       >
                         <MessageSquare className="h-3 w-3" />
@@ -321,24 +321,24 @@ export function PendingTab() {
                             <span className={`${financeBadgeGold} px-2 py-0.5 rounded-full font-bold`}>Overdue</span>
                           )}
                         </div>
-                        <p className="text-[10px] font-mono text-[#9a9a9a] mt-0.5">{collectTarget.invoiceId}</p>
-                        <div className="flex items-center gap-3 mt-2 text-[10px] text-[#9a9a9a]">
+                        <p className="text-[10px] font-mono text-[#52525b] mt-0.5">{collectTarget.invoiceId}</p>
+                        <div className="flex items-center gap-3 mt-2 text-[10px] text-[#52525b]">
                           <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{collectTarget.phone}</span>
                           <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />Due {collectTarget.dueDate}</span>
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a]">Balance</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-[#52525b]">Balance</p>
                         <p className="text-[18px] font-black text-[#111118] leading-tight">{fmt(collectTarget.due)}</p>
-                        <p className="text-[10px] text-[#9a9a9a] mt-0.5">of {fmt(collectTarget.total)}</p>
+                        <p className="text-[10px] text-[#52525b] mt-0.5">of {fmt(collectTarget.total)}</p>
                       </div>
                     </div>
 
                     {/* Bill line items */}
                     <div className="rounded-lg border border-black/[0.06] bg-[#faf9f7] overflow-hidden">
                       <div className="flex items-center justify-between border-b border-black/[0.05] px-3 py-2">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a]">Bill items</p>
-                        <p className="text-[10px] font-semibold text-[#6b6b6b]">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-[#52525b]">Bill items</p>
+                        <p className="text-[10px] font-semibold text-[#3f3f46]">
                           {collectTarget.services.length || 0} line{collectTarget.services.length === 1 ? "" : "s"}
                         </p>
                       </div>
@@ -354,14 +354,14 @@ export function PendingTab() {
                         ))}
                       </ul>
                       <div className="flex items-center justify-between border-t border-black/[0.05] bg-white px-3 py-2">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a]">Invoice total</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#52525b]">Invoice total</span>
                         <span className="text-[13px] font-black text-[#111118]">{fmt(collectTarget.total)}</span>
                       </div>
                     </div>
 
                     {collectTarget.paidAmount > 0 && (
                       <div className="pt-1 space-y-1.5">
-                        <div className="flex justify-between text-[10px] text-[#9a9a9a]">
+                        <div className="flex justify-between text-[10px] text-[#52525b]">
                           <span>Paid {fmt(collectTarget.paidAmount)}</span>
                           <span className="font-semibold text-[#9a7d20]">{paidPct}% settled</span>
                         </div>
@@ -396,7 +396,7 @@ export function PendingTab() {
                             "h-7 px-3 rounded-lg border text-[10px] font-bold transition-all",
                             collectAmountNum === value
                               ? "border-[#111118] bg-[#111118] text-[#D4AF37]"
-                              : "border-black/[0.08] bg-white text-[#6b6b6b] hover:border-[#D4AF37]/30 hover:text-[#111118]",
+                              : "border-black/[0.08] bg-white text-[#3f3f46] hover:border-[#D4AF37]/30 hover:text-[#111118]",
                           )}
                         >
                           {label}
@@ -416,7 +416,7 @@ export function PendingTab() {
                       />
                     </div>
                     {collectAmountNum > 0 && (
-                      <p className="text-[10.5px] text-[#9a9a9a] flex items-center gap-1.5">
+                      <p className="text-[10.5px] text-[#52525b] flex items-center gap-1.5">
                         {isFullPay ? (
                           <>
                             <CheckCircle2 className="h-3 w-3 text-[#00C896] shrink-0" />
@@ -446,7 +446,7 @@ export function PendingTab() {
                 </div>
 
                 <div className="px-6 py-4 border-t border-gray-100 bg-white flex items-center justify-between gap-3">
-                  <p className="text-[10.5px] text-[#9a9a9a] hidden sm:block">
+                  <p className="text-[10.5px] text-[#52525b] hidden sm:block">
                     Collecting <span className="font-bold text-[#111118]">{collectAmountNum > 0 ? fmt(collectAmountNum) : "—"}</span>
                     {collectPay.method !== "cash" && paymentMethodReference(collectPay)
                       ? ` · Ref ${paymentMethodReference(collectPay)}`
@@ -503,8 +503,8 @@ export function PendingTab() {
               <div className="px-6 py-5 space-y-4 bg-[#faf8f2]">
                 <div className="rounded-xl border border-black/[0.07] bg-white p-4 shadow-sm">
                   <p className="text-[13px] font-bold text-[#111118]">{messageTarget.customer}</p>
-                  <p className="text-[10px] font-mono text-[#9a9a9a] mt-0.5">{messageTarget.invoiceId}</p>
-                  <div className="flex items-center gap-3 mt-2 text-[10px] text-[#9a9a9a]">
+                  <p className="text-[10px] font-mono text-[#52525b] mt-0.5">{messageTarget.invoiceId}</p>
+                  <div className="flex items-center gap-3 mt-2 text-[10px] text-[#52525b]">
                     <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />Due {messageTarget.dueDate}</span>
                   </div>
                   <p className="mt-2 text-[15px] font-black text-[#111118]">{fmt(messageTarget.due)} outstanding</p>
@@ -558,7 +558,7 @@ export function PendingTab() {
                 </div>
 
                 {!hasValidPhone(reminderPhone) && (
-                  <p className="text-center text-[11px] text-[#9a9a9a]">Enter a valid phone number to enable sending.</p>
+                  <p className="text-center text-[11px] text-[#52525b]">Enter a valid phone number to enable sending.</p>
                 )}
               </div>
             </>

@@ -131,10 +131,17 @@ export function ManagerKpiGrid() {
   ];
 
   return (
-    <section aria-label="Manager operations indicators">
-      <div className="grid items-stretch gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
+    <section aria-label="Manager operations indicators" className="dashboard-kpi-mobile-hide">
+      <div className="dashboard-kpi-grid dashboard-kpi-grid--manager">
         {metrics.map((kpi, i) => (
-          <motion.div key={kpi.label} custom={i} variants={dashboardFadeUpStagger} initial="hidden" animate="show" className="h-full min-h-0">
+          <motion.div
+            key={kpi.label}
+            custom={i}
+            variants={dashboardFadeUpStagger}
+            initial="hidden"
+            animate="show"
+            className="h-full min-h-0 min-w-0"
+          >
             <MetricCard
               label={kpi.label}
               value={kpi.value}

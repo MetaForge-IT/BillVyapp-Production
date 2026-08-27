@@ -64,7 +64,7 @@ export const notificationCategoryConfig: Record<
   inventory: {
     label: "Inventory",
     icon: Package,
-    accent: "text-[#6B6B6B]",
+    accent: "text-[#3f3f46]",
     bg: "bg-[#FAF8F2]",
     border: "border-black/[0.08]",
   },

@@ -78,7 +78,7 @@ export function AppointmentStepper({
                         "bg-[#D4AF37] border-[#D4AF37] text-[#111118] shadow-[0_0_0_4px_rgba(212,175,55,0.22)] scale-110",
                       !isComplete &&
                         !isCurrent &&
-                        "bg-white border-black/[0.1] text-[#9a9a9a] group-hover:border-[#D4AF37]/40",
+                        "bg-white border-black/[0.1] text-[#52525b] group-hover:border-[#D4AF37]/40",
                     )}
                   >
                     {isComplete ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : i + 1}
@@ -89,7 +89,7 @@ export function AppointmentStepper({
                       "text-[11px] sm:text-xs font-medium text-center leading-tight max-w-[72px] sm:max-w-none truncate px-0.5",
                       isCurrent && "text-[#111118] font-semibold",
                       isComplete && "text-[#111118]",
-                      !isCurrent && !isComplete && "text-[#9a9a9a]",
+                      !isCurrent && !isComplete && "text-[#52525b]",
                     )}
                   >
                     {label}

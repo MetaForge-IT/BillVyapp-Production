@@ -94,26 +94,26 @@ function AccountingOverview() {
 
   const payMethods = [
     { label: "Cash", val: cashSales, color: "#D4AF37" },
-    { label: "UPI", val: upiSales, color: "#6b6b6b" },
+    { label: "UPI", val: upiSales, color: "#3f3f46" },
     { label: "Card", val: cardSales, color: "#121212" },
   ].filter((x) => x.val > 0);
   const total = payMethods.reduce((s, m) => s + m.val, 0) || 1;
 
   const expCats = [
     { label: "Operational", val: overview?.expensesByCategory?.Operational ?? 0, color: "#D4AF37" },
-    { label: "Inventory", val: overview?.expensesByCategory?.Inventory ?? 0, color: "#9a9a9a" },
+    { label: "Inventory", val: overview?.expensesByCategory?.Inventory ?? 0, color: "#52525b" },
     { label: "Payroll", val: overview?.expensesByCategory?.Payroll ?? 0, color: "#121212" },
   ].filter((x) => x.val > 0);
   const expTotal = expCats.reduce((s, e) => s + e.val, 0) || 1;
 
   if (loading && !overview) {
-    return <div className="py-16 text-center text-[13px] text-[#9a9a9a]">Loading overview…</div>;
+    return <div className="py-16 text-center text-[13px] text-[#52525b]">Loading overview…</div>;
   }
 
   return (
     <div className="space-y-5">
       {overview?.isClosed && (
-        <div className="rounded-xl border border-[#D4AF37]/30 bg-[#FAF8F2] px-4 py-3 flex items-center gap-2 text-[12px] text-[#6b6b6b]">
+        <div className="rounded-xl border border-[#D4AF37]/30 bg-[#FAF8F2] px-4 py-3 flex items-center gap-2 text-[12px] text-[#3f3f46]">
           <Lock className="h-4 w-4 text-[#D4AF37]" />
           Day is closed for {TODAY}. Expense edits are locked.
         </div>
@@ -126,20 +126,20 @@ function AccountingOverview() {
       </FinanceStatGrid>
 
       <div className="rounded-2xl border border-black/[0.07] bg-white shadow-sm px-5 py-3.5 flex flex-wrap items-center gap-2 text-[12px]">
-        <span className="text-[#6b6b6b]">Expected Cash</span>
+        <span className="text-[#3f3f46]">Expected Cash</span>
         <span className="text-[#111118] font-bold">=</span>
         <span className="text-[#111118]">Opening ₹{openingCash.toLocaleString()}</span>
-        <span className="text-[#9a9a9a]">+</span>
+        <span className="text-[#52525b]">+</span>
         <span className="text-[#111118]">Cash Sales ₹{cashSales.toLocaleString()}</span>
-        <span className="text-[#9a9a9a]">−</span>
+        <span className="text-[#52525b]">−</span>
         <span className="text-[#111118]">Cash Exp ₹{cashExpenses.toLocaleString()}</span>
-        <span className="text-[#9a9a9a]">=</span>
+        <span className="text-[#52525b]">=</span>
         <span className="text-[#D4AF37] font-black">₹{expectedCash.toLocaleString()}</span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className={`${financePanel} p-4`}>
-          <p className="text-[11px] font-bold uppercase tracking-wider text-[#6b6b6b] mb-4">Today&apos;s Revenue Split</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-[#3f3f46] mb-4">Today&apos;s Revenue Split</p>
           {payMethods.length > 0 ? (
             <div className="flex items-center gap-5">
               <div className="relative h-20 w-20 shrink-0">
@@ -163,25 +163,25 @@ function AccountingOverview() {
                 {payMethods.map((m) => (
                   <div key={m.label} className="flex items-center gap-2 text-[12px]">
                     <span className="h-2 w-2 rounded-full" style={{ background: m.color }} />
-                    <span className="text-[#6b6b6b]">{m.label}</span>
+                    <span className="text-[#3f3f46]">{m.label}</span>
                     <span className="font-bold text-[#111118]">₹{m.val.toLocaleString()}</span>
                   </div>
                 ))}
               </div>
             </div>
           ) : (
-            <p className="text-[13px] text-[#9a9a9a] py-6 text-center">No sales yet today</p>
+            <p className="text-[13px] text-[#52525b] py-6 text-center">No sales yet today</p>
           )}
         </div>
 
         <div className={`${financePanel} p-4`}>
-          <p className="text-[11px] font-bold uppercase tracking-wider text-[#6b6b6b] mb-4">Expense Categories</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-[#3f3f46] mb-4">Expense Categories</p>
           {expCats.length > 0 ? (
             <div className="space-y-3">
               {expCats.map((c) => (
                 <div key={c.label}>
                   <div className="flex justify-between text-[12px] mb-1">
-                    <span className="text-[#6b6b6b]">{c.label}</span>
+                    <span className="text-[#3f3f46]">{c.label}</span>
                     <span className="font-bold text-[#111118]">₹{c.val.toLocaleString()}</span>
                   </div>
                   <div className="h-2 rounded-full bg-black/[0.06]">
@@ -191,7 +191,7 @@ function AccountingOverview() {
               ))}
             </div>
           ) : (
-            <p className="text-[13px] text-[#9a9a9a] py-6 text-center">No expenses yet today</p>
+            <p className="text-[13px] text-[#52525b] py-6 text-center">No expenses yet today</p>
           )}
         </div>
       </div>
@@ -317,7 +317,7 @@ function ExpensesTab() {
   return (
     <div className="space-y-4">
       {isClosed && (
-        <div className="rounded-xl border border-[#D4AF37]/30 bg-[#FAF8F2] px-4 py-3 flex items-center gap-2 text-[12px] text-[#6b6b6b]">
+        <div className="rounded-xl border border-[#D4AF37]/30 bg-[#FAF8F2] px-4 py-3 flex items-center gap-2 text-[12px] text-[#3f3f46]">
           <Lock className="h-4 w-4 text-[#D4AF37]" />
           Today is closed — expenses are read-only.
         </div>
@@ -330,11 +330,11 @@ function ExpensesTab() {
           return (
             <button key={cat} onClick={() => setActiveCat(cat)}
               className={`flex items-center gap-2 h-10 px-4 rounded-xl text-[12px] font-semibold border transition-all ${
-                activeCat === cat ? "bg-[#121212] text-[#D4AF37] border-[#121212]" : "bg-white text-[#6b6b6b] border-black/[0.07] hover:border-[#D4AF37]/30"
+                activeCat === cat ? "bg-[#121212] text-[#D4AF37] border-[#121212]" : "bg-white text-[#3f3f46] border-black/[0.07] hover:border-[#D4AF37]/30"
               }`}>
               <CIcon className="h-3.5 w-3.5" />
               {cat}
-              {total > 0 && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${activeCat === cat ? "bg-[#D4AF37]/20 text-[#D4AF37]" : "bg-[#FAF8F2] text-[#6b6b6b]"}`}>₹{total.toLocaleString()}</span>}
+              {total > 0 && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${activeCat === cat ? "bg-[#D4AF37]/20 text-[#D4AF37]" : "bg-[#FAF8F2] text-[#3f3f46]"}`}>₹{total.toLocaleString()}</span>}
             </button>
           );
         })}
@@ -380,7 +380,7 @@ function ExpensesTab() {
               <div className="flex gap-1.5 p-1 rounded-xl bg-gray-100 border border-gray-200">
                 {["Cash", "UPI", "Card"].map((s) => (
                   <button key={s} onClick={() => setForm((f) => ({ ...f, source: s }))}
-                    className={`flex-1 h-8 rounded-lg text-[11px] font-bold transition-all ${form.source === s ? "bg-[#121212] text-[#D4AF37] shadow-sm" : "text-[#6b6b6b] hover:text-[#111118]"}`}>
+                    className={`flex-1 h-8 rounded-lg text-[11px] font-bold transition-all ${form.source === s ? "bg-[#121212] text-[#D4AF37] shadow-sm" : "text-[#3f3f46] hover:text-[#111118]"}`}>
                     {s}
                   </button>
                 ))}
@@ -405,11 +405,11 @@ function ExpensesTab() {
 
       <div className={financePanel}>
         {loading ? (
-          <div className="py-12 text-center text-[13px] text-[#9a9a9a]">Loading expenses…</div>
+          <div className="py-12 text-center text-[13px] text-[#52525b]">Loading expenses…</div>
         ) : catExpenses.length === 0 ? (
           <div className="py-12 text-center">
             <Icon className="h-8 w-8 text-[#D4AF37]/30 mx-auto mb-2" />
-            <p className="text-[13px] text-[#9a9a9a]">No {activeCat.toLowerCase()} expenses yet</p>
+            <p className="text-[13px] text-[#52525b]">No {activeCat.toLowerCase()} expenses yet</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
@@ -463,7 +463,7 @@ function ExpensesTab() {
                       type="button"
                       onClick={() => void removeExpense(e)}
                       disabled={isClosed || actionId === e.id}
-                      className="h-7 w-7 rounded-lg border border-black/[0.07] flex items-center justify-center text-[#9a9a9a] hover:text-[#111118] hover:border-[#D4AF37]/30 transition-all disabled:opacity-30"
+                      className="h-7 w-7 rounded-lg border border-black/[0.07] flex items-center justify-center text-[#52525b] hover:text-[#111118] hover:border-[#D4AF37]/30 transition-all disabled:opacity-30"
                     >
                       {actionId === e.id ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -542,7 +542,7 @@ function CashFlowTab() {
   };
 
   if (loading && !overview) {
-    return <div className="py-16 text-center text-[13px] text-[#9a9a9a]">Loading cash flow…</div>;
+    return <div className="py-16 text-center text-[13px] text-[#52525b]">Loading cash flow…</div>;
   }
 
   return (
@@ -558,7 +558,7 @@ function CashFlowTab() {
               { label: "Cash Expenses", val: cashExpenses, sign: "−" },
             ].map((row) => (
               <div key={row.label} className="flex justify-between px-5 py-3 text-[13px]">
-                <span className="text-[#6b6b6b]">{row.label}</span>
+                <span className="text-[#3f3f46]">{row.label}</span>
                 <span className="font-bold text-[#111118]">
                   {row.sign}₹{row.val.toLocaleString()}
                 </span>
@@ -600,16 +600,16 @@ function CashFlowTab() {
                     {variance >= 0 ? "+" : ""}₹{variance.toLocaleString()}
                   </span>
                 </div>
-                <p className="text-[10px] text-[#9a9a9a] mt-0.5">Expected ₹{expectedCash.toLocaleString()} vs Physical ₹{physicalCash.toLocaleString()}</p>
+                <p className="text-[10px] text-[#52525b] mt-0.5">Expected ₹{expectedCash.toLocaleString()} vs Physical ₹{physicalCash.toLocaleString()}</p>
               </div>
             )}
 
             {hasMismatch && (
               <div className="space-y-1.5">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#6b6b6b]">Mismatch Explanation *</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#3f3f46]">Mismatch Explanation *</p>
                 <textarea rows={2} value={remarks} onChange={(e) => setRemarks(e.target.value)} disabled={isClosed}
                   placeholder="Explain the cash variance reason..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-black/[0.07] bg-white text-[13px] resize-none focus:outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/12 transition-all placeholder:text-[#9a9a9a] disabled:opacity-50" />
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-black/[0.07] bg-white text-[13px] resize-none focus:outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/12 transition-all placeholder:text-[#52525b] disabled:opacity-50" />
               </div>
             )}
 
@@ -629,14 +629,14 @@ function CashFlowTab() {
           <p className={financePanelTitle}>Reconciliation History</p>
         </div>
         {history.length === 0 ? (
-          <div className="py-10 text-center text-[#9a9a9a] text-[13px]">No past reconciliations found.</div>
+          <div className="py-10 text-center text-[#52525b] text-[13px]">No past reconciliations found.</div>
         ) : (
           <div className="divide-y divide-gray-100">
             {history.map((h) => (
               <div key={h.id} className="px-5 py-3.5 flex items-center justify-between text-[13px]">
                 <div>
                   <p className="font-semibold text-[#111118]">{h.closingDate}</p>
-                  <p className="text-[11px] text-[#9a9a9a]">{h.closedBy ?? "—"} · variance ₹{h.variance.toLocaleString()}</p>
+                  <p className="text-[11px] text-[#52525b]">{h.closedBy ?? "—"} · variance ₹{h.variance.toLocaleString()}</p>
                 </div>
                 <p className="font-black text-[#D4AF37]">₹{h.physicalCash.toLocaleString()}</p>
               </div>
@@ -712,7 +712,7 @@ function ClosingTab() {
   };
 
   if (loading && !overview) {
-    return <div className="py-16 text-center text-[13px] text-[#9a9a9a]">Loading day close…</div>;
+    return <div className="py-16 text-center text-[13px] text-[#52525b]">Loading day close…</div>;
   }
 
   if (closedCash != null || overview?.isClosed) {
@@ -724,10 +724,10 @@ function ClosingTab() {
         </div>
         <div className="text-center">
           <p className="text-[22px] font-black text-[#111118]">Day Closed Successfully</p>
-          <p className="text-[13px] text-[#6b6b6b] mt-1">All records locked · Tomorrow opens with ₹{cash.toLocaleString()}</p>
+          <p className="text-[13px] text-[#3f3f46] mt-1">All records locked · Tomorrow opens with ₹{cash.toLocaleString()}</p>
         </div>
         <div className={`${financePanel} px-8 py-4 text-center`}>
-          <p className="text-[11px] font-bold uppercase tracking-wider text-[#6b6b6b]">Closing Cash</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-[#3f3f46]">Closing Cash</p>
           <p className="text-[32px] font-black text-[#111118]">₹{cash.toLocaleString()}</p>
         </div>
       </div>
@@ -743,11 +743,11 @@ function ClosingTab() {
               <div className={`h-8 w-8 rounded-full flex items-center justify-center text-[11px] font-black border-2 transition-all shrink-0 ${
                 i < step ? "bg-[#D4AF37] border-[#D4AF37] text-black"
                   : i === step ? "bg-[#121212] border-[#121212] text-[#D4AF37]"
-                  : "bg-white border-black/[0.07] text-[#9a9a9a]"
+                  : "bg-white border-black/[0.07] text-[#52525b]"
               }`}>
                 {i < step ? "✓" : i + 1}
               </div>
-              <p className={`text-[10px] font-semibold text-center whitespace-nowrap ${i === step ? "text-[#111118]" : i < step ? "text-[#D4AF37]" : "text-[#9a9a9a]"}`}>{s}</p>
+              <p className={`text-[10px] font-semibold text-center whitespace-nowrap ${i === step ? "text-[#111118]" : i < step ? "text-[#D4AF37]" : "text-[#52525b]"}`}>{s}</p>
             </div>
             {i < STEPS.length - 1 && (
               <div className={`h-0.5 flex-1 mx-1 mb-5 transition-all ${i < step ? "bg-[#D4AF37]" : "bg-black/[0.06]"}`} />
@@ -762,7 +762,7 @@ function ClosingTab() {
             <div className={`${financePanelHeader} border-b border-black/[0.07]`}>
               <div>
                 <p className="text-[14px] font-bold text-[#111118]">Step 1 — System Summary</p>
-                <p className="text-[11px] text-[#9a9a9a] mt-0.5">Read-only view of all balances for today</p>
+                <p className="text-[11px] text-[#52525b] mt-0.5">Read-only view of all balances for today</p>
               </div>
             </div>
             <div className="divide-y divide-gray-100">
@@ -775,7 +775,7 @@ function ClosingTab() {
                 { label: "Expected Cash in Drawer", val: expectedCash },
               ].map((row) => (
                 <div key={row.label} className="flex justify-between px-5 py-3.5 text-[13px]">
-                  <span className="text-[#6b6b6b]">{row.label}</span>
+                  <span className="text-[#3f3f46]">{row.label}</span>
                   <span className="font-black text-[#111118]">₹{row.val.toLocaleString()}</span>
                 </div>
               ))}
@@ -788,7 +788,7 @@ function ClosingTab() {
             <div className={`${financePanelHeader} border-b border-black/[0.07]`}>
               <div>
                 <p className="text-[14px] font-bold text-[#111118]">Step 2 — Settlement Entry</p>
-                <p className="text-[11px] text-[#9a9a9a] mt-0.5">Log confirmed digital payment settlements</p>
+                <p className="text-[11px] text-[#52525b] mt-0.5">Log confirmed digital payment settlements</p>
               </div>
             </div>
             <div className="px-5 py-5 space-y-4">
@@ -815,7 +815,7 @@ function ClosingTab() {
             <div className={`${financePanelHeader} border-b border-black/[0.07]`}>
               <div>
                 <p className="text-[14px] font-bold text-[#111118]">Step 3 — Physical Cash Count</p>
-                <p className="text-[11px] text-[#9a9a9a] mt-0.5">Count notes and coins in the drawer</p>
+                <p className="text-[11px] text-[#52525b] mt-0.5">Count notes and coins in the drawer</p>
               </div>
             </div>
             <div className="px-5 py-4 space-y-3">
@@ -834,7 +834,7 @@ function ClosingTab() {
                 ))}
               </div>
               <div className="rounded-xl border border-black/[0.07] bg-[#FAF8F2] px-5 py-3.5 flex items-center justify-between">
-                <span className="text-[13px] font-bold text-[#6b6b6b]">Total Physical Cash</span>
+                <span className="text-[13px] font-bold text-[#3f3f46]">Total Physical Cash</span>
                 <span className="text-[22px] font-black text-[#D4AF37]">₹{physicalCash.toLocaleString()}</span>
               </div>
             </div>
@@ -846,23 +846,23 @@ function ClosingTab() {
             <div className={`${financePanelHeader} border-b border-black/[0.07]`}>
               <div>
                 <p className="text-[14px] font-bold text-[#111118]">Step 4 — Variance Validation</p>
-                <p className="text-[11px] text-[#9a9a9a] mt-0.5">System vs Physical comparison</p>
+                <p className="text-[11px] text-[#52525b] mt-0.5">System vs Physical comparison</p>
               </div>
             </div>
             <div className="px-5 py-5 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl bg-[#FAF8F2] border border-black/[0.07] p-4 text-center">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a] mb-1">System Expected</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#52525b] mb-1">System Expected</p>
                   <p className="text-[22px] font-black text-[#111118]">₹{expectedCash.toLocaleString()}</p>
                 </div>
                 <div className="rounded-xl bg-[#FAF8F2] border border-black/[0.07] p-4 text-center">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a] mb-1">Physically Counted</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#52525b] mb-1">Physically Counted</p>
                   <p className="text-[22px] font-black text-[#111118]">₹{physicalCash.toLocaleString()}</p>
                 </div>
               </div>
 
               <div className="rounded-xl p-4 border border-black/[0.07] bg-white text-center">
-                <p className="text-[11px] font-bold uppercase tracking-wider mb-1 text-[#6b6b6b]">
+                <p className="text-[11px] font-bold uppercase tracking-wider mb-1 text-[#3f3f46]">
                   {variance === 0 ? "Perfect Match" : "Variance Detected"}
                 </p>
                 <p className="text-[26px] font-black text-[#111118]">
@@ -872,10 +872,10 @@ function ClosingTab() {
 
               {variance !== 0 && (
                 <div className="space-y-1.5">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#6b6b6b]">Variance Explanation *</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#3f3f46]">Variance Explanation *</p>
                   <textarea rows={3} value={varianceNote} onChange={(e) => setVarianceNote(e.target.value)}
                     placeholder="Explain the reason for cash mismatch..."
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-black/[0.07] bg-white text-[13px] resize-none focus:outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/12 transition-all placeholder:text-[#9a9a9a]" />
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-black/[0.07] bg-white text-[13px] resize-none focus:outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/12 transition-all placeholder:text-[#52525b]" />
                 </div>
               )}
             </div>
@@ -887,7 +887,7 @@ function ClosingTab() {
             <div className={`${financePanelHeader} border-b border-black/[0.07]`}>
               <div>
                 <p className="text-[14px] font-bold text-[#111118]">Step 5 — Final Day Close</p>
-                <p className="text-[11px] text-[#9a9a9a] mt-0.5">This will lock all records for today</p>
+                <p className="text-[11px] text-[#52525b] mt-0.5">This will lock all records for today</p>
               </div>
             </div>
             <div className="px-5 py-5 space-y-4">
@@ -907,7 +907,7 @@ function ClosingTab() {
               </div>
               <div className="flex items-start gap-3 p-4 rounded-xl bg-[#FAF8F2] border border-black/[0.07]">
                 <AlertTriangle className="h-4 w-4 text-[#D4AF37] shrink-0 mt-0.5" />
-                <p className="text-[12px] text-[#6b6b6b]">This will lock expenses for {TODAY}. Sales continue to come from invoices.</p>
+                <p className="text-[12px] text-[#3f3f46]">This will lock expenses for {TODAY}. Sales continue to come from invoices.</p>
               </div>
               <button onClick={() => void sealDay()} disabled={saving}
                 className={`w-full h-12 rounded-xl ${financeGoldBtn} flex items-center justify-center gap-2 !text-[14px] disabled:opacity-40`}>
@@ -950,7 +950,7 @@ function ReportsTab() {
   const maxRev = Math.max(...weekly.map((w) => Math.max(w.revenue, w.expenses)), 1);
 
   if (loading && !overview) {
-    return <div className="py-16 text-center text-[13px] text-[#9a9a9a]">Loading reports…</div>;
+    return <div className="py-16 text-center text-[13px] text-[#52525b]">Loading reports…</div>;
   }
 
   return (
@@ -966,8 +966,8 @@ function ReportsTab() {
         <div className="flex items-center justify-between mb-5">
           <p className="text-[13px] font-bold text-[#111118]">Revenue vs Expenses — Last 7 Days</p>
           <div className="flex gap-3 text-[10px]">
-            <div className="flex items-center gap-1"><div className="h-2 w-4 rounded-full bg-[#D4AF37]" /><span className="text-[#6b6b6b]">Revenue</span></div>
-            <div className="flex items-center gap-1"><div className="h-2 w-4 rounded-full bg-[#121212]/30" /><span className="text-[#6b6b6b]">Expenses</span></div>
+            <div className="flex items-center gap-1"><div className="h-2 w-4 rounded-full bg-[#D4AF37]" /><span className="text-[#3f3f46]">Revenue</span></div>
+            <div className="flex items-center gap-1"><div className="h-2 w-4 rounded-full bg-[#121212]/30" /><span className="text-[#3f3f46]">Expenses</span></div>
           </div>
         </div>
         <div className="flex items-end gap-2 h-32">
@@ -977,7 +977,7 @@ function ReportsTab() {
                 <div className="flex-1 rounded-t-md bg-[#D4AF37]/70 transition-all" style={{ height: `${(w.revenue / maxRev) * 100}%` }} />
                 <div className="flex-1 rounded-t-md bg-[#121212]/25 transition-all" style={{ height: `${(w.expenses / maxRev) * 100}%` }} />
               </div>
-              <p className="text-[10px] text-[#9a9a9a] font-semibold">{w.day}</p>
+              <p className="text-[10px] text-[#52525b] font-semibold">{w.day}</p>
             </div>
           ))}
         </div>
@@ -992,7 +992,7 @@ function ReportsTab() {
             { label: "Net GST Liability", val: totalGST - Math.round(totalExpenses * 0.18) },
           ].map((g) => (
             <div key={g.label} className="rounded-xl bg-[#FAF8F2] border border-black/[0.07] p-3.5 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a] mb-1">{g.label}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#52525b] mb-1">{g.label}</p>
               <p className="text-[18px] font-black text-[#111118]">₹{g.val.toLocaleString()}</p>
             </div>
           ))}
@@ -1088,8 +1088,8 @@ function PlanningTab() {
         <div className="flex items-center justify-between mb-2">
           <p className="text-[13px] font-semibold text-[#111118]">{b.name}</p>
           <div className="text-right">
-            <p className="text-[13px] font-black text-[#111118]">₹{b.used.toLocaleString()} <span className="text-[11px] font-normal text-[#9a9a9a]">/ ₹{b.allocated.toLocaleString()}</span></p>
-            {pct >= 100 && <span className="text-[10px] font-bold text-[#6b6b6b]">Exceeded</span>}
+            <p className="text-[13px] font-black text-[#111118]">₹{b.used.toLocaleString()} <span className="text-[11px] font-normal text-[#52525b]">/ ₹{b.allocated.toLocaleString()}</span></p>
+            {pct >= 100 && <span className="text-[10px] font-bold text-[#3f3f46]">Exceeded</span>}
             {pct >= 80 && pct < 100 && <span className="text-[10px] font-bold text-[#D4AF37]">{pct}% used</span>}
           </div>
         </div>
@@ -1145,7 +1145,7 @@ function PlanningTab() {
       )}
 
       {loading ? (
-        <div className="py-12 text-center text-[13px] text-[#9a9a9a]">Loading budget…</div>
+        <div className="py-12 text-center text-[13px] text-[#52525b]">Loading budget…</div>
       ) : (
         [
           { label: "Fixed Costs", sub: "Recurring monthly", items: paginatedFixed, total: fixed.length, pagination: fixedPagination },
@@ -1155,12 +1155,12 @@ function PlanningTab() {
             <div className={`${financePanelHeader} border-b border-black/[0.07]`}>
               <div>
                 <p className={financePanelTitle}>{section.label}</p>
-                <p className="text-[10px] text-[#9a9a9a]">{section.sub}</p>
+                <p className="text-[10px] text-[#52525b]">{section.sub}</p>
               </div>
             </div>
             <div className="divide-y divide-gray-100">
               {section.items.length === 0 ? (
-                <p className="py-8 text-center text-[13px] text-[#9a9a9a]">No lines yet</p>
+                <p className="py-8 text-center text-[13px] text-[#52525b]">No lines yet</p>
               ) : (
                 section.items.map((b) => <BudgetRow key={b.id} b={b} />)
               )}

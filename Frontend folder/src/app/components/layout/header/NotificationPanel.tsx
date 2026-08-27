@@ -73,7 +73,7 @@ export function NotificationPanel({
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-semibold text-[#111118] tracking-[-0.01em]">Notifications</h3>
-                <p className="text-[11px] text-[#9a9a9a] mt-0.5">
+                <p className="text-[11px] text-[#52525b] mt-0.5">
                   {unreadCount > 0 ? `${unreadCount} unread` : "You're all caught up"}
                 </p>
               </div>
@@ -94,7 +94,7 @@ export function NotificationPanel({
             {visible.length === 0 ? (
               <div className="px-4 py-10 text-center">
                 <p className="text-sm font-medium text-[#111118]">No notifications</p>
-                <p className="text-xs text-[#9a9a9a] mt-1">We'll let you know when something needs attention.</p>
+                <p className="text-xs text-[#52525b] mt-1">We'll let you know when something needs attention.</p>
               </div>
             ) : (
               <ul className="space-y-1" role="list">
@@ -141,11 +141,11 @@ export function NotificationPanel({
                                 <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#D4AF37] shadow-[0_0_6px_rgba(212,175,55,0.8)]" />
                               )}
                             </div>
-                            <p className="text-[12px] text-[#6b6b6b] mt-0.5 leading-snug line-clamp-2">
+                            <p className="text-[12px] text-[#3f3f46] mt-0.5 leading-snug line-clamp-2">
                               {notification.message}
                             </p>
                             <div className="mt-2 flex items-center justify-between gap-2">
-                              <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-[#9a9a9a]">
+                              <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-[#52525b]">
                                 {config.label} · {notification.timestamp}
                               </span>
                               {!notification.read && (
@@ -190,7 +190,7 @@ export function NotificationPanel({
               className="flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-semibold text-[#111118] hover:bg-white transition-colors"
             >
               View all notifications
-              <ExternalLink className="h-3.5 w-3.5 text-[#9a9a9a]" />
+              <ExternalLink className="h-3.5 w-3.5 text-[#52525b]" />
             </button>
           </div>
         </motion.div>

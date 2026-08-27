@@ -183,22 +183,24 @@ export function Feedback() {
     <div className="space-y-6">
 
       {/* ── Page header ── */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <div className="flex min-w-0 items-start justify-between gap-2 sm:items-center sm:gap-4">
+        <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#D4AF37]">Customer Voice</p>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-[#1a1a1a] to-[#d4af37] bg-clip-text text-transparent">
-            All Customer Feedbacks
+          <h1 className="truncate text-xl font-bold bg-gradient-to-r from-[#1a1a1a] to-[#d4af37] bg-clip-text text-transparent sm:text-3xl">
+            <span className="sm:hidden">Feedback</span>
+            <span className="hidden sm:inline">All Customer Feedbacks</span>
           </h1>
-          <p className="mt-1 text-sm text-[#9a9a9a]">Monitor reviews and respond to your customers</p>
+          <p className="mt-0.5 hidden text-sm text-[#52525b] sm:mt-1 sm:block">Monitor reviews and respond to your customers</p>
         </div>
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.97 }}
           onClick={() => { setRequestSent(false); setRequestPhone(""); setRequestName(""); setRequestChannel("whatsapp"); setRequestOpen(true); }}
-          className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#111118] px-5 text-[13px] font-bold text-[#D4AF37] shadow-sm transition-colors hover:bg-[#1e1e1e]"
+          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-[#111118] px-2.5 text-[12px] font-bold text-[#D4AF37] shadow-sm transition-colors hover:bg-[#1e1e1e] sm:h-10 sm:gap-2 sm:px-5 sm:text-[13px]"
         >
           <MessageSquare className="h-4 w-4" />
-          Request Feedback
+          <span className="sm:hidden">Request</span>
+          <span className="hidden sm:inline">Request Feedback</span>
         </motion.button>
       </div>
 
@@ -245,7 +247,7 @@ export function Feedback() {
             <div className="flex items-center gap-1.5">
               <StarRow rating={Math.round(Number(avgRating))} />
               <span className="ml-1 text-[14px] font-bold text-[#111118]">{avgRating}</span>
-              <span className="text-[10px] text-[#9a9a9a]">/ 5</span>
+              <span className="text-[10px] text-[#52525b]">/ 5</span>
             </div>
           </div>
           <div className="space-y-2 px-4 py-3">
@@ -279,12 +281,12 @@ export function Feedback() {
         {/* ── Filters ── */}
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[#D4AF37]/15 bg-white px-4 py-3 shadow-[0_2px_12px_rgba(212,175,55,0.06)]">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#52525b]" />
             <input
               placeholder="Search feedbacks..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="h-9 w-52 rounded-xl border border-black/[0.08] bg-[#faf9f7] pl-9 pr-3 text-[12px] transition-all placeholder:text-[#9a9a9a] focus:border-[#D4AF37]/50 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/10"
+              className="h-9 w-52 rounded-xl border border-black/[0.08] bg-[#faf9f7] pl-9 pr-3 text-[12px] transition-all placeholder:text-[#52525b] focus:border-[#D4AF37]/50 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/10"
             />
           </div>
           <div className="flex gap-1 rounded-xl border border-black/[0.08] bg-[#f4f2ed] p-1">
@@ -298,7 +300,7 @@ export function Feedback() {
                 }}
                 className={cn(
                   "rounded-lg px-2.5 py-1 text-[10px] font-bold capitalize transition-all",
-                  statusFilter === s ? "bg-[#111118] text-[#D4AF37] shadow-sm" : "text-[#9a9a9a] hover:text-[#111118]",
+                  statusFilter === s ? "bg-[#111118] text-[#D4AF37] shadow-sm" : "text-[#52525b] hover:text-[#111118]",
                 )}
               >
                 {s === "all" ? "All status" : s}
@@ -313,14 +315,14 @@ export function Feedback() {
                 onClick={() => setRatingFilter(r)}
                 className={cn(
                   "rounded-lg px-2.5 py-1 text-[10px] font-bold transition-all",
-                  ratingFilter === r ? "bg-[#111118] text-[#D4AF37] shadow-sm" : "text-[#9a9a9a] hover:text-[#111118]",
+                  ratingFilter === r ? "bg-[#111118] text-[#D4AF37] shadow-sm" : "text-[#52525b] hover:text-[#111118]",
                 )}
               >
                 {r === "all" ? "All" : r === "1-2" ? "1–2 ★" : `${r} ★`}
               </button>
             ))}
           </div>
-          <span className="ml-auto text-[11px] font-medium text-[#9a9a9a]">
+          <span className="ml-auto text-[11px] font-medium text-[#52525b]">
             {filtered.length} result{filtered.length !== 1 ? "s" : ""}
           </span>
         </div>
@@ -333,7 +335,7 @@ export function Feedback() {
                 <MessageSquare className="h-5 w-5 text-[#D4AF37]/35" />
               </div>
               <p className="text-[13px] font-semibold text-[#111118]">No feedback found</p>
-              <p className="mt-1 text-[11px] text-[#9a9a9a]">Try adjusting your filters.</p>
+              <p className="mt-1 text-[11px] text-[#52525b]">Try adjusting your filters.</p>
             </div>
           )}
 
@@ -360,8 +362,8 @@ export function Feedback() {
                             fb.sentiment === "positive"
                               ? "border-[#D4AF37]/25 bg-[#D4AF37]/10 text-[#B8962E]"
                               : fb.sentiment === "negative"
-                              ? "border-black/[0.08] bg-black/[0.04] text-[#6b6b6b]"
-                              : "border-black/[0.08] bg-black/[0.04] text-[#9a9a9a]",
+                              ? "border-black/[0.08] bg-black/[0.04] text-[#3f3f46]"
+                              : "border-black/[0.08] bg-black/[0.04] text-[#52525b]",
                           )}>
                             {fb.sentiment === "positive" ? <ThumbsUp className="h-2 w-2" /> :
                              fb.sentiment === "negative" ? <ThumbsDown className="h-2 w-2" /> :
@@ -370,14 +372,14 @@ export function Feedback() {
                           </span>
                           {fb.replied
                             ? <span className="rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-1.5 py-0.5 text-[9px] font-bold text-[#B8962E]">Replied</span>
-                            : <span className="rounded-full border border-black/[0.08] bg-[#faf9f7] px-1.5 py-0.5 text-[9px] font-bold text-[#9a9a9a]">Pending</span>
+                            : <span className="rounded-full border border-black/[0.08] bg-[#faf9f7] px-1.5 py-0.5 text-[9px] font-bold text-[#52525b]">Pending</span>
                           }
-                          <span className="rounded-full border border-black/[0.06] bg-[#faf9f7] px-1.5 py-0.5 text-[9px] font-bold text-[#9a9a9a]">
+                          <span className="rounded-full border border-black/[0.06] bg-[#faf9f7] px-1.5 py-0.5 text-[9px] font-bold text-[#52525b]">
                             {SOURCE_META[fb.source].label}
                           </span>
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
-                          <span className="whitespace-nowrap text-[9px] text-[#9a9a9a]">{fb.date}</span>
+                          <span className="whitespace-nowrap text-[9px] text-[#52525b]">{fb.date}</span>
                           <button
                             type="button"
                             onClick={() => setViewFeedback(fb)}
@@ -390,12 +392,12 @@ export function Feedback() {
 
                       <div className="mb-2 flex items-center gap-1.5">
                         <Scissors className="h-2.5 w-2.5 shrink-0 text-[#D4AF37]/50" />
-                        <span className="text-[10px] font-semibold text-[#6b6b6b]">{fb.service}</span>
+                        <span className="text-[10px] font-semibold text-[#3f3f46]">{fb.service}</span>
                         <span className="text-[#D4AF37]/30">·</span>
-                        <span className="text-[10px] text-[#9a9a9a]">{fb.staff}</span>
+                        <span className="text-[10px] text-[#52525b]">{fb.staff}</span>
                       </div>
 
-                      <p className="line-clamp-2 text-[12px] leading-relaxed text-[#6b6b6b]">{fb.comment}</p>
+                      <p className="line-clamp-2 text-[12px] leading-relaxed text-[#3f3f46]">{fb.comment}</p>
                     </div>
                   </div>
 
@@ -406,7 +408,7 @@ export function Feedback() {
                       </div>
                       <div className="flex-1 rounded-lg border border-[#D4AF37]/15 bg-[#FFFBEB] px-3 py-2">
                         <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[#B8962E]">Salon response</p>
-                        <p className="text-[11px] leading-relaxed text-[#6b6b6b]">{fb.replyText}</p>
+                        <p className="text-[11px] leading-relaxed text-[#3f3f46]">{fb.replyText}</p>
                       </div>
                     </div>
                   )}
@@ -435,7 +437,7 @@ export function Feedback() {
                       "h-1.5 w-1.5 shrink-0 rounded-full",
                       fb.sentiment === "positive" ? "bg-[#D4AF37]" : fb.sentiment === "negative" ? "bg-[#111118]" : "bg-[#c0c0c0]",
                     )} />
-                    <span className="text-[9px] font-medium capitalize text-[#9a9a9a]">{fb.sentiment}</span>
+                    <span className="text-[9px] font-medium capitalize text-[#52525b]">{fb.sentiment}</span>
                   </div>
 
                   <div className="flex items-center gap-1.5">
@@ -444,7 +446,7 @@ export function Feedback() {
                         <button
                           type="button"
                           onClick={() => { setReplyOpen(null); setReplyText(""); }}
-                          className="h-7 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[10px] font-semibold text-[#9a9a9a] hover:border-black/[0.12]"
+                          className="h-7 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[10px] font-semibold text-[#52525b] hover:border-black/[0.12]"
                         >
                           Cancel
                         </button>
@@ -473,7 +475,7 @@ export function Feedback() {
                           <button
                             type="button"
                             onClick={() => { setReplyOpen(fb.id); setReplyText(fb.replyText || ""); }}
-                            className="flex h-7 items-center gap-1 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[10px] font-semibold text-[#6b6b6b] hover:border-[#D4AF37]/30"
+                            className="flex h-7 items-center gap-1 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[10px] font-semibold text-[#3f3f46] hover:border-[#D4AF37]/30"
                           >
                             <Reply className="h-3 w-3" /> Edit
                           </button>
@@ -523,7 +525,7 @@ export function Feedback() {
                       <p className="text-[16px] font-black text-[#111118]">{viewFeedback.customer}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <StarRow rating={viewFeedback.rating} size="lg" />
-                        <span className="rounded-full border border-black/[0.08] bg-[#faf9f7] px-2 py-0.5 text-[10px] font-bold text-[#9a9a9a]">
+                        <span className="rounded-full border border-black/[0.08] bg-[#faf9f7] px-2 py-0.5 text-[10px] font-bold text-[#52525b]">
                           {SOURCE_META[viewFeedback.source].label}
                         </span>
                       </div>
@@ -548,7 +550,7 @@ export function Feedback() {
                           "rounded-lg px-3 py-1.5 text-[10px] font-bold capitalize border transition-all",
                           viewFeedback.status === status
                             ? "bg-[#111118] border-[#111118] text-[#D4AF37]"
-                            : "bg-white border-black/[0.08] text-[#6b6b6b] hover:border-[#D4AF37]/30",
+                            : "bg-white border-black/[0.08] text-[#3f3f46] hover:border-[#D4AF37]/30",
                         )}
                       >
                         {status}

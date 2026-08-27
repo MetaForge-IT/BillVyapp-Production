@@ -24,5 +24,6 @@ myFranchiseRouter.patch(
   validateRequest(updateShopAddressSchema),
   myFranchiseController.updateShop,
 );
+myFranchiseRouter.delete("/shops/:shopId", myFranchiseController.deleteShop);
 
 export { myFranchiseRouter };

@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { formatDisplayPhone, phoneTelHref } from "../../lib/phone";
 import { getApiErrorMessage } from "../../lib/api";
-import { istDateKey } from "../../lib/istDate";
 import {
   sendBirthdayOfferWhatsApp,
   sendCouponWhatsApp,
@@ -34,7 +33,7 @@ import {
 
 import { type Customer, createCustomer, updateCustomer, redeemLoyaltyPoints } from "../../api/customers";
 import { useCustomersQuery } from "../hooks/useCustomersQuery";
-import { fetchAccountingOverview } from "../../api/accounting";
+import { fetchInvoicesSummary } from "../../api/billing";
 import { fetchMembershipTiers } from "../../api/membership-tiers";
 import { enrollCustomerInPlan, fetchSalonPlans, fetchPlanEnrollments, type PlanEnrollment } from "../../api/plans";
 import { customerToApiPayload } from "../../lib/customerMappers";
@@ -139,15 +138,25 @@ export function Customers() {
 
   useEffect(() => {
     let cancelled = false;
-    fetchAccountingOverview(istDateKey())
-      .then((overview) => {
-        if (!cancelled) setTodayRevenue(overview.totalSales ?? 0);
+    const salonId =
+      isFranchiseAdmin && shopFilter !== "all" ? shopFilter : undefined;
+
+    setTodayRevenue(null);
+    fetchInvoicesSummary({ salonId })
+      .then((summary) => {
+        if (!cancelled) setTodayRevenue(summary.todayRevenue ?? 0);
       })
-      .catch(() => {
-        if (!cancelled) setTodayRevenue(null);
+      .catch((error) => {
+        if (!cancelled) {
+          setTodayRevenue(null);
+          toast.error(getApiErrorMessage(error, "Failed to load today's revenue"));
+        }
       });
-    return () => { cancelled = true; };
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isFranchiseAdmin, shopFilter]);
 
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [detailView, setDetailView] = useState(false);
@@ -580,7 +589,7 @@ export function Customers() {
   const startEdit = () => { if (!selectedCustomer) return; setEditData({ ...selectedCustomer }); setEditMode(true); };
 
   const genderIcon = (g: string) => g === "male" ? "♂" : g === "female" ? "♀" : "⚧";
-  const genderColor = (g: string) => g === "male" ? "bg-[#FAF8F2] text-[#111118] border-black/[0.08]" : g === "female" ? "bg-[#FFFBEB] text-[#9a7d20] border-[#D4AF37]/20" : "bg-[#f4f2ed] text-[#6b6b6b] border-black/[0.08]";
+  const genderColor = (g: string) => g === "male" ? "bg-[#FAF8F2] text-[#111118] border-black/[0.08]" : g === "female" ? "bg-[#FFFBEB] text-[#9a7d20] border-[#D4AF37]/20" : "bg-[#f4f2ed] text-[#3f3f46] border-black/[0.08]";
 
   // ── DETAIL VIEW ──
   if (detailView && selectedCustomer) {
@@ -886,24 +895,44 @@ export function Customers() {
     >
       <div className="shrink-0 space-y-3 sm:space-y-4">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0 shrink-0">
+      <div className="flex min-w-0 items-start justify-between gap-2 sm:items-center sm:gap-4">
+        <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#D4AF37]">CRM</p>
-          <h1 className="whitespace-nowrap text-2xl font-bold bg-gradient-to-r from-[#1a1a1a] to-[#d4af37] bg-clip-text text-transparent sm:text-3xl">Customers</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Manage customers, loyalty programs, and communication</p>
+          <h1 className="truncate text-xl font-bold bg-gradient-to-r from-[#1a1a1a] to-[#d4af37] bg-clip-text text-transparent sm:text-3xl">Customers</h1>
+          <p className="mt-0.5 hidden text-sm text-muted-foreground sm:mt-1 sm:block">Manage customers, loyalty programs, and communication</p>
         </div>
-        <div className="flex gap-2 flex-wrap items-center">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
           {todayBirthdays.length > 0 && (
-            <Button variant="outline" size="sm" className="rounded-xl border-[#D4AF37]/35 text-[#9a7d20] bg-[#FFFBEB] hover:bg-[#FAF8F2]" onClick={() => setBdayCouponOpen(true)}>
-              <Cake className="h-4 w-4 mr-1" />{todayBirthdays.length} Birthday Today
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 rounded-xl border-[#D4AF37]/35 bg-[#FFFBEB] px-2.5 text-[#9a7d20] hover:bg-[#FAF8F2] sm:px-3"
+              onClick={() => setBdayCouponOpen(true)}
+            >
+              <Cake className="h-4 w-4 sm:mr-1" />
+              <span className="sm:hidden text-[12px] font-bold">{todayBirthdays.length}</span>
+              <span className="hidden sm:inline">{todayBirthdays.length} Birthday Today</span>
             </Button>
           )}
-          <Button variant="outline" size="sm" className="rounded-xl border-[#D4AF37]/40 text-[#9a7d20] hover:bg-[#D4AF37]/08 hover:border-[#D4AF37]/60" onClick={() => navigate('/feedback')}>
-            <MessageSquare className="h-4 w-4 mr-1" />Customer Feedback
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 rounded-xl border-[#D4AF37]/40 px-2.5 text-[#9a7d20] hover:border-[#D4AF37]/60 hover:bg-[#D4AF37]/08 sm:px-3"
+            onClick={() => navigate("/feedback")}
+          >
+            <MessageSquare className="h-4 w-4 sm:mr-1" />
+            <span className="sm:hidden text-[12px] font-bold">Feedback</span>
+            <span className="hidden sm:inline">Customer Feedback</span>
           </Button>
           {role !== "admin" && (
-            <button type="button" className={financeGoldBtn + " inline-flex items-center gap-2"} onClick={() => setAddOpen(true)}>
-              <UserPlus className="h-4 w-4" />Add Customer
+            <button
+              type="button"
+              className={cn(financeGoldBtn, "inline-flex h-9 items-center gap-1.5 px-2.5 text-[12px] sm:h-10 sm:gap-2 sm:px-4 sm:text-[13px]")}
+              onClick={() => setAddOpen(true)}
+            >
+              <UserPlus className="h-4 w-4" />
+              <span className="sm:hidden">Add</span>
+              <span className="hidden sm:inline">Add Customer</span>
             </button>
           )}
         </div>
@@ -919,7 +948,7 @@ export function Customers() {
               </div>
               <div>
                 <p className="text-[13px] font-bold text-[#111118]">Shop</p>
-                <p className="text-[11px] text-[#9a9a9a]">Filter customers by branch</p>
+                <p className="text-[11px] text-[#52525b]">Filter customers by branch</p>
               </div>
             </div>
             <FilterSelect
@@ -945,7 +974,11 @@ export function Customers() {
         <PageStatCard
           label="Today's Revenue"
           value={todayRevenue == null ? "—" : `₹${todayRevenue.toLocaleString("en-IN")}`}
-          sub="Sales collected today"
+          sub={
+            isFranchiseAdmin && shopFilter !== "all"
+              ? "Sales collected today · selected shop"
+              : "Sales collected today"
+          }
           icon={IndianRupee}
           index={0}
         />
@@ -984,13 +1017,13 @@ export function Customers() {
             </div>
             <div>
               <p className="text-[13px] font-bold text-[#111118]">Search &amp; filters</p>
-              <p className="text-[11px] text-[#9a9a9a]">
+              <p className="text-[11px] text-[#52525b]">
                 {showSearchFilters ? "Turn off to hide and reset" : "Turn on to search or filter customers"}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className={`text-[11px] font-semibold ${showSearchFilters ? "text-[#9a7d20]" : "text-[#9a9a9a]"}`}>
+            <span className={`text-[11px] font-semibold ${showSearchFilters ? "text-[#9a7d20]" : "text-[#52525b]"}`}>
               {showSearchFilters ? "On" : "Off"}
             </span>
             <Switch
@@ -1016,7 +1049,7 @@ export function Customers() {
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search name or phone number"
-                className="h-10 w-full rounded-xl border border-black/[0.08] bg-white pl-10 pr-9 text-[13px] text-[#111] outline-none transition-all placeholder:text-[#9a9a9a] focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/12"
+                className="h-10 w-full rounded-xl border border-black/[0.08] bg-white pl-10 pr-9 text-[13px] text-[#111] outline-none transition-all placeholder:text-[#52525b] focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/12"
               />
               {searchQuery && (
                 <button
@@ -1051,14 +1084,14 @@ export function Customers() {
                       "flex h-10 flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 text-[13px] font-semibold transition-all sm:flex-none sm:px-3.5",
                       isActive
                         ? "border-[#D4AF37]/35 bg-[#D4AF37]/15 text-[#9a7d20]"
-                        : "border-transparent text-[#6b6b6b] hover:bg-black/[0.04]",
+                        : "border-transparent text-[#3f3f46] hover:bg-black/[0.04]",
                     )}
                   >
                     <Icon className="h-4 w-4 shrink-0" />
                     {label}
                     <span className={cn(
                       "rounded-full px-1.5 py-0.5 text-[10px] font-bold",
-                      isActive ? "bg-[#D4AF37]/25 text-[#9a7d20]" : "bg-black/[0.06] text-[#6b6b6b]",
+                      isActive ? "bg-[#D4AF37]/25 text-[#9a7d20]" : "bg-black/[0.06] text-[#3f3f46]",
                     )}>
                       {sourceCounts[value]}
                     </span>
@@ -1146,7 +1179,7 @@ export function Customers() {
                 : "border-black/[0.08] bg-white",
             )}>
               <Calendar className="h-4 w-4 shrink-0 text-[#D4AF37]" />
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-[#9a9a9a]">Last visit</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-[#52525b]">Last visit</span>
               <input
                 type="date"
                 value={lastVisitFrom}
@@ -1154,7 +1187,7 @@ export function Customers() {
                 title="Last visit from"
                 className="h-9 min-w-0 flex-1 rounded-lg border border-black/[0.08] bg-[#FAF8F2]/60 px-2 text-[12px] font-semibold outline-none focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/12 sm:flex-none sm:w-[8.5rem]"
               />
-              <span className="text-[11px] text-[#9a9a9a]">to</span>
+              <span className="text-[11px] text-[#52525b]">to</span>
               <input
                 type="date"
                 value={lastVisitTo}
@@ -1168,7 +1201,7 @@ export function Customers() {
               <button
                 type="button"
                 onClick={clearSearchFilters}
-                className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-black/[0.08] px-4 text-[12px] font-semibold text-[#6b6b6b] transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-600 sm:w-auto"
+                className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-black/[0.08] px-4 text-[12px] font-semibold text-[#3f3f46] transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-600 sm:w-auto"
               >
                 <X className="h-3.5 w-3.5" /> Clear filters
               </button>
@@ -1177,7 +1210,7 @@ export function Customers() {
         </div>
 
         <div className="mt-2 flex items-center justify-between gap-2">
-          <span className="text-[11px] font-semibold text-[#9a9a9a]">
+          <span className="text-[11px] font-semibold text-[#52525b]">
             Showing {filtered.length} of {customersTotal} customers
           </span>
         </div>
@@ -1218,7 +1251,7 @@ export function Customers() {
         <CardHeader className={financePanelHeader + " shrink-0 pb-2"}>
           <CardTitle className="flex items-center gap-2 text-[13px] font-semibold text-[#111118]">
             <Users className="h-4 w-4 text-[#D4AF37]" />Customer List
-            <label className="ml-auto flex cursor-pointer items-center gap-2 text-[11px] font-semibold text-[#6b6b6b] lg:hidden">
+            <label className="ml-auto flex cursor-pointer items-center gap-2 text-[11px] font-semibold text-[#3f3f46] lg:hidden">
               <input
                 type="checkbox"
                 checked={allFilteredSelected}
@@ -1280,7 +1313,7 @@ export function Customers() {
                           <p className="truncate text-[15px] font-bold text-[#111118]">{customer.name}</p>
                           {isBirthdayToday(customer.birthday) && <span title="Birthday today">🎂</span>}
                         </div>
-                        <p className="mt-0.5 truncate text-[11px] text-[#9a9a9a]">{customer.email || "No email"}</p>
+                        <p className="mt-0.5 truncate text-[11px] text-[#52525b]">{customer.email || "No email"}</p>
                         {showShopColumn && customer.shopLabel && (
                           <p className="mt-0.5 truncate text-[10px] font-semibold text-[#9a7d20]">{customer.shopLabel}</p>
                         )}
@@ -1316,17 +1349,17 @@ export function Customers() {
 
                   <div className="grid grid-cols-2 gap-2 pl-8 sm:grid-cols-3">
                     <div className="rounded-xl border border-black/[0.06] bg-white/80 px-3 py-2">
-                      <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Date</p>
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-[#52525b]">Date</p>
                       <p className="mt-0.5 text-[13px] font-semibold tabular-nums text-[#111118]">
                         {formatLatestVisitDate(customer)}
                       </p>
                     </div>
                     <div className="rounded-xl border border-black/[0.06] bg-white/80 px-3 py-2">
-                      <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Source</p>
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-[#52525b]">Source</p>
                       <div className="mt-1"><SourceBadge source={customer.source} /></div>
                     </div>
                     <div className="rounded-xl border border-black/[0.06] bg-white/80 px-3 py-2">
-                      <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Tier</p>
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-[#52525b]">Tier</p>
                       <div className="mt-1">
                         <Badge className={`${membershipColors[customer.membershipTier]} border text-[10px] capitalize`}>
                           {customer.membershipTier}
@@ -1334,7 +1367,7 @@ export function Customers() {
                       </div>
                     </div>
                     <div className="rounded-xl border border-black/[0.06] bg-white/80 px-3 py-2">
-                      <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Visits</p>
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-[#52525b]">Visits</p>
                       <p className="mt-0.5 text-[15px] font-black text-[#111118]">{customer.totalVisits}</p>
                     </div>
                     <div className="rounded-xl border border-[#D4AF37]/20 bg-[#FFFBEB] px-3 py-2">
@@ -1342,7 +1375,7 @@ export function Customers() {
                       <p className="mt-0.5 text-[15px] font-black text-[#9a7d20]">₹{customer.totalSpend.toLocaleString()}</p>
                     </div>
                     <div className="rounded-xl border border-black/[0.06] bg-white/80 px-3 py-2">
-                      <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Birthday</p>
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-[#52525b]">Birthday</p>
                       <p className="mt-0.5 flex items-center gap-1 text-[13px] font-semibold text-[#111118]">
                         {customer.birthday ? (
                           <>
@@ -1461,7 +1494,7 @@ export function Customers() {
                         </div>
                       </td>
                       {showShopColumn && (
-                        <td className="px-4 py-3 text-xs font-medium text-[#6b6b6b]">
+                        <td className="px-4 py-3 text-xs font-medium text-[#3f3f46]">
                           {c.shopLabel ?? "—"}
                         </td>
                       )}

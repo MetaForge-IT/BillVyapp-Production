@@ -153,7 +153,7 @@ export function Invoices() {
         </div>
         <div>
           <h1 className="text-2xl text-manrope-semibold text-[#121212]">Invoices</h1>
-          <p className="text-sm text-inter-regular text-[#6B6B6B]">Manage invoices, track payments, and send reminders</p>
+          <p className="text-sm text-inter-regular text-[#3f3f46]">Manage invoices, track payments, and send reminders</p>
         </div>
       </div>
 

@@ -66,7 +66,7 @@ export function CustomerStep({
       <ColHeader num="02" icon={User} title="Customer" desc="Lookup by mobile — searches after you pause" />
       <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
         <div>
-          <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[#9a9a9a]">
+          <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[#52525b]">
             Mobile number <span className="text-[#D4AF37]">*</span>
           </p>
           <div className="flex gap-2">
@@ -74,7 +74,7 @@ export function CustomerStep({
               +91
             </span>
             <div className="relative flex-1">
-              <Phone className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
+              <Phone className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#52525b]" />
               <Input
                 inputMode="numeric"
                 maxLength={10}
@@ -101,7 +101,7 @@ export function CustomerStep({
                         <span className="block truncate text-[12.5px] font-semibold text-[#111118]">
                           {c.name}
                         </span>
-                        <span className="block text-[11px] text-[#9a9a9a]">
+                        <span className="block text-[11px] text-[#52525b]">
                           {formatDisplayPhone(last10(c.phone))}
                         </span>
                       </span>
@@ -118,15 +118,15 @@ export function CustomerStep({
             <p className="mt-2 text-[11px] font-medium text-red-500">{phoneError}</p>
           )}
           {!phoneError && (lookupStatus === "loading" || isPhoneDebouncing) && phoneDigits.length >= 4 && (
-            <p className="mt-2 flex items-center gap-1.5 text-[11px] text-[#9a9a9a]">
+            <p className="mt-2 flex items-center gap-1.5 text-[11px] text-[#52525b]">
               <Loader2 className="h-3 w-3 animate-spin" /> Searching customers…
             </p>
           )}
           {!phoneError && !isPhoneDebouncing && lookupStatus === "idle" && phoneDigits.length > 0 && phoneDigits.length < 4 && (
-            <p className="mt-2 text-[11px] text-[#9a9a9a]">Enter at least 4 digits to search</p>
+            <p className="mt-2 text-[11px] text-[#52525b]">Enter at least 4 digits to search</p>
           )}
           {!phoneError && !isPhoneDebouncing && lookupStatus === "idle" && phoneDigits.length >= 4 && phoneDigits.length < 10 && phoneMatches.length === 0 && (
-            <p className="mt-2 text-[11px] text-[#9a9a9a]">No match yet — keep typing the full number</p>
+            <p className="mt-2 text-[11px] text-[#52525b]">No match yet — keep typing the full number</p>
           )}
           {!phoneError && lookupStatus === "found" && (
             <p className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-[#9a7a1e]">
@@ -134,7 +134,7 @@ export function CustomerStep({
             </p>
           )}
           {!phoneError && lookupStatus === "new" && (
-            <p className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-[#6b6b6b]">
+            <p className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-[#3f3f46]">
               <UserPlus className="h-3.5 w-3.5 text-[#D4AF37]" /> New customer — enter details below
             </p>
           )}
@@ -151,11 +151,11 @@ export function CustomerStep({
                 <Badge className="border border-[#D4AF37]/25 bg-[#D4AF37]/10 text-[9px] font-bold text-[#9a7a1e]">
                   {customerTier}
                 </Badge>
-                <span className="text-[11px] text-[#9a9a9a]">{formatDisplayPhone(phoneDigits)}</span>
+                <span className="text-[11px] text-[#52525b]">{formatDisplayPhone(phoneDigits)}</span>
               </div>
             )}
             <div>
-              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9a9a9a]">
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#52525b]">
                 Full name <span className="text-[#D4AF37]">*</span>
               </p>
               <Input
@@ -170,7 +170,7 @@ export function CustomerStep({
               />
             </div>
             <div>
-              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9a9a9a]">
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#52525b]">
                 Gender
               </p>
               <div className="grid grid-cols-3 gap-1.5">
@@ -184,7 +184,7 @@ export function CustomerStep({
                       "rounded-xl border py-2 text-[11px] font-semibold transition-all",
                       customerGender === g
                         ? "border-[#111118] bg-[#111118] text-[#D4AF37]"
-                        : "border-black/[0.08] bg-white text-[#9a9a9a]",
+                        : "border-black/[0.08] bg-white text-[#52525b]",
                     )}
                   >
                     {g}
@@ -193,9 +193,9 @@ export function CustomerStep({
               </div>
             </div>
             <div>
-              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9a9a9a]">
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#52525b]">
                 Stylist name{" "}
-                <span className="font-medium normal-case tracking-normal text-[#9a9a9a]/80">(optional)</span>
+                <span className="font-medium normal-case tracking-normal text-[#52525b]/80">(optional)</span>
               </p>
               <Input
                 value={stylistName}
