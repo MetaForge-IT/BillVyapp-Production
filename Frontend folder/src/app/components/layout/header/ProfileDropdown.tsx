@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { Bell, ChevronDown, ChevronRight, HelpCircle, LogOut, User } from "lucide-react";
 import { useRole, roleConfig } from "../../../context/RoleContext";
 import { cn } from "../../ui/utils";
@@ -57,8 +57,8 @@ const menuIcons: Record<string, typeof User> = {
   signout: LogOut,
 };
 
-const primaryMenuItems = profileMenuItems.filter(item => !item.destructive);
-const signOutItem = profileMenuItems.find(item => item.destructive)!;
+const primaryMenuItems = profileMenuItems.filter((item) => !item.destructive);
+const signOutItem = profileMenuItems.find((item) => item.destructive)!;
 
 export function ProfileDropdown({
   isOpen,
@@ -71,6 +71,7 @@ export function ProfileDropdown({
   unreadCount = 0,
 }: ProfileDropdownProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { role } = useRole();
   const roleInfo = roleConfig[role];
   const isSidebar = variant === "sidebar";
@@ -86,13 +87,11 @@ export function ProfileDropdown({
   const displayShortName = user ? shortName(user.fullName) : "User";
 
   const handleSignOut = () => {
-    void authService
-      .logout()
-      .finally(() => {
-        navigate("/", { replace: true });
-        onNavigate?.();
-        onClose();
-      });
+    void authService.logout().finally(() => {
+      navigate("/", { replace: true });
+      onNavigate?.();
+      onClose();
+    });
   };
 
   const handleMenuSelect = (index: number) => {
@@ -127,16 +126,91 @@ export function ProfileDropdown({
     onClose();
   };
 
-  const getItemIndex = (id: string) => profileMenuItems.findIndex(item => item.id === id);
+  const getItemIndex = (id: string) => profileMenuItems.findIndex((item) => item.id === id);
 
   const panelPositionClass = isSidebar
     ? collapsed
-      ? "bottom-full left-0 mb-2 w-[220px]"
+      ? "bottom-0 left-full ml-2 w-[220px]"
       : "bottom-full left-0 right-0 mb-2 w-full"
     : "right-0 mt-2.5";
 
   const panelWidthClass = isSidebar ? "" : "w-[min(100vw-2rem,288px)]";
   const motionProps = isSidebar ? sidebarPanelMotion : panelMotion;
+
+  // Collapsed desktop rail: icon-only actions matching main nav tiles
+  if (isSidebar && collapsed) {
+    return (
+      <div className="flex w-full flex-col items-center gap-1.5">
+        {profileMenuItems.map((item) => {
+          const Icon = menuIcons[item.id] ?? User;
+          const active = Boolean(item.href && location.pathname.startsWith(item.href) && item.href !== "/");
+          const isNotifications = item.id === "notifications";
+          const isSignOut = item.id === "signout";
+
+          return (
+            <button
+              key={item.id}
+              type="button"
+              title={item.label}
+              aria-label={item.label}
+              onClick={() => handleItemClick(item)}
+              className={cn(
+                "pressable group relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl border transition-all duration-200",
+                isSignOut
+                  ? "border-transparent hover:border-red-400/30 hover:bg-red-500/10"
+                  : active
+                    ? "border-[#D4AF37]/30 bg-gradient-to-r from-[#D4AF37]/20 to-[#D4AF37]/[0.04] shadow-[inset_0_1px_0_rgba(212,175,55,0.2),0_4px_16px_rgba(0,0,0,0.2)]"
+                    : "border-transparent hover:border-white/[0.12] hover:bg-white/[0.08]",
+              )}
+            >
+              <div
+                className={cn(
+                  "relative z-10 flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-200",
+                  isSignOut
+                    ? "bg-red-500/10 group-hover:bg-red-500/15"
+                    : active
+                      ? "bg-[#D4AF37]/20 shadow-[0_0_12px_rgba(212,175,55,0.25)]"
+                      : "bg-white/[0.08] group-hover:bg-white/[0.12]",
+                )}
+              >
+                <Icon
+                  className={cn(
+                    "h-5 w-5 shrink-0 transition-all duration-200",
+                    isSignOut
+                      ? "text-red-400 group-hover:text-red-300"
+                      : active
+                        ? "text-[#D4AF37]"
+                        : "text-white",
+                  )}
+                />
+                {isNotifications && unreadCount > 0 ? (
+                  <span className="absolute -right-1 -top-1 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-[#E07A5F] px-0.5 text-[8px] font-bold text-white ring-2 ring-[#0a0a10]">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                ) : null}
+              </div>
+            </button>
+          );
+        })}
+
+        <div
+          className="mt-1 flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03]"
+          title={displayName}
+          aria-label={displayName}
+        >
+          <div className="relative">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#D4AF37] to-[#B8962E] text-xs font-bold text-black shadow-[0_0_12px_rgba(212,175,55,0.35)]">
+              {displayInitials}
+            </div>
+            <span
+              className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-black bg-[#D4AF37] shadow-[0_0_6px_rgba(212,175,55,0.8)]"
+              aria-hidden
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={cn("relative", isSidebar && "overflow-visible")}>
@@ -151,21 +225,21 @@ export function ProfileDropdown({
           "flex items-center transition-all duration-200",
           isSidebar
             ? cn(
-                "group relative w-full max-w-full overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-[#D4AF37]/06 hover:border-[#D4AF37]/20",
-                collapsed ? "justify-center p-2" : "gap-2 px-2.5 py-2",
+                "group relative w-full max-w-full overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.03] hover:border-[#D4AF37]/20 hover:bg-[#D4AF37]/06",
+                "gap-2 px-2.5 py-2",
                 isOpen && "border-[#D4AF37]/25 bg-[#D4AF37]/08",
               )
             : cn(
                 "gap-2.5 rounded-xl border",
-                compact ? "h-9 px-1.5" : "pl-1.5 pr-2.5 py-1",
+                compact ? "h-9 px-1.5" : "py-1 pl-1.5 pr-2.5",
                 isOpen
                   ? "border-[#D4AF37]/35 bg-[#D4AF37]/08 shadow-[0_0_0_3px_rgba(212,175,55,0.12)]"
-                  : "border-black/[0.08] bg-white/80 hover:bg-white hover:border-black/[0.12] hover:shadow-sm",
+                  : "border-black/[0.08] bg-white/80 hover:border-black/[0.12] hover:bg-white hover:shadow-sm",
               ),
         )}
       >
         {isSidebar && (
-          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-r from-[#D4AF37]/05 via-transparent to-transparent pointer-events-none" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#D4AF37]/05 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
         )}
 
         <div className="relative shrink-0">
@@ -173,63 +247,61 @@ export function ProfileDropdown({
             className={cn(
               "flex items-center justify-center rounded-lg font-bold shadow-sm",
               isSidebar
-                ? "h-8 w-8 bg-gradient-to-br from-[#D4AF37] to-[#B8962E] text-black text-xs shadow-[0_0_12px_rgba(212,175,55,0.35)]"
-                : "h-7 w-7 bg-gradient-to-br from-[#D4AF37] to-[#B8962E] text-[#0d0d14] text-[11px]",
+                ? "h-8 w-8 bg-gradient-to-br from-[#D4AF37] to-[#B8962E] text-xs text-black shadow-[0_0_12px_rgba(212,175,55,0.35)]"
+                : "h-7 w-7 bg-gradient-to-br from-[#D4AF37] to-[#B8962E] text-[11px] text-[#0d0d14]",
             )}
           >
             {displayInitials}
           </div>
           {isSidebar ? (
             unreadCount > 0 ? (
-              <span className="absolute -top-1 -right-1 flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-[#E07A5F] px-0.5 text-[9px] font-bold text-white ring-2 ring-black shadow-sm">
+              <span className="absolute -right-1 -top-1 flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-[#E07A5F] px-0.5 text-[9px] font-bold text-white shadow-sm ring-2 ring-black">
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             ) : (
               <span
-                className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-[#D4AF37] border-2 border-black shadow-[0_0_6px_rgba(212,175,55,0.8)]"
+                className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-black bg-[#D4AF37] shadow-[0_0_6px_rgba(212,175,55,0.8)]"
                 aria-hidden
               />
             )
           ) : (
             <span
-              className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 border-2 border-white"
+              className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-white bg-emerald-500"
               aria-hidden
             />
           )}
         </div>
 
         {isSidebar ? (
-          !collapsed && (
-            <>
-              <div className="min-w-0 flex-1 relative z-10 text-left overflow-hidden">
-                <p className="text-[13px] font-semibold text-white truncate tracking-[-0.01em]">
-                  {displayShortName}
-                </p>
-                <p className="text-[11px] text-[#D4AF37] truncate font-medium leading-tight mt-0.5">
-                  {roleInfo.label}
-                </p>
-              </div>
-              <ChevronDown
-                className={cn(
-                  "h-4 w-4 shrink-0 text-white/70 group-hover:text-[#D4AF37] transition-all duration-200 relative z-10",
-                  isOpen && "rotate-180 text-[#D4AF37]",
-                )}
-              />
-            </>
-          )
+          <>
+            <div className="relative z-10 min-w-0 flex-1 overflow-hidden text-left">
+              <p className="truncate text-[13px] font-semibold tracking-[-0.01em] text-white">
+                {displayShortName}
+              </p>
+              <p className="mt-0.5 truncate text-[11px] font-medium leading-tight text-[#D4AF37]">
+                {roleInfo.label}
+              </p>
+            </div>
+            <ChevronDown
+              className={cn(
+                "relative z-10 h-4 w-4 shrink-0 text-white/70 transition-all duration-200 group-hover:text-[#D4AF37]",
+                isOpen && "rotate-180 text-[#D4AF37]",
+              )}
+            />
+          </>
         ) : (
           !compact && (
             <>
-              <div className="min-w-0 text-left hidden sm:block">
-                <p className="text-[12px] font-semibold text-[#111118] leading-tight tracking-[-0.01em] truncate max-w-[120px] lg:max-w-[148px]">
+              <div className="hidden min-w-0 text-left sm:block">
+                <p className="max-w-[120px] truncate text-[12px] font-semibold leading-tight tracking-[-0.01em] text-[#111118] lg:max-w-[148px]">
                   <span className="hidden lg:inline">{displayName}</span>
                   <span className="lg:hidden">{displayShortName}</span>
                 </p>
-                <p className="text-[10px] text-[#52525b] leading-tight mt-0.5 truncate">{roleInfo.label}</p>
+                <p className="mt-0.5 truncate text-[10px] leading-tight text-[#52525b]">{roleInfo.label}</p>
               </div>
               <ChevronDown
                 className={cn(
-                  "h-3.5 w-3.5 shrink-0 text-[#52525b] transition-transform duration-200 hidden sm:block",
+                  "hidden h-3.5 w-3.5 shrink-0 text-[#52525b] transition-transform duration-200 sm:block",
                   isOpen && "rotate-180",
                 )}
               />
@@ -253,21 +325,20 @@ export function ProfileDropdown({
               isSidebar && "max-h-[min(70vh,420px)] overflow-y-auto",
             )}
           >
-            {/* Profile header */}
             <div className="relative border-b border-black/[0.06] bg-gradient-to-br from-[#FAF8F2] via-white to-white px-4 py-4">
               <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#D4AF37]/40 to-transparent" />
               <div className="flex items-center gap-3">
                 <div className="relative shrink-0">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#B8962E] text-[#0d0d14] text-sm font-bold shadow-[0_4px_14px_rgba(212,175,55,0.35)]">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#B8962E] text-sm font-bold text-[#0d0d14] shadow-[0_4px_14px_rgba(212,175,55,0.35)]">
                     {displayInitials}
                   </div>
                   <span
-                    className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 border-2 border-white"
+                    className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500"
                     aria-hidden
                   />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[14px] font-semibold text-[#111118] tracking-[-0.02em] truncate">
+                  <p className="truncate text-[14px] font-semibold tracking-[-0.02em] text-[#111118]">
                     {displayName}
                   </p>
                   <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-2 py-0.5 text-[10px] font-semibold text-[#9a7d20]">
@@ -275,15 +346,14 @@ export function ProfileDropdown({
                     {roleInfo.label}
                   </span>
                   {displayEmail ? (
-                    <p className="mt-1.5 text-[11px] text-[#52525b] truncate">{displayEmail}</p>
+                    <p className="mt-1.5 truncate text-[11px] text-[#52525b]">{displayEmail}</p>
                   ) : null}
                 </div>
               </div>
             </div>
 
-            {/* Primary actions */}
             <div className="p-1.5">
-              {primaryMenuItems.map(item => {
+              {primaryMenuItems.map((item) => {
                 const Icon = menuIcons[item.id] ?? User;
                 const index = getItemIndex(item.id);
                 const isFocused = focusedIndex === index;
@@ -311,13 +381,12 @@ export function ProfileDropdown({
                         {unreadCount > 9 ? "9+" : unreadCount}
                       </span>
                     )}
-                    <ChevronRight className="h-3.5 w-3.5 text-[#c4c4c4] opacity-0 -translate-x-1 transition-all group-hover:opacity-100 group-hover:translate-x-0" />
+                    <ChevronRight className="h-3.5 w-3.5 -translate-x-1 text-[#c4c4c4] opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100" />
                   </button>
                 );
               })}
             </div>
 
-            {/* Sign out */}
             <div className="border-t border-black/[0.06] bg-[#FAF8F2]/50 p-1.5">
               {(() => {
                 const index = getItemIndex(signOutItem.id);
