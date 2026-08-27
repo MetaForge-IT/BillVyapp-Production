@@ -10,8 +10,11 @@ export function KpiGrid() {
   const kpiMetrics = mapKpiMetrics(data?.kpiMetrics ?? []);
 
   return (
-    <section aria-label="Key performance indicators">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 items-stretch">
+    <section
+      aria-label="Key performance indicators"
+      className="dashboard-kpi-mobile-hide"
+    >
+      <div className="dashboard-kpi-grid dashboard-kpi-grid--admin">
         {kpiMetrics.map((kpi, i) => (
           <motion.div
             key={kpi.label}
@@ -19,7 +22,7 @@ export function KpiGrid() {
             variants={dashboardFadeUpStagger}
             initial="hidden"
             animate="show"
-            className="h-full min-h-0"
+            className="h-full min-h-0 min-w-0"
           >
             <MetricCard
               label={kpi.label}

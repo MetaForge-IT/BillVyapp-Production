@@ -7,7 +7,7 @@ export function DashboardState({ children }: { children: React.ReactNode }) {
   if (loading && !error) {
     return (
       <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-black/[0.06] bg-white">
-        <div className="flex items-center gap-3 text-[#6b6b6b]">
+        <div className="flex items-center gap-3 text-[#3f3f46]">
           <Loader2 className="h-5 w-5 animate-spin text-[#D4AF37]" />
           <span className="text-[13px] font-medium">Loading dashboard data…</span>
         </div>
@@ -19,7 +19,7 @@ export function DashboardState({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 rounded-2xl border border-red-200 bg-red-50/40 px-6 text-center">
         <p className="text-[14px] font-semibold text-[#111118]">Unable to load dashboard</p>
-        <p className="text-[12px] text-[#6b6b6b] max-w-md">{error}</p>
+        <p className="text-[12px] text-[#3f3f46] max-w-md">{error}</p>
         <button
           type="button"
           onClick={() => void refresh()}

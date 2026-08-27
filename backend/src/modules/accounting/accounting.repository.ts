@@ -3,6 +3,7 @@ import { prisma } from "../../config/prisma";
 import { MAX_PAGE_LIMIT } from "../../utils/pagination";
 import { AppError } from "../../utils/errors";
 import { formatDbDateKey, istDayRangeForDateKey } from "../../utils/ist";
+import { resolveListSalonIds, salonIdFilter } from "../../utils/salonScope";
 import type { AuthContext } from "../auth/auth.types";
 import { ACCOUNTING_ERROR_CODES } from "./accounting.constants";
 import type {
@@ -41,18 +42,24 @@ function endOfMonthExclusive(year: number, month: number): Date {
 type ExpenseWithDeleteMeta = Expense & {
   deleteRequestedBy?: { fullName: string } | null;
   deleteRejectedBy?: { fullName: string } | null;
+  salon?: { id: string; name: string; displayName: string | null } | null;
 };
 
 const expenseDeleteInclude = {
   deleteRequestedBy: { select: { fullName: true } },
   deleteRejectedBy: { select: { fullName: true } },
+  salon: { select: { id: true, name: true, displayName: true } },
 } as const;
 
 function mapExpense(expense: ExpenseWithDeleteMeta) {
   const deleteRequested = Boolean(expense.deleteRequestedAt);
   const deleteRejected = Boolean(expense.deleteRejectedAt) && !deleteRequested;
+  const shopName =
+    expense.salon?.displayName?.trim() || expense.salon?.name?.trim() || null;
   return {
     id: expense.id,
+    salonId: expense.salonId,
+    salonName: shopName,
     date: formatDate(expense.date),
     category: expense.category,
     sub: expense.subCategory,
@@ -110,12 +117,28 @@ async function assertDateNotClosed(salonId: string, date: Date): Promise<void> {
   }
 }
 
-async function sumSalesByMethod(salonId: string, dayStart: Date, dayEnd: Date) {
+async function sumExpensesForDay(salonIds: string[], day: Date) {
+  const expenses = await prisma.expense.findMany({
+    where: { ...salonIdFilter(salonIds), date: day },
+    select: { amount: true, source: true, category: true },
+  });
+  const total = expenses.reduce((s, e) => s + Number(e.amount), 0);
+  const cash = expenses
+    .filter((e) => e.source.toLowerCase() === "cash")
+    .reduce((s, e) => s + Number(e.amount), 0);
+  const byCategory: Record<string, number> = {};
+  for (const e of expenses) {
+    byCategory[e.category] = (byCategory[e.category] ?? 0) + Number(e.amount);
+  }
+  return { total, cash, byCategory };
+}
+
+async function sumSalesByMethodMulti(salonIds: string[], dayStart: Date, dayEnd: Date) {
   const payments = await prisma.payment.groupBy({
     by: ["paymentMethod"],
     where: {
       paidAt: { gte: dayStart, lt: dayEnd },
-      invoice: { salonId, voidedAt: null },
+      invoice: { ...salonIdFilter(salonIds), voidedAt: null },
     },
     _sum: { amount: true },
   });
@@ -132,22 +155,6 @@ async function sumSalesByMethod(salonId: string, dayStart: Date, dayEnd: Date) {
   return totals;
 }
 
-async function sumExpensesForDay(salonId: string, day: Date) {
-  const expenses = await prisma.expense.findMany({
-    where: { salonId, date: day },
-    select: { amount: true, source: true, category: true },
-  });
-  const total = expenses.reduce((s, e) => s + Number(e.amount), 0);
-  const cash = expenses
-    .filter((e) => e.source.toLowerCase() === "cash")
-    .reduce((s, e) => s + Number(e.amount), 0);
-  const byCategory: Record<string, number> = {};
-  for (const e of expenses) {
-    byCategory[e.category] = (byCategory[e.category] ?? 0) + Number(e.amount);
-  }
-  return { total, cash, byCategory };
-}
-
 async function getOpeningCash(salonId: string, day: Date): Promise<number> {
   const prior = await prisma.dayClose.findFirst({
     where: {
@@ -161,17 +168,21 @@ async function getOpeningCash(salonId: string, day: Date): Promise<number> {
   return prior ? Number(prior.physicalCash) : 0;
 }
 
-async function buildDaySnapshot(salonId: string, day: Date) {
+async function buildDaySnapshot(salonIds: string[], day: Date) {
   const dateKey = formatDate(day);
   const { gte, lt } = istDayRangeForDateKey(dateKey);
+  const primarySalonId = salonIds[0]!;
   const [sales, expenses, openingCash, dayClose] = await Promise.all([
-    sumSalesByMethod(salonId, gte, lt),
-    sumExpensesForDay(salonId, day),
-    getOpeningCash(salonId, day),
-    prisma.dayClose.findFirst({
-      where: { salonId, closingDate: day },
-      include: { closedBy: { select: { fullName: true } } },
-    }),
+    sumSalesByMethodMulti(salonIds, gte, lt),
+    sumExpensesForDay(salonIds, day),
+    // Opening cash / day-close lock only meaningful for a single shop
+    salonIds.length === 1 ? getOpeningCash(primarySalonId, day) : Promise.resolve(0),
+    salonIds.length === 1
+      ? prisma.dayClose.findFirst({
+          where: { salonId: primarySalonId, closingDate: day },
+          include: { closedBy: { select: { fullName: true } } },
+        })
+      : Promise.resolve(null),
   ]);
 
   const expectedCash = openingCash + sales.cash - expenses.cash;
@@ -219,11 +230,28 @@ function computeBudgetUsed(
 }
 
 export class AccountingRepository {
+  private async resolveWriteSalonId(auth: AuthContext, inputSalonId?: string): Promise<string> {
+    if (inputSalonId) {
+      const ids = await resolveListSalonIds(auth, inputSalonId);
+      return ids[0]!;
+    }
+    return auth.salonId;
+  }
+
+  private async findScopedExpense(auth: AuthContext, expenseId: string) {
+    const salonIds = await resolveListSalonIds(auth);
+    return prisma.expense.findFirst({
+      where: { id: expenseId, ...salonIdFilter(salonIds) },
+      include: expenseDeleteInclude,
+    });
+  }
+
   async listExpenses(
-    salonId: string,
-    filters: { from?: string; to?: string; category?: string },
+    auth: AuthContext,
+    filters: { from?: string; to?: string; category?: string; salonId?: string },
   ) {
-    const where: Prisma.ExpenseWhereInput = { salonId };
+    const salonIds = await resolveListSalonIds(auth, filters.salonId);
+    const where: Prisma.ExpenseWhereInput = { ...salonIdFilter(salonIds) };
     if (filters.category) where.category = filters.category;
     if (filters.from || filters.to) {
       where.date = {};
@@ -241,12 +269,13 @@ export class AccountingRepository {
   }
 
   async createExpense(auth: AuthContext, input: CreateExpenseInput) {
+    const salonId = await this.resolveWriteSalonId(auth, input.salonId);
     const date = toDateOnly(input.date ?? formatDate(new Date()));
-    await assertDateNotClosed(auth.salonId, date);
+    await assertDateNotClosed(salonId, date);
 
     const expense = await prisma.expense.create({
       data: {
-        salonId: auth.salonId,
+        salonId,
         date,
         category: input.category,
         subCategory: input.subCategory,
@@ -255,24 +284,23 @@ export class AccountingRepository {
         remarks: input.remarks ?? null,
         createdById: auth.userId,
       },
+      include: expenseDeleteInclude,
     });
     return mapExpense(expense);
   }
 
   async updateExpense(auth: AuthContext, expenseId: string, input: UpdateExpenseInput) {
-    const existing = await prisma.expense.findFirst({
-      where: { id: expenseId, salonId: auth.salonId },
-    });
+    const existing = await this.findScopedExpense(auth, expenseId);
     if (!existing) {
       throw new AppError(404, "Expense not found", {
         code: ACCOUNTING_ERROR_CODES.EXPENSE_NOT_FOUND,
       });
     }
 
-    await assertDateNotClosed(auth.salonId, existing.date);
+    await assertDateNotClosed(existing.salonId, existing.date);
     const nextDate = input.date ? toDateOnly(input.date) : existing.date;
     if (formatDate(nextDate) !== formatDate(existing.date)) {
-      await assertDateNotClosed(auth.salonId, nextDate);
+      await assertDateNotClosed(existing.salonId, nextDate);
     }
 
     const expense = await prisma.expense.update({
@@ -285,21 +313,19 @@ export class AccountingRepository {
         source: input.source,
         remarks: input.remarks === undefined ? undefined : input.remarks,
       },
+      include: expenseDeleteInclude,
     });
     return mapExpense(expense);
   }
 
   async requestExpenseDelete(auth: AuthContext, expenseId: string) {
-    const existing = await prisma.expense.findFirst({
-      where: { id: expenseId, salonId: auth.salonId },
-      include: expenseDeleteInclude,
-    });
+    const existing = await this.findScopedExpense(auth, expenseId);
     if (!existing) {
       throw new AppError(404, "Expense not found", {
         code: ACCOUNTING_ERROR_CODES.EXPENSE_NOT_FOUND,
       });
     }
-    await assertDateNotClosed(auth.salonId, existing.date);
+    await assertDateNotClosed(existing.salonId, existing.date);
     if (existing.deleteRequestedAt) {
       throw new AppError(409, "Delete already requested for this expense", {
         code: ACCOUNTING_ERROR_CODES.EXPENSE_DELETE_ALREADY_REQUESTED,
@@ -320,10 +346,7 @@ export class AccountingRepository {
   }
 
   async cancelExpenseDeleteRequest(auth: AuthContext, expenseId: string) {
-    const existing = await prisma.expense.findFirst({
-      where: { id: expenseId, salonId: auth.salonId },
-      include: expenseDeleteInclude,
-    });
+    const existing = await this.findScopedExpense(auth, expenseId);
     if (!existing) {
       throw new AppError(404, "Expense not found", {
         code: ACCOUNTING_ERROR_CODES.EXPENSE_NOT_FOUND,
@@ -349,15 +372,13 @@ export class AccountingRepository {
   }
 
   async deleteExpense(auth: AuthContext, expenseId: string) {
-    const existing = await prisma.expense.findFirst({
-      where: { id: expenseId, salonId: auth.salonId },
-    });
+    const existing = await this.findScopedExpense(auth, expenseId);
     if (!existing) {
       throw new AppError(404, "Expense not found", {
         code: ACCOUNTING_ERROR_CODES.EXPENSE_NOT_FOUND,
       });
     }
-    await assertDateNotClosed(auth.salonId, existing.date);
+    await assertDateNotClosed(existing.salonId, existing.date);
     await prisma.expense.delete({ where: { id: expenseId } });
   }
 
@@ -443,7 +464,7 @@ export class AccountingRepository {
 
   async getDayClose(salonId: string, dateStr: string) {
     const day = toDateOnly(dateStr);
-    const snapshot = await buildDaySnapshot(salonId, day);
+    const snapshot = await buildDaySnapshot([salonId], day);
     return snapshot;
   }
 
@@ -458,7 +479,7 @@ export class AccountingRepository {
       });
     }
 
-    const snapshot = await buildDaySnapshot(auth.salonId, day);
+    const snapshot = await buildDaySnapshot([auth.salonId], day);
     const physicalCash = input.physicalCash;
     const variance = physicalCash - snapshot.expectedCash;
 
@@ -496,9 +517,10 @@ export class AccountingRepository {
     return mapDayClose(row);
   }
 
-  async getOverview(salonId: string, dateStr?: string) {
-    const day = toDateOnly(dateStr ?? formatDate(new Date()));
-    const snapshot = await buildDaySnapshot(salonId, day);
+  async getOverview(auth: AuthContext, opts?: { date?: string; salonId?: string }) {
+    const salonIds = await resolveListSalonIds(auth, opts?.salonId);
+    const day = toDateOnly(opts?.date ?? formatDate(new Date()));
+    const snapshot = await buildDaySnapshot(salonIds, day);
 
     // Last 7 days for reports chart
     const weekly: Array<{ day: string; date: string; revenue: number; expenses: number }> = [];
@@ -507,8 +529,8 @@ export class AccountingRepository {
       const dateKey = formatDate(d);
       const { gte, lt } = istDayRangeForDateKey(dateKey);
       const [sales, expenses] = await Promise.all([
-        sumSalesByMethod(salonId, gte, lt),
-        sumExpensesForDay(salonId, d),
+        sumSalesByMethodMulti(salonIds, gte, lt),
+        sumExpensesForDay(salonIds, d),
       ]);
       weekly.push({
         day: d.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" }),
@@ -520,17 +542,18 @@ export class AccountingRepository {
 
     const monthStart = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), 1));
     const monthEnd = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth() + 1, 1));
+    const salonWhere = salonIdFilter(salonIds);
     const [monthSalesRows, monthExpenses] = await Promise.all([
       prisma.payment.groupBy({
         by: ["paymentMethod"],
         where: {
           paidAt: { gte: monthStart, lt: monthEnd },
-          invoice: { salonId, voidedAt: null },
+          invoice: { ...salonWhere, voidedAt: null },
         },
         _sum: { amount: true },
       }),
       prisma.expense.aggregate({
-        where: { salonId, date: { gte: monthStart, lt: monthEnd } },
+        where: { ...salonWhere, date: { gte: monthStart, lt: monthEnd } },
         _sum: { amount: true },
       }),
     ]);
@@ -540,7 +563,7 @@ export class AccountingRepository {
 
     const gstRows = await prisma.invoice.aggregate({
       where: {
-        salonId,
+        ...salonWhere,
         voidedAt: null,
         invoiceDate: { gte: monthStart, lt: monthEnd },
       },

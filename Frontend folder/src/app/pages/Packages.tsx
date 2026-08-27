@@ -87,7 +87,7 @@ function mapSalonPlanToPackage(plan: SalonPlan, catalog: CatalogService[]): Pack
 
 const CATEGORY_STYLES: Record<string, { label: string; color: string }> = {
   hair: { label: "Hair", color: "bg-[#faf9f7] text-[#111118] border-black/[0.08]" },
-  spa: { label: "Spa", color: "bg-[#f4f2ed] text-[#6b6b6b] border-black/[0.08]" },
+  spa: { label: "Spa", color: "bg-[#f4f2ed] text-[#3f3f46] border-black/[0.08]" },
   combo: { label: "Combo", color: "bg-[#D4AF37]/10 text-[#9a7d20] border-[#D4AF37]/25" },
   bridal: { label: "Bridal", color: "bg-[#111118]/5 text-[#111118] border-[#D4AF37]/20" },
   seasonal: { label: "Seasonal", color: "bg-[#D4AF37]/8 text-[#B8962E] border-[#D4AF37]/30" },
@@ -345,7 +345,7 @@ export function Packages() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#D4AF37]">Bundles & Combos</p>
-          <p className="text-[13px] text-[#9a9a9a]">Create and manage bundled service offerings</p>
+          <p className="text-[13px] text-[#52525b]">Create and manage bundled service offerings</p>
         </div>
         <Button
           className="h-9 rounded-xl bg-[#111118] text-[#D4AF37] hover:bg-[#1a1a1a] shadow-sm"
@@ -375,9 +375,9 @@ export function Packages() {
             <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_60%_at_50%_0%,rgba(212,175,55,0.06),transparent)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
             <div className="relative flex items-start justify-between p-3.5">
               <div className="min-w-0 flex-1 pr-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#6b6b6b]">{kpi.label}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#3f3f46]">{kpi.label}</p>
                 <p className="mt-1 truncate text-xl font-bold leading-tight text-[#111118] tabular-nums">{kpi.value}</p>
-                <p className="mt-1 text-[11px] text-[#9a9a9a]">{kpi.sub}</p>
+                <p className="mt-1 text-[11px] text-[#52525b]">{kpi.sub}</p>
               </div>
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#D4AF37]/20 bg-[#D4AF37]/10">
                 <kpi.Icon className="h-4 w-4 text-[#D4AF37]" />
@@ -395,7 +395,7 @@ export function Packages() {
             placeholder="Search packages by name or service…"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="h-9 w-full rounded-xl border border-black/[0.08] bg-[#fafaf8] pl-9 pr-3 text-[13px] text-[#111118] outline-none transition-all placeholder:text-[#9a9a9a] focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/10"
+            className="h-9 w-full rounded-xl border border-black/[0.08] bg-[#fafaf8] pl-9 pr-3 text-[13px] text-[#111118] outline-none transition-all placeholder:text-[#52525b] focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/10"
           />
         </div>
         <div className="flex gap-1 rounded-xl border border-black/[0.08] bg-[#f4f2ed] p-1">
@@ -406,7 +406,7 @@ export function Packages() {
               onClick={() => setCategoryFilter(cat)}
               className={cn(
                 "rounded-lg px-2.5 py-1 text-[10px] font-bold capitalize transition-all",
-                categoryFilter === cat ? "bg-[#111118] text-[#D4AF37] shadow-sm" : "text-[#9a9a9a] hover:text-[#111118]",
+                categoryFilter === cat ? "bg-[#111118] text-[#D4AF37] shadow-sm" : "text-[#52525b] hover:text-[#111118]",
               )}
             >
               {cat === "all" ? "All" : CATEGORY_STYLES[cat].label}
@@ -420,13 +420,13 @@ export function Packages() {
             "flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-[11px] font-semibold transition-all",
             showInactive
               ? "border-[#111118] bg-[#111118] text-[#D4AF37]"
-              : "border-black/[0.08] bg-[#faf9f7] text-[#9a9a9a] hover:border-[#D4AF37]/30 hover:text-[#111118]",
+              : "border-black/[0.08] bg-[#faf9f7] text-[#52525b] hover:border-[#D4AF37]/30 hover:text-[#111118]",
           )}
         >
           {showInactive ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
           Show Inactive
         </button>
-        <span className="ml-auto text-[11px] font-medium text-[#9a9a9a]">
+        <span className="ml-auto text-[11px] font-medium text-[#52525b]">
           {filtered.length} package{filtered.length !== 1 ? "s" : ""}
         </span>
       </div>
@@ -694,12 +694,12 @@ export function Packages() {
                   )}
                 </div>
                 <h3 className="text-[13px] font-bold leading-tight text-[#111118]">{pkg.name}</h3>
-                <p className="mt-0.5 line-clamp-2 text-[11px] text-[#9a9a9a]">{pkg.description}</p>
+                <p className="mt-0.5 line-clamp-2 text-[11px] text-[#52525b]">{pkg.description}</p>
               </div>
 
               {/* Services Included */}
               <div className="mb-3">
-                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#9a9a9a]">Includes</p>
+                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#52525b]">Includes</p>
                 <div className="flex flex-wrap gap-1">
                   {pkg.services.slice(0, 3).map(s => (
                     <span key={s} className="rounded-md border border-black/[0.06] bg-[#faf9f7] px-2 py-0.5 text-[10px] text-[#111118]">
@@ -707,7 +707,7 @@ export function Packages() {
                     </span>
                   ))}
                   {pkg.services.length > 3 && (
-                    <span className="px-1.5 py-0.5 text-[10px] font-medium text-[#9a9a9a]">+{pkg.services.length - 3} more</span>
+                    <span className="px-1.5 py-0.5 text-[10px] font-medium text-[#52525b]">+{pkg.services.length - 3} more</span>
                   )}
                 </div>
               </div>
@@ -718,18 +718,18 @@ export function Packages() {
                   <div>
                     <div className="flex items-baseline gap-2">
                       <span className="text-lg font-bold text-[#111118]">₹{pkg.discountedPrice.toLocaleString()}</span>
-                      <span className="text-[11px] text-[#9a9a9a] line-through">₹{pkg.originalPrice.toLocaleString()}</span>
+                      <span className="text-[11px] text-[#52525b] line-through">₹{pkg.originalPrice.toLocaleString()}</span>
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-2">
                       <span className="rounded-md bg-[#D4AF37]/10 px-1.5 py-0.5 text-[10px] font-bold text-[#9a7d20]">{pkg.discountPct}% off</span>
-                      <span className="text-[10px] text-[#9a9a9a]">
+                      <span className="text-[10px] text-[#52525b]">
                         <Clock className="mr-0.5 inline h-3 w-3" />{pkg.duration} min
                       </span>
-                      <span className="text-[10px] text-[#9a9a9a]">{pkg.validityDays}d validity</span>
+                      <span className="text-[10px] text-[#52525b]">{pkg.validityDays}d validity</span>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] text-[#9a9a9a]">Bookings</p>
+                    <p className="text-[10px] text-[#52525b]">Bookings</p>
                     <p className="text-sm font-bold text-[#111118]">{pkg.bookings}</p>
                   </div>
                 </div>
@@ -781,7 +781,7 @@ export function Packages() {
             </div>
             <div>
               <p className="text-[13px] font-semibold text-[#111118]">Create New Package</p>
-              <p className="mt-0.5 text-[11px] text-[#9a9a9a]">Bundle services for better value</p>
+              <p className="mt-0.5 text-[11px] text-[#52525b]">Bundle services for better value</p>
             </div>
           </button>
       </div>
@@ -823,7 +823,7 @@ export function Packages() {
             </div>
 
             <div className="p-5">
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[#9a9a9a]">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[#52525b]">
                 Services Included ({preview.services.length})
               </p>
               <div className="mb-4 max-h-40 space-y-1.5 overflow-y-auto">
@@ -839,19 +839,19 @@ export function Packages() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-2xl font-bold text-[#111118]">₹{preview.discountedPrice.toLocaleString()}</p>
-                    <p className="text-[13px] text-[#9a9a9a] line-through">₹{preview.originalPrice.toLocaleString()}</p>
+                    <p className="text-[13px] text-[#52525b] line-through">₹{preview.originalPrice.toLocaleString()}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-lg font-bold text-[#9a7d20]">{preview.discountPct}% OFF</p>
-                    <p className="text-[11px] text-[#9a9a9a]">
+                    <p className="text-[11px] text-[#52525b]">
                       Save ₹{(preview.originalPrice - preview.discountedPrice).toLocaleString()}
                     </p>
                   </div>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-4 border-t border-black/[0.06] pt-3">
-                  <span className="text-[11px] text-[#9a9a9a]"><Clock className="mr-1 inline h-3 w-3" />{preview.duration} minutes</span>
-                  <span className="text-[11px] text-[#9a9a9a]">Valid {preview.validityDays} days</span>
-                  <span className="text-[11px] text-[#9a9a9a]">{preview.bookings} bookings</span>
+                  <span className="text-[11px] text-[#52525b]"><Clock className="mr-1 inline h-3 w-3" />{preview.duration} minutes</span>
+                  <span className="text-[11px] text-[#52525b]">Valid {preview.validityDays} days</span>
+                  <span className="text-[11px] text-[#52525b]">{preview.bookings} bookings</span>
                 </div>
               </div>
 
@@ -957,7 +957,7 @@ export function Packages() {
             {/* Footer */}
             <div className="px-6 py-4 border-t border-black/[0.06] bg-white flex items-center justify-end gap-2">
               <button onClick={() => setEditPkg(null)}
-                className="h-10 px-5 rounded-xl border border-black/[0.08] bg-white text-[13px] font-semibold text-[#6b6b6b] hover:bg-[#faf9f7] transition-all">
+                className="h-10 px-5 rounded-xl border border-black/[0.08] bg-white text-[13px] font-semibold text-[#3f3f46] hover:bg-[#faf9f7] transition-all">
                 Cancel
               </button>
               <button onClick={() => void saveEdit()}

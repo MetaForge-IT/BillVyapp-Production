@@ -225,11 +225,11 @@ export function ProfileDropdown({
                   <span className="hidden lg:inline">{displayName}</span>
                   <span className="lg:hidden">{displayShortName}</span>
                 </p>
-                <p className="text-[10px] text-[#9a9a9a] leading-tight mt-0.5 truncate">{roleInfo.label}</p>
+                <p className="text-[10px] text-[#52525b] leading-tight mt-0.5 truncate">{roleInfo.label}</p>
               </div>
               <ChevronDown
                 className={cn(
-                  "h-3.5 w-3.5 shrink-0 text-[#9a9a9a] transition-transform duration-200 hidden sm:block",
+                  "h-3.5 w-3.5 shrink-0 text-[#52525b] transition-transform duration-200 hidden sm:block",
                   isOpen && "rotate-180",
                 )}
               />
@@ -275,7 +275,7 @@ export function ProfileDropdown({
                     {roleInfo.label}
                   </span>
                   {displayEmail ? (
-                    <p className="mt-1.5 text-[11px] text-[#9a9a9a] truncate">{displayEmail}</p>
+                    <p className="mt-1.5 text-[11px] text-[#52525b] truncate">{displayEmail}</p>
                   ) : null}
                 </div>
               </div>
@@ -303,7 +303,7 @@ export function ProfileDropdown({
                     )}
                   >
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-black/[0.05] bg-[#FAF8F2] transition-colors group-hover:border-[#D4AF37]/20 group-hover:bg-[#D4AF37]/10">
-                      <Icon className="h-3.5 w-3.5 text-[#6b6b6b] transition-colors group-hover:text-[#D4AF37]" />
+                      <Icon className="h-3.5 w-3.5 text-[#3f3f46] transition-colors group-hover:text-[#D4AF37]" />
                     </div>
                     <span className="flex-1 text-[13px] font-medium">{item.label}</span>
                     {isNotifications && unreadCount > 0 && (

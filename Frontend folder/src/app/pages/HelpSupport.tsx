@@ -124,7 +124,7 @@ export function HelpSupport() {
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[13px] font-semibold text-[#111118]">We're here to help</p>
-          <p className="text-[11px] text-[#6b6b6b] mt-0.5 flex items-center gap-1.5">
+          <p className="text-[11px] text-[#3f3f46] mt-0.5 flex items-center gap-1.5">
             <Clock className="h-3 w-3 text-[#D4AF37]" />
             Support hours: Monday – Saturday, 9:00 AM – 9:00 PM IST
           </p>
@@ -147,7 +147,7 @@ export function HelpSupport() {
               <topic.icon className="h-4 w-4 text-[#D4AF37]" />
             </div>
             <p className="text-[13px] font-semibold text-[#111118]">{topic.label}</p>
-            <p className="text-[11px] text-[#9a9a9a] mt-0.5">{topic.desc}</p>
+            <p className="text-[11px] text-[#52525b] mt-0.5">{topic.desc}</p>
           </motion.button>
         ))}
       </div>
@@ -161,19 +161,19 @@ export function HelpSupport() {
             </div>
             <div>
               <p className={financePanelTitle}>Frequently Asked Questions</p>
-              <p className="text-[10px] text-[#9a9a9a] mt-0.5">Search or browse common topics</p>
+              <p className="text-[10px] text-[#52525b] mt-0.5">Search or browse common topics</p>
             </div>
           </div>
         </div>
 
         <div className="p-4 space-y-4">
           <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9a9a9a] pointer-events-none" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#52525b] pointer-events-none" />
             <input
               value={query}
               onChange={e => setQuery(e.target.value)}
               placeholder="Search help articles…"
-              className="w-full h-10 pl-10 pr-9 rounded-xl border border-black/[0.08] bg-[#FAF8F2]/60 text-[13px] text-[#111118] placeholder:text-[#9a9a9a] outline-none focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/12 focus:bg-white transition-all"
+              className="w-full h-10 pl-10 pr-9 rounded-xl border border-black/[0.08] bg-[#FAF8F2]/60 text-[13px] text-[#111118] placeholder:text-[#52525b] outline-none focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/12 focus:bg-white transition-all"
             />
             {query && (
               <button
@@ -182,7 +182,7 @@ export function HelpSupport() {
                 className="absolute right-3 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full bg-black/[0.06] hover:bg-black/[0.1] transition-colors"
                 aria-label="Clear search"
               >
-                <X className="h-3 w-3 text-[#6b6b6b]" />
+                <X className="h-3 w-3 text-[#3f3f46]" />
               </button>
             )}
           </div>
@@ -195,7 +195,7 @@ export function HelpSupport() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="py-8 text-center text-sm text-[#9a9a9a]"
+                  className="py-8 text-center text-sm text-[#52525b]"
                 >
                   No articles match your search. Try different keywords or contact support below.
                 </motion.p>
@@ -239,7 +239,7 @@ export function HelpSupport() {
                             transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
                             className="overflow-hidden"
                           >
-                            <p className="px-4 pb-4 text-[13px] text-[#6b6b6b] leading-relaxed border-t border-[#D4AF37]/10 pt-3">
+                            <p className="px-4 pb-4 text-[13px] text-[#3f3f46] leading-relaxed border-t border-[#D4AF37]/10 pt-3">
                               {faq.a}
                             </p>
                           </motion.div>
@@ -269,9 +269,9 @@ export function HelpSupport() {
               <div className={cn(financeIconWrap, "mb-3 group-hover:scale-105 transition-transform")}>
                 <Icon className="h-4 w-4 text-[#D4AF37]" />
               </div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a9a9a]">{label}</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525b]">{label}</p>
               <p className="text-[13px] font-semibold text-[#111118] mt-1">{value}</p>
-              <p className="text-[11px] text-[#9a9a9a] mt-1">{hint}</p>
+              <p className="text-[11px] text-[#52525b] mt-1">{hint}</p>
             </a>
           ))}
         </div>

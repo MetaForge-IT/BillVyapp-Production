@@ -54,7 +54,7 @@ export function SmartActionCard({ label, description, icon: Icon, onClick, prima
         <div className="min-w-0 flex-1">
           <p className={cn("font-semibold text-sm", primary ? "text-white" : "text-[#121212]")}>{label}</p>
           {description && (
-            <p className={cn("text-xs mt-0.5 line-clamp-2", primary ? "text-white/60" : "text-[#6B6B6B]")}>{description}</p>
+            <p className={cn("text-xs mt-0.5 line-clamp-2", primary ? "text-white/60" : "text-[#3f3f46]")}>{description}</p>
           )}
         </div>
       </div>

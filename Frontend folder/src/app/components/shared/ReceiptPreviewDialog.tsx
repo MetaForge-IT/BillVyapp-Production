@@ -94,13 +94,13 @@ export function ReceiptPreviewDialog({
                     ] as [string, string][]
                   ).map(([k, v]) => (
                     <div key={k} className="flex justify-between gap-3 text-[11px]">
-                      <span className="text-[#9a9a9a]">{k}</span>
+                      <span className="text-[#52525b]">{k}</span>
                       <span className="text-right font-bold">{v}</span>
                     </div>
                   ))}
                 </div>
                 <div className="mb-3 border-b border-dashed border-[#D4AF37]/25 pb-3">
-                  <div className="mb-2 flex border-b border-black/[0.08] pb-1 text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a]">
+                  <div className="mb-2 flex border-b border-black/[0.08] pb-1 text-[10px] font-bold uppercase tracking-wider text-[#52525b]">
                     <span className="flex-1">Description</span>
                     <span className="w-16 text-right">Amount</span>
                   </div>
@@ -115,12 +115,12 @@ export function ReceiptPreviewDialog({
                 </div>
                 <div className="mb-3 space-y-0.5 border-b border-dashed border-[#D4AF37]/25 pb-3">
                   <div className="flex justify-between text-[11px]">
-                    <span className="text-[#9a9a9a]">Subtotal</span>
+                    <span className="text-[#52525b]">Subtotal</span>
                     <span>&#x20b9;{receipt.subtotal.toLocaleString()}</span>
                   </div>
                   {receipt.discount > 0 && (
                     <div className="flex justify-between text-[11px]">
-                      <span className="text-[#9a9a9a]">Discount</span>
+                      <span className="text-[#52525b]">Discount</span>
                       <span className="font-bold text-[#9a7d20]">
                         -&#x20b9;{receipt.discount.toLocaleString()}
                       </span>
@@ -128,7 +128,7 @@ export function ReceiptPreviewDialog({
                   )}
                   {receipt.gst > 0 && (
                     <div className="flex justify-between text-[11px]">
-                      <span className="text-[#9a9a9a]">GST</span>
+                      <span className="text-[#52525b]">GST</span>
                       <span>+&#x20b9;{receipt.gst.toLocaleString()}</span>
                     </div>
                   )}
@@ -137,24 +137,24 @@ export function ReceiptPreviewDialog({
                     <span className="text-[#9a7d20]">&#x20b9;{receipt.total.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-[11px] font-semibold">
-                    <span className="text-[#9a9a9a]">
+                    <span className="text-[#52525b]">
                       Paid ({paymentMethodLabel(receipt.paymentMethod)})
                     </span>
                     <span>&#x20b9;{receipt.total.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-[11px]">
-                    <span className="text-[#9a9a9a]">Balance Due</span>
+                    <span className="text-[#52525b]">Balance Due</span>
                     <span className="font-bold">&#x20b9;0.00</span>
                   </div>
                 </div>
                 <div className="mb-3 border-b border-dashed border-[#D4AF37]/25 pb-3">
                   <div className="flex justify-between text-[11px]">
-                    <span className="text-[#9a9a9a]">Loyalty Points Earned</span>
+                    <span className="text-[#52525b]">Loyalty Points Earned</span>
                     <span className="font-bold text-[#9a7d20]">
                       +{Math.floor(receipt.total / 10)} pts
                     </span>
                   </div>
-                  <div className="flex justify-between text-[9px] text-[#9a9a9a]">
+                  <div className="flex justify-between text-[9px] text-[#52525b]">
                     <span>Redeem on next visit</span>
                     <span>1 pt = &#x20b9;0.50</span>
                   </div>
@@ -163,7 +163,7 @@ export function ReceiptPreviewDialog({
                   <p className="text-[10px] font-bold uppercase tracking-widest text-[#D4AF37]">
                     {RECEIPT_FOOTER.thankYou}
                   </p>
-                  <p className="text-[9px] text-[#9a9a9a]">{RECEIPT_FOOTER.revisit}</p>
+                  <p className="text-[9px] text-[#52525b]">{RECEIPT_FOOTER.revisit}</p>
                   <div className="mx-auto mt-2 h-px w-16 bg-gradient-to-r from-transparent via-[#D4AF37]/40 to-transparent" />
                 </div>
               </SalonReceiptPaper>
@@ -185,7 +185,7 @@ export function ReceiptPreviewDialog({
                   key={label}
                   type="button"
                   onClick={action}
-                  className="flex flex-col items-center gap-1 border-r border-black/[0.06] py-3 text-[11px] font-semibold text-[#6b6b6b] transition-colors last:border-r-0 hover:bg-[#faf9f7] hover:text-[#9a7d20]"
+                  className="flex flex-col items-center gap-1 border-r border-black/[0.06] py-3 text-[11px] font-semibold text-[#3f3f46] transition-colors last:border-r-0 hover:bg-[#faf9f7] hover:text-[#9a7d20]"
                 >
                   <Icon className="h-4 w-4 text-[#D4AF37]" />
                   {label}

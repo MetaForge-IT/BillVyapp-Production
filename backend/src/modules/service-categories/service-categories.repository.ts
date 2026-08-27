@@ -2,6 +2,7 @@ import type { ServiceCategory } from "@prisma/client";
 import { prisma } from "../../config/prisma";
 import type { AuthContext } from "../auth/auth.types";
 import { AppError, ConflictError } from "../../utils/errors";
+import { resolveListSalonIds, salonIdFilter } from "../../utils/salonScope";
 import {
   SERVICE_CATEGORY_ERROR_CODES,
   SERVICE_CATEGORY_STATUS,
@@ -13,6 +14,7 @@ import type {
 
 type ServiceCategoryWithCount = ServiceCategory & {
   _count: { services: number };
+  salon?: { id: string; name: string; displayName: string | null } | null;
 };
 
 function mapStatus(isActive: boolean): "active" | "inactive" {
@@ -20,8 +22,12 @@ function mapStatus(isActive: boolean): "active" | "inactive" {
 }
 
 function mapServiceCategory(category: ServiceCategoryWithCount) {
+  const shopName =
+    category.salon?.displayName?.trim() || category.salon?.name?.trim() || null;
   return {
     id: category.id,
+    salonId: category.salonId,
+    salonName: shopName,
     name: category.name,
     description: category.description ?? "",
     icon: category.icon ?? null,
@@ -39,56 +45,76 @@ function toIsActive(status?: "active" | "inactive"): boolean | undefined {
 }
 
 export class ServiceCategoriesRepository {
-  async list(salonId: string) {
-    const categories = await prisma.serviceCategory.findMany({
-      where: { salonId },
-      include: {
-        _count: {
-          select: {
-            services: {
-              where: { deletedAt: null },
-            },
-          },
-        },
-      },
-      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-    });
-
-    return categories.map(mapServiceCategory);
-  }
-
-  async getById(salonId: string, categoryId: string) {
-    const category = await prisma.serviceCategory.findFirst({
-      where: { id: categoryId, salonId },
-      include: {
-        _count: {
-          select: {
-            services: {
-              where: { deletedAt: null },
-            },
-          },
-        },
-      },
-    });
-
-    if (!category) {
-      throw new AppError(404, "Service category not found", {
-        code: SERVICE_CATEGORY_ERROR_CODES.NOT_FOUND,
-      });
+  private async resolveWriteSalonId(auth: AuthContext, inputSalonId?: string): Promise<string> {
+    if (inputSalonId) {
+      const ids = await resolveListSalonIds(auth, inputSalonId);
+      return ids[0]!;
     }
-
-    return mapServiceCategory(category);
-  }
-
-  async create(auth: AuthContext, input: CreateServiceCategoryInput) {
     if (!auth.salonId) {
       throw new AppError(400, "No shop is linked to this account. Create or open a shop first.", {
         code: SERVICE_CATEGORY_ERROR_CODES.NOT_FOUND,
       });
     }
+    return auth.salonId;
+  }
+
+  private async findScopedCategory(auth: AuthContext, categoryId: string) {
+    const salonIds = await resolveListSalonIds(auth);
+    return prisma.serviceCategory.findFirst({
+      where: { id: categoryId, ...salonIdFilter(salonIds) },
+      include: {
+        _count: {
+          select: {
+            services: {
+              where: { deletedAt: null },
+            },
+          },
+        },
+        salon: { select: { id: true, name: true, displayName: true } },
+      },
+    });
+  }
+
+  async list(auth: AuthContext, querySalonId?: string) {
+    const salonIds = await resolveListSalonIds(auth, querySalonId);
+    const multiShop = salonIds.length > 1;
+    const categories = await prisma.serviceCategory.findMany({
+      where: salonIdFilter(salonIds),
+      include: {
+        _count: {
+          select: {
+            services: {
+              where: { deletedAt: null },
+            },
+          },
+        },
+        ...(multiShop
+          ? { salon: { select: { id: true, name: true, displayName: true } } }
+          : {}),
+      },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    });
+
+    return categories.map((category) =>
+      mapServiceCategory(category as ServiceCategoryWithCount),
+    );
+  }
+
+  async getById(auth: AuthContext, categoryId: string) {
+    const category = await this.findScopedCategory(auth, categoryId);
+    if (!category) {
+      throw new AppError(404, "Service category not found", {
+        code: SERVICE_CATEGORY_ERROR_CODES.NOT_FOUND,
+      });
+    }
+    return mapServiceCategory(category);
+  }
+
+  async create(auth: AuthContext, input: CreateServiceCategoryInput) {
+    const salonId = await this.resolveWriteSalonId(auth, input.salonId);
 
     const salon = await prisma.salon.findFirst({
-      where: { id: auth.salonId },
+      where: { id: salonId },
       select: { id: true },
     });
     if (!salon) {
@@ -98,20 +124,20 @@ export class ServiceCategoriesRepository {
     }
 
     const duplicate = await prisma.serviceCategory.findFirst({
-      where: { salonId: auth.salonId, name: input.name },
+      where: { salonId, name: input.name },
     });
     if (duplicate) {
       throw new ConflictError("A service category with this name already exists");
     }
 
     const maxSortOrder = await prisma.serviceCategory.aggregate({
-      where: { salonId: auth.salonId },
+      where: { salonId },
       _max: { sortOrder: true },
     });
 
     const category = await prisma.serviceCategory.create({
       data: {
-        salonId: auth.salonId,
+        salonId,
         name: input.name,
         description: input.description ?? null,
         icon: input.icon === undefined ? undefined : input.icon,
@@ -126,6 +152,7 @@ export class ServiceCategoriesRepository {
             },
           },
         },
+        salon: { select: { id: true, name: true, displayName: true } },
       },
     });
 
@@ -133,9 +160,7 @@ export class ServiceCategoriesRepository {
   }
 
   async update(auth: AuthContext, categoryId: string, input: UpdateServiceCategoryInput) {
-    const existing = await prisma.serviceCategory.findFirst({
-      where: { id: categoryId, salonId: auth.salonId },
-    });
+    const existing = await this.findScopedCategory(auth, categoryId);
     if (!existing) {
       throw new AppError(404, "Service category not found", {
         code: SERVICE_CATEGORY_ERROR_CODES.NOT_FOUND,
@@ -145,7 +170,7 @@ export class ServiceCategoriesRepository {
     if (input.name) {
       const duplicate = await prisma.serviceCategory.findFirst({
         where: {
-          salonId: auth.salonId,
+          salonId: existing.salonId,
           name: input.name,
           NOT: { id: categoryId },
         },
@@ -172,6 +197,7 @@ export class ServiceCategoriesRepository {
             },
           },
         },
+        salon: { select: { id: true, name: true, displayName: true } },
       },
     });
 
@@ -179,19 +205,7 @@ export class ServiceCategoriesRepository {
   }
 
   async delete(auth: AuthContext, categoryId: string) {
-    const existing = await prisma.serviceCategory.findFirst({
-      where: { id: categoryId, salonId: auth.salonId },
-      include: {
-        _count: {
-          select: {
-            services: {
-              where: { deletedAt: null },
-            },
-          },
-        },
-      },
-    });
-
+    const existing = await this.findScopedCategory(auth, categoryId);
     if (!existing) {
       throw new AppError(404, "Service category not found", {
         code: SERVICE_CATEGORY_ERROR_CODES.NOT_FOUND,

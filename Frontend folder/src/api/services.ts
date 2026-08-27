@@ -22,6 +22,8 @@ export interface CatalogService {
 
 export interface ServiceRecord {
   id: string;
+  salonId?: string;
+  salonName?: string | null;
   serviceCode: string;
   name: string;
   displayName: string;
@@ -65,6 +67,7 @@ export interface CreateServicePayload {
   gender?: ServiceGender;
   status?: "active" | "inactive";
   memberPrice?: number;
+  salonId?: string;
 }
 
 export interface ListServicesParams {
@@ -75,6 +78,7 @@ export interface ListServicesParams {
   active?: boolean;
   page?: number;
   limit?: number;
+  salonId?: string;
   sort?: "sortOrder" | "name" | "displayName" | "price" | "createdAt" | "popularity";
 }
 

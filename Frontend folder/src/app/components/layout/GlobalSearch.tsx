@@ -85,16 +85,16 @@ export function GlobalSearch() {
         className="sm:hidden flex items-center justify-center h-10 w-10 rounded-xl border border-[#D4AF37]/25 bg-white hover:border-[#D4AF37]/40 hover:bg-[#FAF8F2] transition-all"
         aria-label="Search"
       >
-        <Search className="h-4 w-4 text-[#6B6B6B]" />
+        <Search className="h-4 w-4 text-[#3f3f46]" />
       </button>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="hidden sm:flex items-center gap-2 h-10 px-3 lg:px-4 rounded-xl border border-[#D4AF37]/25 bg-white text-sm text-[#6B6B6B] hover:border-[#D4AF37]/45 hover:bg-[#FAF8F2] transition-all min-w-0 sm:min-w-[180px] lg:min-w-[320px] shadow-sm hover:shadow-md max-w-[320px]"
+        className="hidden sm:flex items-center gap-2 h-10 px-3 lg:px-4 rounded-xl border border-[#D4AF37]/25 bg-white text-sm text-[#3f3f46] hover:border-[#D4AF37]/45 hover:bg-[#FAF8F2] transition-all min-w-0 sm:min-w-[180px] lg:min-w-[320px] shadow-sm hover:shadow-md max-w-[320px]"
       >
-        <Search className="h-4 w-4 shrink-0 text-[#6B6B6B]" />
+        <Search className="h-4 w-4 shrink-0 text-[#3f3f46]" />
         <span className="flex-1 text-left text-inter-regular">Search anything...</span>
-        <kbd className="hidden lg:inline-flex h-6 items-center gap-1 rounded-md border border-[#D4AF37]/20 bg-[#FAF8F2] px-2 text-[10px] font-medium text-[#6B6B6B]">
+        <kbd className="hidden lg:inline-flex h-6 items-center gap-1 rounded-md border border-[#D4AF37]/20 bg-[#FAF8F2] px-2 text-[10px] font-medium text-[#3f3f46]">
           ⌘K
         </kbd>
       </button>
@@ -108,7 +108,7 @@ export function GlobalSearch() {
         />
         <CommandList>
           {loading && (
-            <div className="flex items-center justify-center gap-2 py-6 text-sm text-[#6B6B6B]">
+            <div className="flex items-center justify-center gap-2 py-6 text-sm text-[#3f3f46]">
               <Loader2 className="h-4 w-4 animate-spin" /> Searching...
             </div>
           )}
@@ -131,9 +131,9 @@ export function GlobalSearch() {
                     <Icon className="h-4 w-4 text-[#D4AF37] group-hover:text-[#121212] transition-colors" />
                     <div className="flex flex-col">
                       <span className="text-inter-medium">{item.label}</span>
-                      <span className="text-xs text-inter-regular text-[#6B6B6B]">{resultMeta(item)}</span>
+                      <span className="text-xs text-inter-regular text-[#3f3f46]">{resultMeta(item)}</span>
                     </div>
-                    <CommandShortcut className="text-[10px] text-inter-regular text-[#6B6B6B]">
+                    <CommandShortcut className="text-[10px] text-inter-regular text-[#3f3f46]">
                       {resultTypeLabel(item.type)}
                     </CommandShortcut>
                   </CommandItem>

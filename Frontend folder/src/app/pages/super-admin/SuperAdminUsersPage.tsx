@@ -121,13 +121,13 @@ export function SuperAdminUsersPage() {
       <div>
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D4AF37]">Platform</p>
         <h1 className="text-2xl font-bold text-[#111118]">Users</h1>
-        <p className="text-sm text-[#6b6b6b]">
+        <p className="text-sm text-[#3f3f46]">
           Admins (franchise) and managers (shop) across all brands
         </p>
       </div>
 
       <div className="rounded-2xl border border-black/[0.07] bg-white p-4 shadow-sm">
-        <p className="mb-3 text-[12px] font-bold uppercase tracking-wider text-[#6b6b6b]">
+        <p className="mb-3 text-[12px] font-bold uppercase tracking-wider text-[#3f3f46]">
           Create admin / manager
         </p>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -205,7 +205,7 @@ export function SuperAdminUsersPage() {
       <div className="overflow-hidden rounded-2xl border border-black/[0.07] bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-black/[0.06] bg-[#FAF8F2] text-left text-[#6b6b6b]">
+            <tr className="border-b border-black/[0.06] bg-[#FAF8F2] text-left text-[#3f3f46]">
               <th className="px-4 py-3 font-semibold">Name</th>
               <th className="px-4 py-3 font-semibold">Role</th>
               <th className="px-4 py-3 font-semibold">Franchise</th>
@@ -216,7 +216,7 @@ export function SuperAdminUsersPage() {
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-[#9a9a9a]">
+                <td colSpan={5} className="px-4 py-10 text-center text-[#52525b]">
                   Loading…
                 </td>
               </tr>
@@ -230,7 +230,7 @@ export function SuperAdminUsersPage() {
                   {u.shopLabel || "—"}
                   {u.shopCity ? ` · ${u.shopCity}` : ""}
                 </td>
-                <td className="px-4 py-3 text-[12px] text-[#6b6b6b]">
+                <td className="px-4 py-3 text-[12px] text-[#3f3f46]">
                   {u.email}
                   {u.phone ? ` · ${u.phone}` : ""}
                 </td>

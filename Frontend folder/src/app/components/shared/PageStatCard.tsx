@@ -36,11 +36,11 @@ export function PageStatCard({
       )}
       <div className={cn("relative flex h-full items-start justify-between text-left w-full", compact ? "gap-3 p-3" : "p-3.5")}>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold text-[#6b6b6b] uppercase tracking-[0.18em] leading-tight">{label}</p>
+          <p className="text-[10px] font-semibold text-[#3f3f46] uppercase tracking-[0.18em] leading-tight">{label}</p>
           <p className={cn("mt-1.5 font-bold text-[#111118] leading-none tabular-nums truncate", compact ? "text-xl" : "text-2xl")}>
             {value}
           </p>
-          {sub && <p className="mt-1.5 text-[11px] leading-snug text-[#9a9a9a] line-clamp-2">{sub}</p>}
+          {sub && <p className="mt-1.5 text-[11px] leading-snug text-[#52525b] line-clamp-2">{sub}</p>}
         </div>
         <div className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0 bg-[#D4AF37]/10 border border-[#D4AF37]/20">
           <Icon className="h-4 w-4 text-[#D4AF37]" />

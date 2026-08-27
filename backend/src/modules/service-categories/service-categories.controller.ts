@@ -3,15 +3,17 @@ import { sendCreated, sendNoContent, sendSuccess } from "../../utils/apiResponse
 import { asyncHandler } from "../../utils/asyncHandler";
 import type { AuthenticatedRequest } from "../auth/auth.controller";
 import { serviceCategoriesService } from "./service-categories.service";
-import type {
-  CreateServiceCategoryInput,
-  UpdateServiceCategoryInput,
+import {
+  listServiceCategoriesQuerySchema,
+  type CreateServiceCategoryInput,
+  type UpdateServiceCategoryInput,
 } from "./service-categories.validators";
 
 export class ServiceCategoriesController {
   list = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const auth = (req as AuthenticatedRequest).auth;
-    const categories = await serviceCategoriesService.list(auth);
+    const query = listServiceCategoriesQuerySchema.parse(req.query);
+    const categories = await serviceCategoriesService.list(auth, query.salonId);
     sendSuccess(res, { message: "Service categories retrieved", data: categories });
   });
 

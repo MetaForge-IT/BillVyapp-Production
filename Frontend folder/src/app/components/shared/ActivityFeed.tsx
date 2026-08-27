@@ -7,7 +7,7 @@ const dotColors: Record<string, string> = {
   billing: "bg-[#D4AF37]",
   loyalty: "bg-[#D4AF37]",
   payment: "bg-[#111118]",
-  inventory: "bg-[#6B6B6B]",
+  inventory: "bg-[#3f3f46]",
 };
 
 export function ActivityFeed({ compact = false }: { compact?: boolean }) {
@@ -22,7 +22,7 @@ export function ActivityFeed({ compact = false }: { compact?: boolean }) {
   return (
     <div className="space-y-1">
       {items.length === 0 && (
-        <p className="text-center text-sm text-[#6B6B6B] py-6">No recent activity yet.</p>
+        <p className="text-center text-sm text-[#3f3f46] py-6">No recent activity yet.</p>
       )}
       {items.map((item, i) => (
         <div
@@ -42,7 +42,7 @@ export function ActivityFeed({ compact = false }: { compact?: boolean }) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm text-[#121212] leading-snug">{item.text}</p>
-            <p className="text-xs text-[#6B6B6B] mt-0.5">{item.time}</p>
+            <p className="text-xs text-[#3f3f46] mt-0.5">{item.time}</p>
           </div>
         </div>
       ))}

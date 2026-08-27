@@ -62,7 +62,7 @@ export function SuperAdminFranchiseDetailPage() {
   };
 
   if (loading) {
-    return <p className="text-sm text-[#9a9a9a]">Loading franchise…</p>;
+    return <p className="text-sm text-[#52525b]">Loading franchise…</p>;
   }
   if (!data) {
     return <p className="text-sm text-red-600">Franchise not found</p>;
@@ -76,15 +76,15 @@ export function SuperAdminFranchiseDetailPage() {
       <div>
         <Link
           to="/super-admin/franchises"
-          className="mb-3 inline-flex items-center gap-1.5 text-sm text-[#6b6b6b] hover:text-[#111118]"
+          className="mb-3 inline-flex items-center gap-1.5 text-sm text-[#3f3f46] hover:text-[#111118]"
         >
           <ArrowLeft className="h-4 w-4" /> Back to franchises
         </Link>
         <h1 className="text-2xl font-bold text-[#111118]">{data.name}</h1>
-        <p className="text-sm text-[#6b6b6b]">
+        <p className="text-sm text-[#3f3f46]">
           {data.shops.length} shops · {admins.length} admins · {managers.length} managers
         </p>
-        <p className="mt-1 text-[12px] text-[#9a9a9a]">
+        <p className="mt-1 text-[12px] text-[#52525b]">
           Preferred flow: franchise admin adds shops and managers from their dashboard. Super Admin
           shop create here is optional.
         </p>
@@ -92,7 +92,7 @@ export function SuperAdminFranchiseDetailPage() {
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-[#6b6b6b]">Shops</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wider text-[#3f3f46]">Shops</h2>
           <button
             type="button"
             onClick={() => setShowAddShop((v) => !v)}
@@ -142,13 +142,13 @@ export function SuperAdminFranchiseDetailPage() {
                   <p className="font-semibold text-[#111118]">
                     {s.displayName || s.name}
                     {s.code ? (
-                      <span className="ml-2 text-[11px] font-medium text-[#9a9a9a]">{s.code}</span>
+                      <span className="ml-2 text-[11px] font-medium text-[#52525b]">{s.code}</span>
                     ) : null}
                   </p>
-                  <p className="text-[12px] text-[#6b6b6b]">
+                  <p className="text-[12px] text-[#3f3f46]">
                     {[s.city, s.state].filter(Boolean).join(", ") || "—"}
                   </p>
-                  <p className="mt-1 text-[11px] text-[#9a9a9a]">
+                  <p className="mt-1 text-[11px] text-[#52525b]">
                     {s.email} · {s.phone}
                   </p>
                 </div>
@@ -159,11 +159,11 @@ export function SuperAdminFranchiseDetailPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-[#6b6b6b]">Staff</h2>
+        <h2 className="text-sm font-bold uppercase tracking-wider text-[#3f3f46]">Staff</h2>
         <div className="overflow-hidden rounded-2xl border border-black/[0.07] bg-white">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-black/[0.06] bg-[#FAF8F2] text-left text-[#6b6b6b]">
+              <tr className="border-b border-black/[0.06] bg-[#FAF8F2] text-left text-[#3f3f46]">
                 <th className="px-4 py-3 font-semibold">Name</th>
                 <th className="px-4 py-3 font-semibold">Role</th>
                 <th className="px-4 py-3 font-semibold">Shop</th>
@@ -184,7 +184,7 @@ export function SuperAdminFranchiseDetailPage() {
                     {u.shopLabel}
                     {u.shopCity ? ` · ${u.shopCity}` : ""}
                   </td>
-                  <td className="px-4 py-3 text-[12px] text-[#6b6b6b]">
+                  <td className="px-4 py-3 text-[12px] text-[#3f3f46]">
                     {u.email}
                     {u.phone ? ` · ${u.phone}` : ""}
                   </td>
@@ -192,7 +192,7 @@ export function SuperAdminFranchiseDetailPage() {
               ))}
               {data.staff.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-[#9a9a9a]">
+                  <td colSpan={4} className="px-4 py-8 text-center text-[#52525b]">
                     No staff assigned
                   </td>
                 </tr>

@@ -376,7 +376,7 @@ export function DiscountsOffersPanel(props: DiscountsOffersPanelProps) {
 
       <div className="space-y-1 border-t border-black/[0.05] pt-3 text-[12px]">
         <div className="flex justify-between">
-          <span className="text-[#9a9a9a]">Subtotal</span>
+          <span className="text-[#52525b]">Subtotal</span>
           <span className="font-semibold">₹{subtotal.toLocaleString("en-IN")}</span>
         </div>
         {billCouponDisc > 0 && (
@@ -399,7 +399,7 @@ export function DiscountsOffersPanel(props: DiscountsOffersPanelProps) {
         )}
         {gstEnabled && (
           <div className="flex justify-between">
-            <span className="text-[#9a9a9a]">GST ({gstRate}%)</span>
+            <span className="text-[#52525b]">GST ({gstRate}%)</span>
             <span className="font-semibold">₹{gstAmount.toLocaleString("en-IN")}</span>
           </div>
         )}

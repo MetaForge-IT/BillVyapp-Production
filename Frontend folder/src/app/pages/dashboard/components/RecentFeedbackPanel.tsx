@@ -44,7 +44,7 @@ export function RecentFeedbackPanel() {
           />
           <div className="divide-y divide-black/[0.04]">
             {reviews.length === 0 ? (
-              <p className="px-4 py-10 text-center text-[12px] text-[#9a9a9a]">
+              <p className="px-4 py-10 text-center text-[12px] text-[#52525b]">
                 No feedback yet — ratings appear after checkout
               </p>
             ) : (
@@ -63,7 +63,7 @@ export function RecentFeedbackPanel() {
                       <p className="truncate text-[13px] font-semibold text-[#111118]">{review.customer}</p>
                       <StarRow rating={review.rating} />
                     </div>
-                    <p className="mt-0.5 truncate text-[11px] text-[#9a9a9a]">
+                    <p className="mt-0.5 truncate text-[11px] text-[#52525b]">
                       {review.service || "Visit"}
                       {review.comment ? ` · ${review.comment}` : ""}
                     </p>
@@ -75,7 +75,7 @@ export function RecentFeedbackPanel() {
           </div>
           {total > 0 && (
             <div className="border-t border-black/[0.05] px-4 py-2.5">
-              <p className="text-[11px] text-[#9a9a9a]">
+              <p className="text-[11px] text-[#52525b]">
                 {total} total review{total === 1 ? "" : "s"} · {data?.feedbackAnalytics?.satisfactionPercent ?? 0}% positive
               </p>
             </div>

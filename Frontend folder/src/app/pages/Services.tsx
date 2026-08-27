@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router";
 import { toast } from "../components/ui/hot-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -12,12 +13,14 @@ import {
   Dialog, DialogContent, DialogTitle,
 } from "../components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs";
+import { Switch } from "../components/ui/switch";
+import { cn } from "../components/ui/utils";
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from "../components/ui/table";
 import {
   Scissors, Crown, Plus, Search, Clock,
-  IndianRupee, Star, Pencil, Trash2, Tag, Package, X, CheckCircle, Loader2, Filter,
+  IndianRupee, Star, Pencil, Trash2, Tag, Package, X, CheckCircle, Loader2, Filter, Store,
 } from "lucide-react";
 import {
   createService,
@@ -28,7 +31,9 @@ import {
 } from "../../api/services";
 import { fetchSalonPlans } from "../../api/plans";
 import { fetchServiceCategories, type ServiceCategory, createServiceCategory, updateServiceCategory, deleteServiceCategory } from "../../api/service-categories";
+import { fetchMyFranchise } from "../../api/franchises";
 import { getApiErrorMessage } from "../../lib/api";
+import { isAdmin, useRole } from "../context/RoleContext";
 
 import { Packages } from "./Packages";
 import { CouponsSection } from "./CouponsSection";
@@ -106,6 +111,7 @@ async function ensureCategoryId(
   categoryLabel: string,
   categories: ServiceCategory[],
   onCreated: (cat: ServiceCategory) => void,
+  salonId?: string,
 ): Promise<string> {
   const existing = resolveCategoryId(categoryLabel, categories);
   if (existing) return existing;
@@ -116,13 +122,14 @@ async function ensureCategoryId(
       name,
       description: "",
       status: "active",
+      ...(salonId ? { salonId } : {}),
     });
     onCreated(created);
     categories.push(created);
     return created.id;
   } catch {
     // Likely already exists (race / case). Refresh list and resolve again.
-    const refreshed = await fetchServiceCategories();
+    const refreshed = await fetchServiceCategories(salonId ? { salonId } : undefined);
     categories.splice(0, categories.length, ...refreshed);
     const again = resolveCategoryId(name, categories);
     if (again) return again;
@@ -143,6 +150,8 @@ const emptyForm = {
 };
 
 export function Services() {
+  const { role } = useRole();
+  const isFranchiseAdmin = isAdmin(role);
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get("tab");
   const [mainTab, setMainTab] = useState(
@@ -169,9 +178,11 @@ export function Services() {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [showSearchFilters, setShowSearchFilters] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [genderFilter, setGenderFilter] = useState<"all" | "MALE" | "FEMALE" | "UNISEX">("all");
+  const [shopFilter, setShopFilter] = useState("all");
   const [showAdd, setShowAdd] = useState(false);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -186,6 +197,18 @@ export function Services() {
   });
   const [activePackageCount, setActivePackageCount] = useState(0);
 
+  const franchiseQuery = useQuery({
+    queryKey: ["my-franchise"],
+    queryFn: fetchMyFranchise,
+    enabled: isFranchiseAdmin,
+  });
+  const franchiseShops = franchiseQuery.data?.shops ?? [];
+  const showShopColumn = isFranchiseAdmin && shopFilter === "all" && franchiseShops.length > 1;
+  const scopedSalonId =
+    isFranchiseAdmin && shopFilter !== "all" ? shopFilter : undefined;
+  const requireShopForManage =
+    isFranchiseAdmin && franchiseShops.length > 1 && shopFilter === "all";
+
   const emptyCategoryForm = {
     name: "",
     description: "",
@@ -196,8 +219,8 @@ export function Services() {
     setLoading(true);
     try {
       const [servicesData, categoriesData, plansData] = await Promise.all([
-        fetchAllServices({ sort: "createdAt" }),
-        fetchServiceCategories(),
+        fetchAllServices({ sort: "createdAt", salonId: scopedSalonId }),
+        fetchServiceCategories({ salonId: scopedSalonId }),
         fetchSalonPlans(),
       ]);
       setServices(servicesData);
@@ -210,11 +233,21 @@ export function Services() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [scopedSalonId]);
 
   useEffect(() => {
     void loadServices();
   }, [loadServices]);
+
+  useEffect(() => {
+    setCategoryFilter("all");
+  }, [shopFilter]);
+
+  const assertShopSelected = () => {
+    if (!requireShopForManage) return true;
+    toast.error("Select a shop first to manage services");
+    return false;
+  };
 
   // 300ms debounce for management search
   useEffect(() => {
@@ -341,11 +374,16 @@ export function Services() {
       const row = rows[i];
       let categoryId: string;
       try {
-        categoryId = await ensureCategoryId(row.category, workingCategories, (created) => {
-          setCategories((prev) =>
-            prev.some((c) => c.id === created.id) ? prev : [...prev, created],
-          );
-        });
+        categoryId = await ensureCategoryId(
+          row.category,
+          workingCategories,
+          (created) => {
+            setCategories((prev) =>
+              prev.some((c) => c.id === created.id) ? prev : [...prev, created],
+            );
+          },
+          scopedSalonId,
+        );
       } catch {
         failed += 1;
         onProgress({ current: i + 1, total });
@@ -391,6 +429,7 @@ export function Services() {
             ...payload,
             serviceCode: code || undefined,
             serviceGroup: row.service_group?.trim() || undefined,
+            ...(scopedSalonId ? { salonId: scopedSalonId } : {}),
           });
           setServices((prev) => [...prev, created]);
           const asRow = {
@@ -448,6 +487,7 @@ export function Services() {
         memberPrice,
         gender: form.gender,
         status: form.status,
+        ...(scopedSalonId ? { salonId: scopedSalonId } : {}),
       });
       setServices((prev) => [...prev, created]);
       toast.success("Service created", { description: created.displayName });
@@ -524,6 +564,7 @@ export function Services() {
           name: categoryForm.name.trim(),
           description: categoryForm.description || undefined,
           status: categoryForm.status,
+          ...(scopedSalonId ? { salonId: scopedSalonId } : {}),
         });
         setCategories((prev) => [...prev, created]);
         toast.success("Category created", { description: created.name });
@@ -556,127 +597,233 @@ export function Services() {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-8rem)] min-h-0 min-w-0 max-w-full flex-col gap-4 overflow-hidden">
-      {/* Header */}
-      <div className="flex shrink-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-[#1a1a1a] to-[#d4af37] bg-clip-text text-transparent">
+    <div className="page-fill-shell">
+      {/* Header — icon-only actions on phones; labels from sm up */}
+      <div className="flex shrink-0 items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold bg-gradient-to-r from-[#1a1a1a] to-[#d4af37] bg-clip-text text-transparent sm:text-2xl lg:text-3xl">
             Service Management
           </h1>
-          <p className="text-muted-foreground mt-1">Manage services, packages, and coupons</p>
+          <p className="mt-1 hidden text-sm text-muted-foreground sm:block">
+            Manage services, packages, and coupons
+          </p>
         </div>
-        <div className="flex gap-2">
+        <div className="services-actions flex shrink-0 items-center gap-1.5 sm:gap-2">
           <Button
             variant="outline"
-            className="border-[#d4af37]/50 text-[#9a7a1e] hover:bg-[#d4af37]/08 hover:border-[#d4af37]"
-            onClick={() => { resetCategoryForm(); setShowCategoryManager(true); }}
+            aria-label="Categories"
+            title="Categories"
+            className="services-action-btn h-10 w-10 gap-0 border-[#d4af37]/50 p-0 text-[#9a7a1e] hover:border-[#d4af37] hover:bg-[#d4af37]/08 sm:h-10 sm:w-auto sm:gap-2 sm:px-4"
+            onClick={() => {
+              if (!assertShopSelected()) return;
+              resetCategoryForm();
+              setShowCategoryManager(true);
+            }}
           >
-            <Tag className="h-4 w-4 mr-2" />
-            Categories
+            <Tag className="h-4 w-4 shrink-0" />
+            <span className="services-action-label hidden sm:inline">Categories</span>
           </Button>
           <Button
             variant="outline"
-            className="border-[#d4af37]/50 text-[#9a7a1e] hover:bg-[#d4af37]/08 hover:border-[#d4af37]"
-            onClick={() => setShowBulkUpload(true)}
+            aria-label="Bulk Upload"
+            title="Bulk Upload"
+            className="services-action-btn h-10 w-10 gap-0 border-[#d4af37]/50 p-0 text-[#9a7a1e] hover:border-[#d4af37] hover:bg-[#d4af37]/08 sm:h-10 sm:w-auto sm:gap-2 sm:px-4"
+            onClick={() => {
+              if (!assertShopSelected()) return;
+              setShowBulkUpload(true);
+            }}
           >
-            <Upload className="h-4 w-4 mr-2" />
-            Bulk Upload
+            <Upload className="h-4 w-4 shrink-0" />
+            <span className="services-action-label hidden sm:inline">Bulk Upload</span>
           </Button>
           <Button
-            className="bg-gradient-to-r from-[#111118] to-[#1a1a1a] hover:from-[#1a1a1a] hover:to-[#D4AF37]/80 shadow-lg shadow-[#D4AF37]/20 text-white"
-            onClick={() => setShowAdd(true)}
+            aria-label="Add Service"
+            title="Add Service"
+            className="services-action-btn h-10 w-10 gap-0 bg-gradient-to-r from-[#111118] to-[#1a1a1a] p-0 text-white shadow-lg shadow-[#D4AF37]/20 hover:from-[#1a1a1a] hover:to-[#D4AF37]/80 sm:h-10 sm:w-auto sm:gap-2 sm:px-4"
+            onClick={() => {
+              if (!assertShopSelected()) return;
+              setShowAdd(true);
+            }}
           >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Service
+            <Plus className="h-4 w-4 shrink-0" />
+            <span className="services-action-label hidden sm:inline">Add Service</span>
           </Button>
         </div>
       </div>
 
+      {isFranchiseAdmin && franchiseShops.length > 0 && (
+        <div className="shrink-0">
+          <FilterSelect
+            value={shopFilter}
+            onValueChange={setShopFilter}
+            icon={Store}
+            active={shopFilter !== "all"}
+            className="sm:max-w-xs"
+            options={[
+              { value: "all", label: `All Shops (${franchiseShops.length})` },
+              ...franchiseShops.map((shop) => ({
+                value: shop.id,
+                label: shop.displayName?.trim() || shop.name,
+              })),
+            ]}
+          />
+          {requireShopForManage ? (
+            <p className="mt-1.5 text-[11px] text-[#52525b]">
+              Select a shop to add, edit catalogs, or bulk-upload services.
+            </p>
+          ) : null}
+        </div>
+      )}
+
       {/* Laptop/desktop only — tablets and phones prioritize service space. */}
       <div className="hidden shrink-0 gap-3 lg:grid lg:grid-cols-4">
-        <PageStatCard label="Total Services" value={String(totalServices)} sub="Across all categories" icon={Scissors} index={0} onClick={() => handleMainTabChange("categories")} />
+        <PageStatCard
+          label="Total Services"
+          value={String(totalServices)}
+          sub={shopFilter === "all" ? "Across all shops" : "In selected shop"}
+          icon={Scissors}
+          index={0}
+          onClick={() => handleMainTabChange("categories")}
+        />
         <PageStatCard label="Most Popular" value={mostPopular?.displayName ?? "—"} sub={`${mostPopular?.popularity ?? 0}% booking rate`} icon={Star} index={1} onClick={() => handleMainTabChange("categories")} />
         <PageStatCard label="Avg. Service Price" value={currency(avgPrice)} sub="Across all services" icon={IndianRupee} index={2} href="/reports" />
         <PageStatCard label="Active Packages" value={String(activePackageCount)} sub="Combo & bundle deals" icon={Crown} index={3} onClick={() => handleMainTabChange("packages")} />
       </div>
 
       {/* Main tabbed area */}
-      <Tabs value={mainTab} onValueChange={handleMainTabChange} className="min-h-0 flex-1 gap-4 overflow-hidden">
-        <TabsList className={`${SEGMENTED_PILL_LIST} shrink-0`}>
-          <TabsTrigger value="categories" className={SEGMENTED_PILL_TRIGGER}>
+      <Tabs value={mainTab} onValueChange={handleMainTabChange} className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden sm:gap-3 lg:gap-4">
+        <TabsList className={cn(SEGMENTED_PILL_LIST, "shrink-0 sm:!inline-flex")}>
+          <TabsTrigger
+            value="categories"
+            title="Services"
+            aria-label="Services"
+            className={cn(SEGMENTED_PILL_TRIGGER, "basis-0 px-0 sm:basis-auto sm:px-4")}
+          >
             <Scissors className="h-3.5 w-3.5" />
-            Services
+            <span className="hidden sm:inline">Services</span>
           </TabsTrigger>
-          <TabsTrigger value="packages" className={SEGMENTED_PILL_TRIGGER}>
+          <TabsTrigger
+            value="packages"
+            title="Packages"
+            aria-label="Packages"
+            className={cn(SEGMENTED_PILL_TRIGGER, "basis-0 px-0 sm:basis-auto sm:px-4")}
+          >
             <Crown className="h-3.5 w-3.5" />
-            Packages
+            <span className="hidden sm:inline">Packages</span>
           </TabsTrigger>
-          <TabsTrigger value="coupons" className={SEGMENTED_PILL_TRIGGER}>
+          <TabsTrigger
+            value="coupons"
+            title="Coupons"
+            aria-label="Coupons"
+            className={cn(SEGMENTED_PILL_TRIGGER, "basis-0 px-0 sm:basis-auto sm:px-4")}
+          >
             <Tag className="h-3.5 w-3.5" />
-            Coupons
+            <span className="hidden sm:inline">Coupons</span>
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="categories" className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
-          {/* Filter Bar — search stays full-width on phone/tablet so it never gets squished */}
-          <div className="flex w-full min-w-0 shrink-0 flex-col gap-2.5 rounded-2xl border border-black/[0.07] bg-white p-3 shadow-sm lg:flex-row lg:items-center lg:gap-3">
-            {/* Search */}
-            <div className="relative w-full min-w-0 shrink-0 lg:max-w-sm lg:flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#d4af37]" />
-              <input
-                placeholder="Search services…"
-                value={searchInput}
-                onChange={e => { setSearchInput(e.target.value); }}
-                className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-9 pr-3 text-[13px] text-[#111] outline-none transition-all placeholder:text-gray-400 focus:border-[#d4af37]/60 focus:ring-2 focus:ring-[#d4af37]/10"
-              />
+        <TabsContent value="categories" className="mt-0 flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden data-[state=inactive]:hidden sm:gap-3 lg:gap-4">
+          {/* Filter Bar — search/filters toggle on phones */}
+          <div className="flex w-full min-w-0 shrink-0 flex-col gap-2.5 rounded-2xl border border-black/[0.07] bg-white p-3 shadow-sm">
+            <div className="flex items-center justify-between gap-3 md:hidden">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#D4AF37]/25 bg-[#D4AF37]/10">
+                  <Filter className="h-4 w-4 text-[#D4AF37]" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-bold text-[#111118]">Search &amp; filters</p>
+                  <p className="text-[11px] text-[#52525b]">
+                    {showSearchFilters ? "Turn off to hide and reset" : "Turn on to search or filter"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className={`text-[11px] font-semibold ${showSearchFilters ? "text-[#9a7d20]" : "text-[#52525b]"}`}>
+                  {showSearchFilters ? "On" : "Off"}
+                </span>
+                <Switch
+                  checked={showSearchFilters}
+                  onCheckedChange={(checked) => {
+                    setShowSearchFilters(checked);
+                    if (!checked) {
+                      setSearchInput("");
+                      setSearch("");
+                      setCategoryFilter("all");
+                      setStatusFilter("all");
+                      setGenderFilter("all");
+                    }
+                  }}
+                  className="data-[state=checked]:bg-[#D4AF37] data-[state=unchecked]:bg-[#e0dbd0]"
+                  aria-label="Toggle search and filters"
+                />
+              </div>
             </div>
 
-            {/* Filters */}
-            <div className="flex w-full min-w-0 flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center lg:flex-1">
-              {/* Gender Pills */}
-              <div className="flex max-w-full items-center gap-1.5 overflow-x-auto table-scroll pb-0.5">
-                {([
-                  { key: "all", label: "All" },
-                  { key: "MALE", label: "Male" },
-                  { key: "FEMALE", label: "Female" },
-                  { key: "UNISEX", label: "Unisex" },
-                ] as const).map(({ key, label }) => (
-                  <button
-                    key={key}
-                    onClick={() => { setGenderFilter(key); }}
-                    className={`h-9 shrink-0 rounded-xl px-3 text-[12px] font-semibold transition-all ${
-                      genderFilter === key
-                        ? "bg-[#1a1a1a] text-[#d4af37] shadow-sm"
-                        : "bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
-                    }`}
-                  >
-                    {label}
-                    <span className={`ml-1.5 text-[10px] font-bold ${genderFilter === key ? "text-[#d4af37]/70" : "text-gray-400"}`}>
-                      {key === "all"
-                        ? allServicesFlat.length
-                        : allServicesFlat.filter(s => s.gender === key).length}
-                    </span>
-                  </button>
-                ))}
+            <div
+              className={cn(
+                "w-full min-w-0 flex-col gap-2.5 lg:flex-row lg:items-center lg:gap-3",
+                showSearchFilters ? "flex md:flex" : "hidden md:flex",
+              )}
+            >
+              {/* Search */}
+              <div className="relative w-full min-w-0 shrink-0 lg:max-w-sm lg:flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#d4af37]" />
+                <input
+                  placeholder="Search services…"
+                  value={searchInput}
+                  onChange={e => { setSearchInput(e.target.value); }}
+                  className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-9 pr-3 text-[13px] text-[#111] outline-none transition-all placeholder:text-gray-400 focus:border-[#d4af37]/60 focus:ring-2 focus:ring-[#d4af37]/10"
+                />
               </div>
 
-              <div className="grid w-full grid-cols-1 gap-2.5 min-[420px]:grid-cols-2 sm:flex sm:w-auto sm:flex-wrap sm:gap-3">
-                <FilterSelect
-                  value={categoryFilter}
-                  onValueChange={setCategoryFilter}
-                  icon={Tag}
-                  active={categoryFilter !== "all"}
-                  triggerClassName="sm:min-w-[11rem]"
-                  options={categoryFilterOptions}
-                />
-                <FilterSelect
-                  value={statusFilter}
-                  onValueChange={(v) => setStatusFilter(v as "all" | "active" | "inactive")}
-                  icon={Filter}
-                  active={statusFilter !== "all"}
-                  triggerClassName="sm:min-w-[10.5rem]"
-                  options={statusFilterOptions}
-                />
+              {/* Filters */}
+              <div className="flex w-full min-w-0 flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center lg:flex-1">
+                {/* Gender Pills */}
+                <div className="grid max-w-full grid-cols-2 gap-1.5 min-[420px]:flex min-[420px]:items-center min-[420px]:overflow-x-auto min-[420px]:table-scroll min-[420px]:pb-0.5">
+                  {([
+                    { key: "all", label: "All" },
+                    { key: "MALE", label: "Male" },
+                    { key: "FEMALE", label: "Female" },
+                    { key: "UNISEX", label: "Unisex" },
+                  ] as const).map(({ key, label }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => { setGenderFilter(key); }}
+                      className={`h-9 min-w-0 rounded-xl px-3 text-[12px] font-semibold transition-all min-[420px]:shrink-0 ${
+                        genderFilter === key
+                          ? "bg-[#1a1a1a] text-[#d4af37] shadow-sm"
+                          : "bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
+                      }`}
+                    >
+                      {label}
+                      <span className={`ml-1.5 text-[10px] font-bold ${genderFilter === key ? "text-[#d4af37]/70" : "text-gray-400"}`}>
+                        {key === "all"
+                          ? allServicesFlat.length
+                          : allServicesFlat.filter(s => s.gender === key).length}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid w-full grid-cols-1 gap-2.5 min-[420px]:grid-cols-2 sm:flex sm:w-auto sm:flex-wrap sm:gap-3">
+                  <FilterSelect
+                    value={categoryFilter}
+                    onValueChange={setCategoryFilter}
+                    icon={Tag}
+                    active={categoryFilter !== "all"}
+                    triggerClassName="sm:min-w-[11rem]"
+                    options={categoryFilterOptions}
+                  />
+                  <FilterSelect
+                    value={statusFilter}
+                    onValueChange={(v) => setStatusFilter(v as "all" | "active" | "inactive")}
+                    icon={Filter}
+                    active={statusFilter !== "all"}
+                    triggerClassName="sm:min-w-[10.5rem]"
+                    options={statusFilterOptions}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -691,7 +838,8 @@ export function Services() {
                 </Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain p-0">
+            <CardContent className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-0">
+              <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
               <Table
                 className="table-fixed"
                 containerClassName="no-table-scroll"
@@ -720,6 +868,12 @@ export function Services() {
                           <div className="min-w-0">
                             <p className="truncate text-[13px]">{s.displayName}</p>
                             <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] font-normal text-muted-foreground">
+                              {showShopColumn && s.salonName ? (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-[#D4AF37]/25 bg-[#FFFBEB] px-1.5 py-0 text-[9px] font-semibold text-[#9a7d20]">
+                                  <Store className="h-2.5 w-2.5" />
+                                  {s.salonName}
+                                </span>
+                              ) : null}
                               <span className="inline-flex items-center gap-1">
                                 <Clock className="h-3 w-3 shrink-0" />
                                 {s.duration} mins
@@ -788,22 +942,25 @@ export function Services() {
                     )}
                   </TableBody>
                 </Table>
-              <Pagination
-                page={page}
-                pageSize={pageSize}
-                totalRecords={filteredServices.length}
-                onPageChange={setPage}
-                onPageSizeChange={setPageSize}
-              />
+              </div>
+              <div className="shrink-0 bg-white">
+                <Pagination
+                  page={page}
+                  pageSize={pageSize}
+                  totalRecords={filteredServices.length}
+                  onPageChange={setPage}
+                  onPageSizeChange={setPageSize}
+                />
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="packages" className="min-h-0 overflow-y-auto overscroll-contain pr-1">
+        <TabsContent value="packages" className="mt-0 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 data-[state=inactive]:hidden">
           <Packages />
         </TabsContent>
 
-        <TabsContent value="coupons" className="min-h-0 overflow-y-auto overscroll-contain pr-1">
+        <TabsContent value="coupons" className="mt-0 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 data-[state=inactive]:hidden">
           <CouponsSection />
         </TabsContent>
       </Tabs>

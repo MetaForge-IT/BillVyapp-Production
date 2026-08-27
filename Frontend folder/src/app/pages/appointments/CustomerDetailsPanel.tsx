@@ -21,7 +21,7 @@ const tierStyles: Record<AppointmentCustomer["tier"], string> = {
   VIP: "bg-[#111118] text-[#D4AF37] border-[#D4AF37]/30",
   Gold: "bg-amber-50 text-amber-700 border-amber-200",
   Silver: "bg-slate-100 text-slate-600 border-slate-200",
-  Regular: "bg-[#f4f2ed] text-[#6b6b6b] border-black/[0.08]",
+  Regular: "bg-[#f4f2ed] text-[#3f3f46] border-black/[0.08]",
 };
 
 function SectionHeader({
@@ -48,7 +48,7 @@ function SectionHeader({
 
 function FieldLabel({ children, required }: { children: string; required?: boolean }) {
   return (
-    <label className="text-xs font-medium text-[#6b6b6b] mb-1.5 block">
+    <label className="text-xs font-medium text-[#3f3f46] mb-1.5 block">
       {children}
       {required && <span className="text-red-500 ml-0.5">*</span>}
     </label>
@@ -134,7 +134,7 @@ export function CustomerDetailsPanel({
         />
 
         <div className="relative mb-4">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9a9a9a]" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#52525b]" />
           <Input
             placeholder="Search by name or phone number"
             value={customerSearch}
@@ -146,7 +146,7 @@ export function CustomerDetailsPanel({
         {showSearchResults && (
           <div className="mb-4 rounded-xl border border-black/[0.06] bg-white shadow-lg overflow-hidden max-h-44 overflow-y-auto">
             {filteredCustomers.length === 0 ? (
-              <p className="px-4 py-3 text-xs text-[#9a9a9a]">No customers found</p>
+              <p className="px-4 py-3 text-xs text-[#52525b]">No customers found</p>
             ) : (
               filteredCustomers.map((c) => (
                 <button
@@ -163,7 +163,7 @@ export function CustomerDetailsPanel({
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-[#111118] truncate">{c.name}</p>
-                    <p className="text-xs text-[#9a9a9a] truncate">{c.phone}</p>
+                    <p className="text-xs text-[#52525b] truncate">{c.phone}</p>
                   </div>
                   <Badge className={cn("text-[9px] shrink-0 border", tierStyles[c.tier])}>{c.tier}</Badge>
                 </button>
@@ -188,16 +188,16 @@ export function CustomerDetailsPanel({
                   {selectedCustomer.tier}
                 </Badge>
               </div>
-              <p className="text-xs text-[#6b6b6b] mt-1 flex items-center gap-1.5">
+              <p className="text-xs text-[#3f3f46] mt-1 flex items-center gap-1.5">
                 <Phone className="h-3 w-3 shrink-0" />
                 {selectedCustomer.phone}
               </p>
-              <p className="text-xs text-[#9a9a9a] mt-0.5 flex items-center gap-1.5 truncate">
+              <p className="text-xs text-[#52525b] mt-0.5 flex items-center gap-1.5 truncate">
                 <Mail className="h-3 w-3 shrink-0" />
                 {selectedCustomer.email}
               </p>
             </div>
-            <ChevronRight className="h-4 w-4 text-[#9a9a9a] group-hover:text-[#D4AF37] transition-colors shrink-0" />
+            <ChevronRight className="h-4 w-4 text-[#52525b] group-hover:text-[#D4AF37] transition-colors shrink-0" />
           </button>
         )}
 
@@ -213,7 +213,7 @@ export function CustomerDetailsPanel({
                   "rounded-lg py-2.5 text-sm font-semibold transition-all duration-200",
                   visitType === type
                     ? "bg-white text-[#111118] shadow-sm ring-1 ring-[#D4AF37]/35"
-                    : "text-[#6b6b6b] hover:text-[#111118]",
+                    : "text-[#3f3f46] hover:text-[#111118]",
                 )}
               >
                 {type}
@@ -227,7 +227,7 @@ export function CustomerDetailsPanel({
             <div>
               <FieldLabel required>Full Name</FieldLabel>
               <div className="relative">
-                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9a9a9a]" />
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#52525b]" />
                 <Input
                   placeholder="Enter customer name"
                   value={walkInName}
@@ -251,7 +251,7 @@ export function CustomerDetailsPanel({
             <div>
               <FieldLabel>Email Address</FieldLabel>
               <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9a9a9a]" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#52525b]" />
                 <Input
                   placeholder="customer@email.com"
                   value={walkInEmail}
@@ -272,7 +272,7 @@ export function CustomerDetailsPanel({
           <div>
             <FieldLabel>Date</FieldLabel>
             <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9a9a9a] pointer-events-none" />
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#52525b] pointer-events-none" />
               <Input
                 type="date"
                 value={date}
@@ -284,7 +284,7 @@ export function CustomerDetailsPanel({
           <div>
             <FieldLabel>Time</FieldLabel>
             <div className="relative">
-              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9a9a9a] pointer-events-none" />
+              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#52525b] pointer-events-none" />
               <Input
                 type="time"
                 value={time}
@@ -298,7 +298,7 @@ export function CustomerDetailsPanel({
         <div className="mt-3">
           <FieldLabel>Duration</FieldLabel>
           <div className="relative">
-            <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9a9a9a]" />
+            <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#52525b]" />
             <Input
               value={duration}
               onChange={(e) => onDurationChange(e.target.value)}
@@ -320,9 +320,9 @@ export function CustomerDetailsPanel({
             onChange={(e) => onNotesChange(e.target.value)}
             placeholder="Add any special requests or preferences…"
             maxLength={200}
-            className="w-full h-24 rounded-xl border border-black/[0.08] bg-[#faf9f7] px-3.5 py-3 text-sm text-[#111118] placeholder:text-[#9a9a9a] resize-none focus:outline-none focus:border-[#D4AF37]/40 focus:ring-2 focus:ring-[#D4AF37]/10"
+            className="w-full h-24 rounded-xl border border-black/[0.08] bg-[#faf9f7] px-3.5 py-3 text-sm text-[#111118] placeholder:text-[#52525b] resize-none focus:outline-none focus:border-[#D4AF37]/40 focus:ring-2 focus:ring-[#D4AF37]/10"
           />
-          <p className="text-[10px] text-[#9a9a9a] text-right mt-1.5 tabular-nums">{notes.length}/200</p>
+          <p className="text-[10px] text-[#52525b] text-right mt-1.5 tabular-nums">{notes.length}/200</p>
         </div>
       </section>
     </div>

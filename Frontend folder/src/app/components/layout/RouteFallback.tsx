@@ -18,7 +18,7 @@ export function RouteFallback() {
           className="relative h-6 w-6 object-contain"
         />
       </div>
-      <p className="text-[12px] font-semibold tracking-wide text-[#9a9a9a]">
+      <p className="text-[12px] font-semibold tracking-wide text-[#52525b]">
         Loading…
       </p>
     </div>

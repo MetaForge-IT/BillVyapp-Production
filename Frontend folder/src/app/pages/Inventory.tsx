@@ -562,20 +562,24 @@ export function Inventory() {
     <div className="inventory-page flex h-[calc(100dvh-8rem)] min-h-0 flex-col gap-3 overflow-hidden sm:gap-4" key={refreshKey}>
       {/* Fixed top: title, actions, KPIs, alert */}
       <div className="inventory-top shrink-0 space-y-3 sm:space-y-4">
-      {/* Header */}
-      <div className="page-header-row">
-        <div className="min-w-0 shrink-0 lg:max-w-[min(100%,28rem)]">
+      {/* Header — icon-only actions on phones */}
+      <div className="flex shrink-0 items-start justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#D4AF37]">Stock Control</p>
-          <h1 className="whitespace-nowrap text-xl font-bold bg-gradient-to-r from-[#1a1a1a] to-[#d4af37] bg-clip-text text-transparent sm:text-2xl lg:text-3xl">
+          <h1 className="text-xl font-bold bg-gradient-to-r from-[#1a1a1a] to-[#d4af37] bg-clip-text text-transparent sm:text-2xl lg:text-3xl">
             Inventory Management
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm">Track products, stock levels, purchase orders & vendors</p>
+          <p className="mt-1 hidden text-sm text-muted-foreground sm:block">
+            Track products, stock levels, purchase orders & vendors
+          </p>
         </div>
         <div className="inventory-actions">
           {canManageInventory && (
             <button
               type="button"
               onClick={openVendorBill}
+              title="Vendor Bill"
+              aria-label="Vendor Bill"
               className="inventory-action-btn flex h-10 items-center justify-center gap-2 rounded-xl border border-[#d4af37] bg-white px-3 text-[12px] font-semibold text-[#9a7a1e] transition-all hover:bg-[#d4af37]/10 sm:h-9 sm:px-4 sm:text-[13px]"
             >
               <Receipt className="h-4 w-4 shrink-0" />
@@ -585,8 +589,11 @@ export function Inventory() {
           )}
           {canManageInventory && (
             <button
+              type="button"
               onClick={() => { resetCategoryForm(); setShowCategoryManager(true); }}
-              className="inventory-action-btn flex h-10 items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-[#FAF8F2] px-3 text-[12px] font-semibold text-[#6b6b6b] transition-all hover:border-[#D4AF37]/30 hover:text-[#111118] sm:h-9 sm:px-4 sm:text-[13px]"
+              title="Categories"
+              aria-label="Categories"
+              className="inventory-action-btn flex h-10 items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-[#FAF8F2] px-3 text-[12px] font-semibold text-[#3f3f46] transition-all hover:border-[#D4AF37]/30 hover:text-[#111118] sm:h-9 sm:px-4 sm:text-[13px]"
             >
               <Tag className="h-4 w-4 shrink-0" />
               <span className="inventory-action-label-short">Cats</span>
@@ -594,15 +601,23 @@ export function Inventory() {
             </button>
           )}
           <button
+            type="button"
             onClick={() => void handleRefresh()}
-            className="inventory-action-btn flex h-10 items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-[#FAF8F2] px-3 text-[12px] font-semibold text-[#6b6b6b] transition-all hover:border-[#D4AF37]/30 hover:text-[#111118] sm:h-9 sm:px-4 sm:text-[13px]"
+            title="Refresh"
+            aria-label="Refresh"
+            className="inventory-action-btn flex h-10 items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-[#FAF8F2] px-3 text-[12px] font-semibold text-[#3f3f46] transition-all hover:border-[#D4AF37]/30 hover:text-[#111118] sm:h-9 sm:px-4 sm:text-[13px]"
           >
-            <RefreshCw className={`h-4 w-4 shrink-0 ${productsLoading || ordersLoading ? "animate-spin" : ""}`} /> Refresh
+            <RefreshCw className={`h-4 w-4 shrink-0 ${productsLoading || ordersLoading ? "animate-spin" : ""}`} />
+            <span className="inventory-action-label-short">Refresh</span>
+            <span className="inventory-action-label-full">Refresh</span>
           </button>
           {canManageInventory && (
             <button
+              type="button"
               onClick={() => setShowBulkUpload(true)}
-              className="inventory-action-btn flex h-10 items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-[#FAF8F2] px-3 text-[12px] font-semibold text-[#6b6b6b] transition-all hover:border-[#D4AF37]/30 hover:text-[#111118] sm:h-9 sm:px-4 sm:text-[13px]"
+              title="Bulk Upload"
+              aria-label="Bulk Upload"
+              className="inventory-action-btn flex h-10 items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-[#FAF8F2] px-3 text-[12px] font-semibold text-[#3f3f46] transition-all hover:border-[#D4AF37]/30 hover:text-[#111118] sm:h-9 sm:px-4 sm:text-[13px]"
             >
               <Upload className="h-4 w-4 shrink-0" />
               <span className="inventory-action-label-short">Upload</span>
@@ -612,18 +627,22 @@ export function Inventory() {
           {canManageInventory && (
             <button
               type="button"
-              className={cn(financeGoldBtn, "inventory-action-btn inline-flex items-center justify-center gap-2 col-span-2 sm:col-span-1")}
+              title="Add Product"
+              aria-label="Add Product"
+              className={cn(financeGoldBtn, "inventory-action-btn inline-flex items-center justify-center gap-2")}
               onClick={() => { resetProductForm(); setIsAddProductOpen(true); }}
             >
               <Plus className="h-4 w-4 shrink-0" />
-              Add Product
+              <span className="inventory-action-label-short">Add</span>
+              <span className="inventory-action-label-full">Add Product</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* KPI Cards — 2×2 on phones, 4-up from md */}
-      <div className="stat-grid-4">
+      {/* KPI Cards — tablet/desktop only; phones keep list space */}
+      <div className="hidden md:block">
+        <div className="stat-grid-4">
         <PageStatCard label="Total Products" value={productsLoading ? "…" : String(products.length)} sub="Live from database" icon={Package} index={0} href="/inventory?tab=stock" compact />
         <PageStatCard label="Low / Out of Stock" value={String(lowStockCount)} sub="Needs immediate reorder" icon={AlertTriangle} index={1} onClick={openStockAlertModal} compact />
         <PageStatCard label="Total Stock Value" value={totalValue} sub="Across all categories" icon={TrendingUp} index={2} href="/inventory?tab=stock" compact />
@@ -636,6 +655,7 @@ export function Inventory() {
           href="/inventory?tab=orders"
           compact
         />
+        </div>
       </div>
 
       {/* Alert Banner */}
@@ -646,9 +666,12 @@ export function Inventory() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-[#111118] text-sm sm:text-base">Stock Alert: {lowStockCount} products need attention</p>
-            <p className="hidden text-sm text-[#6b6b6b] sm:block">Review low and out-of-stock items and reorder before service is impacted</p>
+            <p className="hidden text-sm text-[#3f3f46] sm:block">Review low and out-of-stock items and reorder before service is impacted</p>
           </div>
-          <button type="button" className={financeGoldBtn + " !h-10 !w-full !px-3 !text-[11px] sm:!h-8 sm:!w-auto"} onClick={openStockAlertModal}>Reorder Now</button>
+          <button type="button" className={financeGoldBtn + " !h-10 !w-10 !shrink-0 !px-0 sm:!h-8 sm:!w-auto sm:!px-3"} onClick={openStockAlertModal} title="Reorder Now" aria-label="Reorder Now">
+            <ShoppingCart className="h-4 w-4 sm:hidden" />
+            <span className="hidden sm:inline">Reorder Now</span>
+          </button>
         </div>
       )}
       </div>

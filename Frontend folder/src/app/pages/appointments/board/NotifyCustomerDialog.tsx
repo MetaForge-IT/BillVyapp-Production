@@ -57,7 +57,7 @@ export function NotifyCustomerDialog({
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[14px] font-bold text-[#111118]">{notifyTarget.name}</p>
-                <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[#9a9a9a]">
+                <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[#52525b]">
                   <Phone className="h-3 w-3 shrink-0 text-[#D4AF37]" />
                   {notifyTarget.phone || "No phone number on file"}
                 </p>
@@ -65,7 +65,7 @@ export function NotifyCustomerDialog({
               <Badge className={cn(
                 "shrink-0 border text-[9px] font-bold",
                 notifyTarget.context === "staff"
-                  ? "border-black/[0.08] bg-black/[0.06] text-[#6b6b6b]"
+                  ? "border-black/[0.08] bg-black/[0.06] text-[#3f3f46]"
                   : "border-[#D4AF37]/25 bg-[#D4AF37]/10 text-[#B8962E]",
               )}>
                 {notifyTarget.context === "staff" ? "Staff" : "Customer"}
@@ -75,7 +75,7 @@ export function NotifyCustomerDialog({
             {/* Quick templates */}
             {notifyTarget.context === "customer" && (
               <div>
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Quick templates</p>
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#52525b]">Quick templates</p>
                 <div className="flex flex-wrap gap-1.5">
                   {NOTIFY_TEMPLATES.map(t => {
                     const active = notifyMsg === t.text(notifyTarget.name);
@@ -88,7 +88,7 @@ export function NotifyCustomerDialog({
                           "rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition-all",
                           active
                             ? "border-[#D4AF37]/50 bg-[#111118] text-[#D4AF37] shadow-sm"
-                            : "border-black/[0.08] bg-white text-[#6b6b6b] hover:border-[#D4AF37]/35 hover:bg-[#FFFBEB] hover:text-[#111118]",
+                            : "border-black/[0.08] bg-white text-[#3f3f46] hover:border-[#D4AF37]/35 hover:bg-[#FFFBEB] hover:text-[#111118]",
                         )}
                       >
                         {t.label}
@@ -102,7 +102,7 @@ export function NotifyCustomerDialog({
             {/* Message */}
             <div>
               <div className="mb-2 flex items-center justify-between">
-                <Label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Message</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#52525b]">Message</Label>
                 <span className={cn(
                   "text-[10px] tabular-nums font-semibold",
                   notifyMsg.length > 280 ? "text-[#E07A5F]" : "text-[#c0c0c0]",
@@ -123,11 +123,11 @@ export function NotifyCustomerDialog({
             {/* Live preview — chat-style bubble */}
             {notifyMsg.trim() && (
               <div>
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Preview</p>
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#52525b]">Preview</p>
                 <div className="rounded-xl bg-[#e9f8ef] p-3">
                   <div className="ml-auto max-w-[85%] rounded-2xl rounded-tr-sm bg-white px-3.5 py-2.5 shadow-sm">
                     <p className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-[#111118]">{notifyMsg}</p>
-                    <p className="mt-1 text-right text-[9px] text-[#9a9a9a]">Now</p>
+                    <p className="mt-1 text-right text-[9px] text-[#52525b]">Now</p>
                   </div>
                 </div>
               </div>
@@ -161,7 +161,7 @@ export function NotifyCustomerDialog({
             </div>
 
             {!notifyTarget.phone && (
-              <p className="flex items-center gap-1.5 text-center text-[11px] text-[#9a9a9a]">
+              <p className="flex items-center gap-1.5 text-center text-[11px] text-[#52525b]">
                 <AlertCircle className="h-3.5 w-3.5 shrink-0 text-[#D4AF37]" />
                 Add a phone number to send notifications
               </p>

@@ -63,21 +63,21 @@ export function AdvanceTab() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-bold text-[#111118]">{a.customer}</p>
-                      <p className="text-[11px] text-[#6b6b6b]">{a.service}</p>
+                      <p className="text-[11px] text-[#3f3f46]">{a.service}</p>
                       <div className="mt-2 space-y-1">
-                        <div className="flex items-center justify-between text-[10px] text-[#9a9a9a]">
+                        <div className="flex items-center justify-between text-[10px] text-[#52525b]">
                           <span>Utilized {fmt(usedAmt)} of {fmt(a.amount)}</span>
                           <span>{pct}%</span>
                         </div>
                         <div className={`${financeProgressTrack} w-48`}>
                           <div className={financeProgressFill} style={{ width:`${pct}%` }} />
                         </div>
-                        <p className="text-[10px] text-[#9a9a9a] flex items-center gap-1"><Calendar className="h-3 w-3" />Booked for {a.bookedFor}</p>
+                        <p className="text-[10px] text-[#52525b] flex items-center gap-1"><Calendar className="h-3 w-3" />Booked for {a.bookedFor}</p>
                       </div>
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a]">Balance</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#52525b]">Balance</p>
                     <p className="text-[18px] font-black text-[#111118]">{fmt(a.balance)}</p>
                     <Badge className={`${financeBadgeGold} text-[10px] mt-1`}>Active</Badge>
                   </div>

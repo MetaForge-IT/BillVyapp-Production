@@ -9,7 +9,7 @@ import type { VendorRecord } from "../../../api/vendors";
 import type { PurchaseOrderRow } from "../../../lib/inventoryMappers";
 import { toast } from "../../components/ui/hot-toast";
 import { istDateKey } from "../../../lib/istDate";
-import { ShoppingCart, Plus, Receipt } from "lucide-react";
+import { ShoppingCart, Plus, Receipt, Eye, Truck, CheckCircle2 } from "lucide-react";
 import { CARD_TABLE, TABLE_ROW, orderStatusConfig } from "./inventoryUi";
 
 export type OrdersTabPagination = {
@@ -52,16 +52,24 @@ export function OrdersTab({
                     Purchase Orders
                   </CardTitle>
                   {canManageInventory && (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                       <Button
                         size="sm"
                         variant="outline"
-                        className="rounded-xl border-[#d4af37]/35 text-[#9a7a1e] hover:bg-[#d4af37]/10"
+                        title="Vendor Bill"
+                        aria-label="Vendor Bill"
+                        className="h-10 w-10 rounded-xl border-[#d4af37]/35 p-0 text-[#9a7a1e] hover:bg-[#d4af37]/10 sm:h-9 sm:w-auto sm:px-3"
                         onClick={openVendorBill}
                       >
-                        <Receipt className="h-4 w-4 mr-1" /> Vendor Bill
+                        <Receipt className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Vendor Bill</span>
                       </Button>
-                      <Button size="sm" className="bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d]" onClick={() => {
+                      <Button
+                        size="sm"
+                        title="Create PO"
+                        aria-label="Create purchase order"
+                        className="h-10 w-10 rounded-xl bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d] p-0 sm:h-9 sm:w-auto sm:px-3"
+                        onClick={() => {
                         if (products.length === 0) {
                           toast.error("Add at least one product before creating a purchase order");
                           return;
@@ -73,8 +81,10 @@ export function OrdersTab({
                         setPoForm({ vendorId: "", productId: "", quantity: "", unitCost: "", date: istDateKey(), notes: "" });
                         setFormErrors({});
                         setIsCreatePOOpen(true);
-                      }}>
-                        <Plus className="h-4 w-4 mr-1" /> Create PO
+                      }}
+                      >
+                        <Plus className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Create PO</span>
                       </Button>
                     </div>
                   )}
@@ -91,7 +101,7 @@ export function OrdersTab({
                           <div className="min-w-0">
                             <p className="font-mono text-[13px] font-bold text-[#111118]">{order.id}</p>
                             <p className="mt-1 truncate text-[14px] font-semibold">{order.supplier}</p>
-                            <p className="mt-0.5 text-[11px] text-[#9a9a9a]">{order.date}</p>
+                            <p className="mt-0.5 text-[11px] text-[#52525b]">{order.date}</p>
                             {order.isVendorBill && (
                               <Badge className="mt-1 bg-[#d4af37]/10 text-[#9a7a1e] border-[#d4af37]/25 hover:bg-[#d4af37]/10">Vendor Bill</Badge>
                             )}
@@ -100,10 +110,10 @@ export function OrdersTab({
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           <div className="rounded-xl bg-[#FAF8F2] px-3 py-2.5">
-                            <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Qty</p>
+                            <p className="text-[9px] font-bold uppercase tracking-wider text-[#52525b]">Qty</p>
                             <p className="mt-1 text-[15px] font-black">{order.totalQuantity}</p>
                             {order.lineCount > 1 && (
-                              <p className="mt-0.5 text-[10px] text-[#9a9a9a]">{order.lineCount} products</p>
+                              <p className="mt-0.5 text-[10px] text-[#52525b]">{order.lineCount} products</p>
                             )}
                           </div>
                           <div className="rounded-xl border border-[#D4AF37]/20 bg-[#FFFBEB] px-3 py-2.5">
@@ -112,12 +122,21 @@ export function OrdersTab({
                           </div>
                         </div>
                         <div className="inventory-card-actions">
-                          <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => openViewPOModal(order)}>View</Button>
+                          <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => openViewPOModal(order)} title="View" aria-label="View order">
+                            <Eye className="h-3.5 w-3.5 sm:mr-1.5" />
+                            <span className="inventory-card-action-label">View</span>
+                          </Button>
                           {order.status === "pending" && (
-                            <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => handlePOAction(order.id, "mark-shipped")}>Ship</Button>
+                            <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => handlePOAction(order.id, "mark-shipped")} title="Mark shipped" aria-label="Mark shipped">
+                              <Truck className="h-3.5 w-3.5 sm:mr-1.5" />
+                              <span className="inventory-card-action-label">Ship</span>
+                            </Button>
                           )}
                           {order.status === "shipped" && (
-                            <Button variant="outline" size="sm" className="h-10 rounded-xl border-[#D4AF37]/35 text-[#9a7d20]" onClick={() => handlePOAction(order.id, "mark-delivered")}>Deliver</Button>
+                            <Button variant="outline" size="sm" className="h-10 rounded-xl border-[#D4AF37]/35 text-[#9a7d20]" onClick={() => handlePOAction(order.id, "mark-delivered")} title="Mark delivered" aria-label="Mark delivered">
+                              <CheckCircle2 className="h-3.5 w-3.5 sm:mr-1.5" />
+                              <span className="inventory-card-action-label">Deliver</span>
+                            </Button>
                           )}
                         </div>
                       </article>

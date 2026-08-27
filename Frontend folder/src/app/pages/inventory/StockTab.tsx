@@ -1,7 +1,9 @@
+import { useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
+import { Switch } from "../../components/ui/switch";
 import { cn } from "../../components/ui/utils";
 import { Pagination } from "../../components/shared/Pagination";
 import { FilterSelect } from "../../components/shared/FilterSelect";
@@ -9,7 +11,7 @@ import type { Product } from "../../context/ProductsContext";
 import type { ProductCategory } from "../../../api/product-categories";
 import {
   Package, Plus, AlertTriangle, Search, Eye, ShoppingCart,
-  Pencil, SlidersHorizontal, Loader2,
+  Pencil, SlidersHorizontal, Loader2, Filter,
 } from "lucide-react";
 import { CARD_TABLE, TABLE_ROW, statusConfig } from "./inventoryUi";
 
@@ -54,10 +56,52 @@ export function StockTab({
   openEditProduct, openViewModal, openAdjust, openOrderModal,
   resetProductForm, setNewProduct, setIsAddProductOpen,
 }: StockTabProps) {
+  const [showSearchFilters, setShowSearchFilters] = useState(false);
+
+  const clearSearchFilters = () => {
+    setSearch("");
+    setCategory("All");
+    setStockAlertFilter("all");
+  };
+
   return (
     <>
-            {/* Filter Bar */}
-            <div className="inventory-filter-bar shrink-0 rounded-2xl border border-black/[0.07] bg-white p-3 shadow-sm">
+            {/* Filter Bar — search toggled on phones, always open from md up */}
+            <div className="inventory-filter-bar shrink-0 !flex-col rounded-2xl border border-black/[0.07] bg-white p-3 shadow-sm md:!flex-row md:flex-wrap md:items-center">
+              <div className="flex items-center justify-between gap-3 md:hidden">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#D4AF37]/25 bg-[#D4AF37]/10">
+                    <Filter className="h-4 w-4 text-[#D4AF37]" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-bold text-[#111118]">Search &amp; filters</p>
+                    <p className="text-[11px] text-[#52525b]">
+                      {showSearchFilters ? "Turn off to hide and reset" : "Turn on to search or filter stock"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className={`text-[11px] font-semibold ${showSearchFilters ? "text-[#9a7d20]" : "text-[#52525b]"}`}>
+                    {showSearchFilters ? "On" : "Off"}
+                  </span>
+                  <Switch
+                    checked={showSearchFilters}
+                    onCheckedChange={(checked) => {
+                      setShowSearchFilters(checked);
+                      if (!checked) clearSearchFilters();
+                    }}
+                    className="data-[state=checked]:bg-[#D4AF37] data-[state=unchecked]:bg-[#e0dbd0]"
+                    aria-label="Toggle search and filters"
+                  />
+                </div>
+              </div>
+
+              <div
+                className={cn(
+                  "w-full flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center",
+                  showSearchFilters ? "mt-3 flex md:mt-0" : "hidden md:flex",
+                )}
+              >
               {/* Search */}
               <div className="inventory-filter-search">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#d4af37]" />
@@ -65,7 +109,7 @@ export function StockTab({
                   placeholder="Search product, SKU, brand…"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="w-full h-10 pl-9 pr-3 rounded-xl border border-black/[0.08] bg-white text-[13px] text-[#111] placeholder:text-[#9a9a9a] outline-none focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/12 transition-all"
+                  className="w-full h-10 pl-9 pr-3 rounded-xl border border-black/[0.08] bg-white text-[13px] text-[#111] placeholder:text-[#52525b] outline-none focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/12 transition-all"
                 />
               </div>
 
@@ -106,6 +150,7 @@ export function StockTab({
                   ]}
                 />
               </div>
+              </div>
             </div>
 
             <Card className={cn(CARD_TABLE, "flex min-h-0 flex-1 flex-col")}>
@@ -124,15 +169,15 @@ export function StockTab({
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="truncate text-[15px] font-bold text-[#111118]">{product.name}</p>
-                            <p className="mt-0.5 truncate text-[11px] text-[#6b6b6b]">{product.brand} · {product.category}</p>
-                            <p className="mt-1 font-mono text-[11px] text-[#9a9a9a]">SKU {product.sku}</p>
+                            <p className="mt-0.5 truncate text-[11px] text-[#3f3f46]">{product.brand} · {product.category}</p>
+                            <p className="mt-1 font-mono text-[11px] text-[#52525b]">SKU {product.sku}</p>
                           </div>
                           <Badge className={status.className}>{status.label}</Badge>
                         </div>
 
                         <div className="inventory-metric-grid">
                           <div className="rounded-xl border border-black/[0.06] bg-[#FAF8F2] p-2.5">
-                            <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Stock</p>
+                            <p className="text-[9px] font-bold uppercase tracking-wider text-[#52525b]">Stock</p>
                             <p className={cn(
                               "mt-1 text-[17px] font-black",
                               product.stock === 0 ? "text-red-600" : product.stock < product.minStock ? "text-[#9a7d20]" : "text-[#111118]",
@@ -141,7 +186,7 @@ export function StockTab({
                             </p>
                           </div>
                           <div className="rounded-xl border border-black/[0.06] bg-white p-2.5">
-                            <p className="text-[9px] font-bold uppercase tracking-wider text-[#9a9a9a]">Minimum</p>
+                            <p className="text-[9px] font-bold uppercase tracking-wider text-[#52525b]">Minimum</p>
                             <p className="mt-1 text-[17px] font-black text-[#111118]">{product.minStock}</p>
                           </div>
                           <div className="rounded-xl border border-[#D4AF37]/20 bg-[#FFFBEB] p-2.5 col-span-2 min-[400px]:col-span-1">
@@ -151,18 +196,22 @@ export function StockTab({
                         </div>
 
                         <div className="inventory-card-actions">
-                          <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => openEditProduct(product)}>
-                            <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
+                          <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => openEditProduct(product)} title="Edit" aria-label="Edit">
+                            <Pencil className="h-3.5 w-3.5 sm:mr-1.5" />
+                            <span className="inventory-card-action-label">Edit</span>
                           </Button>
-                          <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => openViewModal(product)}>
-                            <Eye className="mr-1.5 h-3.5 w-3.5" /> View
+                          <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => openViewModal(product)} title="View" aria-label="View">
+                            <Eye className="h-3.5 w-3.5 sm:mr-1.5" />
+                            <span className="inventory-card-action-label">View</span>
                           </Button>
-                          <Button variant="outline" size="sm" className="h-10 rounded-xl border-[#D4AF37]/30 text-[#9a7d20]" onClick={() => openAdjust(product)}>
-                            <SlidersHorizontal className="mr-1.5 h-3.5 w-3.5" /> Adjust
+                          <Button variant="outline" size="sm" className="h-10 rounded-xl border-[#D4AF37]/30 text-[#9a7d20]" onClick={() => openAdjust(product)} title="Adjust stock" aria-label="Adjust stock">
+                            <SlidersHorizontal className="h-3.5 w-3.5 sm:mr-1.5" />
+                            <span className="inventory-card-action-label">Adjust</span>
                           </Button>
                           {(product.status === "low" || product.status === "critical" || product.status === "out") && (
-                            <Button size="sm" className="h-10 rounded-xl bg-[#111118] text-[#D4AF37]" onClick={() => openOrderModal(product)}>
-                              <ShoppingCart className="mr-1.5 h-3.5 w-3.5" /> Reorder
+                            <Button size="sm" className="h-10 rounded-xl bg-[#111118] text-[#D4AF37]" onClick={() => openOrderModal(product)} title="Reorder" aria-label="Reorder">
+                              <ShoppingCart className="h-3.5 w-3.5 sm:mr-1.5" />
+                              <span className="inventory-card-action-label">Reorder</span>
                             </Button>
                           )}
                         </div>

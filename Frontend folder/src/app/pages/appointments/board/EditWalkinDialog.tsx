@@ -60,13 +60,13 @@ export function EditWalkinDialog({
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[14px] font-bold text-[#111118]">{editWalkin.customer || "Unnamed walk-in"}</p>
-                <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[#9a9a9a]">
+                <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[#52525b]">
                   <Phone className="h-3 w-3 shrink-0 text-[#D4AF37]" />
                   {editWalkin.phone || "No phone number on file"}
                 </p>
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1">
-                <Badge className="border border-black/[0.08] bg-black/[0.06] text-[9px] font-bold text-[#6b6b6b]">
+                <Badge className="border border-black/[0.08] bg-black/[0.06] text-[9px] font-bold text-[#3f3f46]">
                   {editWalkin.token}
                 </Badge>
                 <Badge className={cn("border text-[9px] font-bold capitalize", statusColors[editWalkin.status])}>
@@ -78,9 +78,9 @@ export function EditWalkinDialog({
             {/* Contact fields */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Customer Name</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#52525b]">Customer Name</Label>
                 <div className="relative mt-1.5">
-                  <User className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
+                  <User className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#52525b]" />
                   <Input
                     value={editWalkin.customer}
                     onChange={e => setEditWalkin(w => w ? { ...w, customer: e.target.value } : w)}
@@ -89,9 +89,9 @@ export function EditWalkinDialog({
                 </div>
               </div>
               <div>
-                <Label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Phone</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#52525b]">Phone</Label>
                 <div className="relative mt-1.5">
-                  <Phone className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
+                  <Phone className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#52525b]" />
                   <Input
                     value={editWalkin.phone}
                     onChange={e => setEditWalkin(w => w ? { ...w, phone: e.target.value } : w)}
@@ -104,7 +104,7 @@ export function EditWalkinDialog({
             {/* Service assignment — multi-select */}
             <div className="rounded-xl border border-black/[0.06] bg-white p-3.5 space-y-3">
               <div className="flex items-center justify-between gap-2">
-                <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">
+                <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#52525b]">
                   <Scissors className="h-3 w-3 text-[#D4AF37]" /> Services
                 </p>
                 <span className="text-[10px] font-semibold text-[#D4AF37]">
@@ -150,7 +150,7 @@ export function EditWalkinDialog({
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[12.5px] font-semibold text-[#111118]">{s.name}</p>
-                        <p className="text-[10px] text-[#9a9a9a]">{s.duration} min · {formatInr(s.price)}</p>
+                        <p className="text-[10px] text-[#52525b]">{s.duration} min · {formatInr(s.price)}</p>
                       </div>
                     </button>
                   );

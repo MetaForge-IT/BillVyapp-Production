@@ -29,7 +29,7 @@ export function LowStockPanel() {
           />
           <div className="divide-y divide-black/[0.04]">
             {products.length === 0 ? (
-              <p className="px-4 py-10 text-center text-[12px] text-[#9a9a9a]">All stock levels look healthy</p>
+              <p className="px-4 py-10 text-center text-[12px] text-[#52525b]">All stock levels look healthy</p>
             ) : (
               products.map((product) => {
                 const isOut = product.stockStatus === "out_of_stock" || product.stock <= 0;
@@ -52,11 +52,11 @@ export function LowStockPanel() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13px] font-semibold text-[#111118]">{product.name}</p>
-                      <p className="truncate text-[11px] text-[#9a9a9a]">{product.sku}</p>
+                      <p className="truncate text-[11px] text-[#52525b]">{product.sku}</p>
                     </div>
                     <div className="shrink-0 text-right">
                       <p className="text-[13px] font-bold tabular-nums text-[#111118]">{product.stock}</p>
-                      <p className="text-[10px] text-[#9a9a9a]">min {product.minStock}</p>
+                      <p className="text-[10px] text-[#52525b]">min {product.minStock}</p>
                     </div>
                   </button>
                 );

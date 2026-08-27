@@ -13,8 +13,8 @@ import { cn } from "../../components/ui/utils";
 const CUSTOMER_TIER_BADGE: Record<string, string> = {
   platinum: "bg-[#111118] text-[#D4AF37] border-transparent",
   gold: "bg-[#D4AF37]/15 text-[#B8962E] border-[#D4AF37]/20",
-  silver: "bg-black/[0.06] text-[#6b6b6b] border-black/[0.08]",
-  basic: "bg-black/[0.04] text-[#9a9a9a] border-black/[0.05]",
+  silver: "bg-black/[0.06] text-[#3f3f46] border-black/[0.08]",
+  basic: "bg-black/[0.04] text-[#52525b] border-black/[0.05]",
 };
 
 function customerInitials(name: string) {
@@ -49,7 +49,7 @@ function CouponPreview({ coupon }: { coupon: Coupon | undefined }) {
     return (
       <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-black/[0.1] bg-[#faf9f7] px-4 py-10 text-center">
         <Gift className="mb-2 h-8 w-8 text-[#D4AF37]/35" />
-        <p className="text-[13px] font-medium text-[#9a9a9a]">Select a coupon to preview</p>
+        <p className="text-[13px] font-medium text-[#52525b]">Select a coupon to preview</p>
       </div>
     );
   }
@@ -114,7 +114,7 @@ export function NotifyCustomerModal({
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[14px] font-bold text-[#111118]">{target.name}</p>
-                <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[#9a9a9a]">
+                <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[#52525b]">
                   <Phone className="h-3 w-3 shrink-0 text-[#D4AF37]" />
                   {target.phone || "No phone on file"}
                 </p>
@@ -132,14 +132,14 @@ export function NotifyCustomerModal({
             </div>
 
             <div>
-              <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Quick templates</p>
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#52525b]">Quick templates</p>
               <div className="flex flex-wrap gap-1.5">
                 {NOTIFY_TEMPLATES.map(t => (
                   <button
                     key={t.label}
                     type="button"
                     onClick={() => onMessageChange(t.msg(target))}
-                    className="rounded-lg border border-black/[0.08] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#6b6b6b] transition-all hover:border-[#D4AF37]/35 hover:bg-[#FFFBEB] hover:text-[#111118]"
+                    className="rounded-lg border border-black/[0.08] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#3f3f46] transition-all hover:border-[#D4AF37]/35 hover:bg-[#FFFBEB] hover:text-[#111118]"
                   >
                     {t.label}
                   </button>
@@ -149,7 +149,7 @@ export function NotifyCustomerModal({
 
             <div>
               <div className="mb-2 flex items-center justify-between">
-                <Label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Message</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#52525b]">Message</Label>
                 <span className="text-[10px] tabular-nums text-[#c0c0c0]">{message.length}/320</span>
               </div>
               <Textarea
@@ -183,7 +183,7 @@ export function NotifyCustomerModal({
             </div>
 
             {!target.phone && (
-              <p className="flex items-center justify-center gap-1.5 text-[11px] text-[#9a9a9a]">
+              <p className="flex items-center justify-center gap-1.5 text-[11px] text-[#52525b]">
                 <AlertCircle className="h-3.5 w-3.5 shrink-0 text-[#D4AF37]" />
                 Add a phone number to send notifications
               </p>
@@ -246,7 +246,7 @@ export function SendCouponModal({
               </div>
               <div className="min-w-0">
                 <p className="truncate text-[13px] font-bold text-[#111118]">{customer.name}</p>
-                <p className="text-[11px] text-[#9a9a9a]">{customer.phone}</p>
+                <p className="text-[11px] text-[#52525b]">{customer.phone}</p>
               </div>
             </div>
           )}
@@ -259,12 +259,12 @@ export function SendCouponModal({
                   Sending to {recipientNames.length} customer{recipientNames.length !== 1 ? "s" : ""}
                 </p>
               </div>
-              <p className="line-clamp-2 text-[11px] text-[#9a9a9a]">{recipientNames.join(", ")}</p>
+              <p className="line-clamp-2 text-[11px] text-[#52525b]">{recipientNames.join(", ")}</p>
             </div>
           )}
 
           <div>
-            <Label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">
+            <Label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.12em] text-[#52525b]">
               Select coupon
             </Label>
             <Select value={selectedCouponId} onValueChange={onSelectCoupon}>
@@ -279,7 +279,7 @@ export function SendCouponModal({
                 ))}
               </SelectContent>
             </Select>
-            <p className="mt-1.5 flex items-center gap-1 text-[10px] text-[#9a9a9a]">
+            <p className="mt-1.5 flex items-center gap-1 text-[10px] text-[#52525b]">
               <Tag className="h-3 w-3 text-[#D4AF37]" />
               Manage coupons in Services → Coupons
             </p>

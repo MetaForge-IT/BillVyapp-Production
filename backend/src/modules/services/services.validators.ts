@@ -22,6 +22,8 @@ export const createServiceSchema = z.object({
   gender: serviceGenderSchema.optional(),
   status: z.enum([SERVICE_STATUS.ACTIVE, SERVICE_STATUS.INACTIVE]).optional(),
   memberPrice: z.number().nonnegative().optional(),
+  /** Franchise admin: create under a specific shop (category must belong to that shop). */
+  salonId: z.string().uuid().optional(),
 }).refine((data) => Boolean(data.displayName || data.name), {
   message: "Either displayName or name is required",
   path: ["displayName"],
@@ -48,6 +50,7 @@ export const listServicesQuerySchema = paginationQuerySchema.extend({
   categoryId: z.string().uuid().optional(),
   serviceGroup: z.string().trim().min(1).max(100).optional(),
   search: z.string().trim().max(200).optional(),
+  salonId: z.string().uuid().optional(),
   active: z
     .enum(["true", "false", "1", "0"])
     .optional()

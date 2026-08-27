@@ -220,29 +220,29 @@ export function VendorDirectBillDialog({
                 </div>
                 <div>
                   <p className="text-[15px] font-bold text-[#111118]">Vendor bill saved</p>
-                  <p className="text-[12px] text-[#6b6b6b]">
+                  <p className="text-[12px] text-[#3f3f46]">
                     Purchase order created and inventory stock updated
                   </p>
                 </div>
               </div>
               <div className="space-y-2 rounded-2xl border border-black/[0.07] bg-white p-4 text-[13px]">
                 <div className="flex justify-between gap-3">
-                  <span className="text-[#9a9a9a]">PO number</span>
+                  <span className="text-[#52525b]">PO number</span>
                   <span className="font-bold text-[#111118]">{result.poNumber}</span>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-[#9a9a9a]">Vendor</span>
+                  <span className="text-[#52525b]">Vendor</span>
                   <span className="font-semibold text-[#111118]">{result.vendorName}</span>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-[#9a9a9a]">Qty</span>
+                  <span className="text-[#52525b]">Qty</span>
                   <span className="font-semibold text-[#111118]">
                     {result.totalQuantity}
                     {result.lineCount > 1 ? ` (${result.lineCount} products)` : ""}
                   </span>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-[#9a9a9a]">Payment</span>
+                  <span className="text-[#52525b]">Payment</span>
                   <span className="font-semibold text-[#111118]">{result.paymentMethod}</span>
                 </div>
                 <div className="flex justify-between gap-3 border-t border-black/[0.06] pt-2">
@@ -284,11 +284,11 @@ export function VendorDirectBillDialog({
               <div className="grid max-h-[calc(92dvh-72px)] min-h-0 flex-1 gap-0 overflow-y-auto lg:grid-cols-[1.1fr_0.9fr]">
                 <div className="space-y-4 border-b border-black/[0.06] p-4 sm:p-5 lg:border-b-0 lg:border-r">
                   <div className="space-y-2">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a9a9a]">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525b]">
                       Vendor
                     </p>
                     <div className="relative">
-                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9a9a]" />
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#52525b]" />
                       <Input
                         value={vendorSearch}
                         onChange={(e) => {
@@ -319,7 +319,7 @@ export function VendorDirectBillDialog({
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="truncate text-[13px] font-bold text-[#111118]">{row.name}</p>
-                              <p className="truncate text-[11px] text-[#9a9a9a]">
+                              <p className="truncate text-[11px] text-[#52525b]">
                                 {row.contactPerson || "—"} · {row.phone || "No phone"}
                               </p>
                             </div>
@@ -348,11 +348,11 @@ export function VendorDirectBillDialog({
                   </div>
 
                   <div className="space-y-2">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a9a9a]">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525b]">
                       Products to restock
                     </p>
                     <div className="relative">
-                      <Package className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9a9a]" />
+                      <Package className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#52525b]" />
                       <Input
                         value={itemSearch}
                         onChange={(e) => setItemSearch(e.target.value)}
@@ -383,7 +383,7 @@ export function VendorDirectBillDialog({
                           >
                             <div className="min-w-0">
                               <p className="truncate text-[13px] font-bold text-[#111118]">{product.name}</p>
-                              <p className="text-[11px] text-[#9a9a9a]">
+                              <p className="text-[11px] text-[#52525b]">
                                 {product.sku} · Stock {product.stock} · Cost {product.costPrice}
                               </p>
                             </div>
@@ -396,7 +396,7 @@ export function VendorDirectBillDialog({
 
                   <div className="space-y-2">
                     {items.length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-black/[0.1] bg-white px-4 py-8 text-center text-[12px] text-[#9a9a9a]">
+                      <div className="rounded-xl border border-dashed border-black/[0.1] bg-white px-4 py-8 text-center text-[12px] text-[#52525b]">
                         Add products purchased from this vendor
                       </div>
                     ) : (
@@ -408,19 +408,19 @@ export function VendorDirectBillDialog({
                           <div className="mb-2 flex items-start justify-between gap-2">
                             <div className="min-w-0">
                               <p className="truncate text-[13px] font-bold text-[#111118]">{row.name}</p>
-                              <p className="text-[11px] text-[#9a9a9a]">{row.sku}</p>
+                              <p className="text-[11px] text-[#52525b]">{row.sku}</p>
                             </div>
                             <button
                               type="button"
                               onClick={() => removeLine(row.productId)}
-                              className="text-[#9a9a9a] hover:text-red-500"
+                              className="text-[#52525b] hover:text-red-500"
                             >
                               <X className="h-4 w-4" />
                             </button>
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                             <label className="space-y-1">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a]">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-[#52525b]">
                                 Qty
                               </span>
                               <Input
@@ -436,7 +436,7 @@ export function VendorDirectBillDialog({
                               />
                             </label>
                             <label className="space-y-1">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a]">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-[#52525b]">
                                 Unit cost
                               </span>
                               <Input
@@ -464,19 +464,19 @@ export function VendorDirectBillDialog({
 
                 <div className="space-y-4 bg-white p-4 sm:p-5">
                   <div className="rounded-2xl border border-black/[0.07] bg-[#FAF8F2] p-4">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a9a9a]">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525b]">
                       Bill total
                     </p>
                     <p className="mt-1 text-3xl font-black tabular-nums text-[#111118]">
                       {formatInr(subtotal)}
                     </p>
-                    <p className="mt-1 text-[11px] text-[#6b6b6b]">
+                    <p className="mt-1 text-[11px] text-[#3f3f46]">
                       {items.length} line{items.length === 1 ? "" : "s"} · stock increases on save
                     </p>
                   </div>
 
                   <label className="block space-y-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a9a9a]">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525b]">
                       Notes (optional)
                     </span>
                     <textarea
@@ -489,7 +489,7 @@ export function VendorDirectBillDialog({
                   </label>
 
                   <label className="block space-y-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a9a9a]">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525b]">
                       Payment (optional)
                     </span>
                     <Input
@@ -508,7 +508,7 @@ export function VendorDirectBillDialog({
                       "flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-[13px] font-bold transition-all",
                       canSubmit && !submitting
                         ? "bg-gradient-to-r from-[#D4AF37] to-[#C9A227] text-[#111118] shadow-lg shadow-[#D4AF37]/20"
-                        : "bg-black/[0.06] text-[#9a9a9a]",
+                        : "bg-black/[0.06] text-[#52525b]",
                     )}
                   >
                     {submitting ? "Saving…" : `Save vendor bill · ${formatInr(subtotal)}`}

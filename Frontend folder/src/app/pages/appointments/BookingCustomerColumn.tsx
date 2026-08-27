@@ -137,7 +137,7 @@ export function BookingCustomerColumn({
                   className="space-y-2.5"
                 >
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
+                    <User className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#52525b]" />
                     <Input
                       placeholder="Full name *"
                       value={newCustName}
@@ -157,14 +157,14 @@ export function BookingCustomerColumn({
                     />
                   </div>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
+                    <Mail className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#52525b]" />
                     <Input
                       placeholder="Email (optional)"
                       className="h-10 rounded-xl border-black/[0.08] bg-white pl-9 text-[12.5px] focus:border-[#D4AF37]/40"
                     />
                   </div>
                   <div>
-                    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9a9a9a]">
+                    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#52525b]">
                       Gender
                     </p>
                     <div className="grid grid-cols-3 gap-1.5">
@@ -181,7 +181,7 @@ export function BookingCustomerColumn({
                             "rounded-xl border py-2 text-[11px] font-semibold transition-all",
                             newCustGender === g
                               ? "border-[#111118] bg-[#111118] text-[#D4AF37]"
-                              : "border-black/[0.08] bg-white text-[#9a9a9a] hover:border-[#D4AF37]/30",
+                              : "border-black/[0.08] bg-white text-[#52525b] hover:border-[#D4AF37]/30",
                           )}
                         >
                           {g}
@@ -206,7 +206,7 @@ export function BookingCustomerColumn({
                   exit={{ opacity: 0, y: -4 }}
                 >
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
+                    <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#52525b]" />
                     <Input
                       placeholder="Name or phone…"
                       value={customerSearch}
@@ -227,7 +227,7 @@ export function BookingCustomerColumn({
                       >
                         {filteredCustomers.length === 0 ? (
                           <div className="px-4 py-4 text-center">
-                            <p className="mb-2 text-[11.5px] text-[#9a9a9a]">No match found</p>
+                            <p className="mb-2 text-[11.5px] text-[#52525b]">No match found</p>
                             <button
                               type="button"
                               onClick={() => {
@@ -262,7 +262,7 @@ export function BookingCustomerColumn({
                                 <p className="truncate text-[12px] font-semibold text-[#111118]">
                                   {c.name}
                                 </p>
-                                <p className="text-[10.5px] text-[#9a9a9a]">{c.phone}</p>
+                                <p className="text-[10.5px] text-[#52525b]">{c.phone}</p>
                               </div>
                               <Badge
                                 className={cn("border px-1.5 text-[8px] font-bold", tierBadge[c.tier])}
@@ -298,7 +298,7 @@ export function BookingCustomerColumn({
                             {selectedCustomer.tier}
                           </Badge>
                         </div>
-                        <span className="mt-0.5 flex items-center gap-1 text-[10.5px] text-[#6b6b6b]">
+                        <span className="mt-0.5 flex items-center gap-1 text-[10.5px] text-[#3f3f46]">
                           <Phone className="h-3 w-3" />
                           {selectedCustomer.phone}
                         </span>
@@ -306,7 +306,7 @@ export function BookingCustomerColumn({
                       <button
                         type="button"
                         onClick={() => setSelectedCustomer(null)}
-                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-black/[0.1] text-[#9a9a9a] hover:text-[#111118]"
+                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-black/[0.1] text-[#52525b] hover:text-[#111118]"
                       >
                         <Check className="h-3 w-3 text-[#D4AF37]" strokeWidth={2.5} />
                       </button>
@@ -350,7 +350,7 @@ export function BookingCustomerColumn({
                         "flex h-11 flex-1 items-center justify-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold transition-all",
                         isActive
                           ? "border border-[#D4AF37]/35 bg-[#D4AF37]/15 text-[#9a7d20]"
-                          : "border border-transparent text-[#6b6b6b] hover:bg-black/[0.04]",
+                          : "border border-transparent text-[#3f3f46] hover:bg-black/[0.04]",
                       )}
                     >
                       <Icon className="h-4 w-4" />
@@ -370,7 +370,7 @@ export function BookingCustomerColumn({
                   exit={{ opacity: 0, y: -4 }}
                 >
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
+                    <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#52525b]" />
                     <Input
                       placeholder="Search by name or phone…"
                       value={walkInSearch}
@@ -391,7 +391,7 @@ export function BookingCustomerColumn({
                       >
                         {filteredWalkIn.length === 0 ? (
                           <div className="px-4 py-4 text-center">
-                            <p className="mb-2 text-[11.5px] text-[#9a9a9a]">No match found</p>
+                            <p className="mb-2 text-[11.5px] text-[#52525b]">No match found</p>
                             <button
                               type="button"
                               onClick={() => {
@@ -425,7 +425,7 @@ export function BookingCustomerColumn({
                                 <p className="truncate text-[12px] font-semibold text-[#111118]">
                                   {c.name}
                                 </p>
-                                <p className="text-[10.5px] text-[#9a9a9a]">{c.phone}</p>
+                                <p className="text-[10.5px] text-[#52525b]">{c.phone}</p>
                               </div>
                               <Badge
                                 className={cn("border px-1.5 text-[8px] font-bold", tierBadge[c.tier])}
@@ -451,7 +451,7 @@ export function BookingCustomerColumn({
                         <p className="text-[13px] font-bold text-[#111118]">
                           {selectedCustomer.name}
                         </p>
-                        <span className="mt-0.5 flex items-center gap-1 text-[10.5px] text-[#6b6b6b]">
+                        <span className="mt-0.5 flex items-center gap-1 text-[10.5px] text-[#3f3f46]">
                           <Phone className="h-3 w-3" />
                           {selectedCustomer.phone}
                         </span>
@@ -469,7 +469,7 @@ export function BookingCustomerColumn({
                   className="space-y-2.5"
                 >
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
+                    <User className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#52525b]" />
                     <Input
                       placeholder="Full name *"
                       value={walkInName}
@@ -489,7 +489,7 @@ export function BookingCustomerColumn({
                     />
                   </div>
                   <div>
-                    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9a9a9a]">
+                    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#52525b]">
                       Gender
                     </p>
                     <div className="grid grid-cols-3 gap-1.5">
@@ -506,7 +506,7 @@ export function BookingCustomerColumn({
                             "rounded-xl border py-2 text-[11px] font-semibold transition-all",
                             walkInGender === g
                               ? "border-[#111118] bg-[#111118] text-[#D4AF37]"
-                              : "border-black/[0.08] bg-white text-[#9a9a9a] hover:border-[#D4AF37]/30",
+                              : "border-black/[0.08] bg-white text-[#52525b] hover:border-[#D4AF37]/30",
                           )}
                         >
                           {g}
@@ -524,7 +524,7 @@ export function BookingCustomerColumn({
           <Label>Slot Details</Label>
           <div className="space-y-2">
             <div className="relative">
-              <Calendar className="pointer-events-none absolute left-3 top-1/2 z-10 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
+              <Calendar className="pointer-events-none absolute left-3 top-1/2 z-10 h-3.5 w-3.5 -translate-y-1/2 text-[#52525b]" />
               <Input
                 type="date"
                 value={date}
@@ -545,14 +545,14 @@ export function BookingCustomerColumn({
                 className="h-10 rounded-xl border-black/[0.08] bg-white pl-9 text-[12.5px] focus:border-[#D4AF37]/40"
               />
             </div>
-            <p className="text-[10px] text-[#9a9a9a]">
+            <p className="text-[10px] text-[#52525b]">
               {slotCustomerKind === "new"
                 ? "Today and upcoming dates only — previous dates not allowed"
                 : `Past dates: last ${APPOINTMENT_PAST_DAYS_LIMIT} days only · Future: any day`}
             </p>
             <div className="grid grid-cols-2 gap-2">
               <div className="relative">
-                <Clock className="pointer-events-none absolute left-3 top-1/2 z-10 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
+                <Clock className="pointer-events-none absolute left-3 top-1/2 z-10 h-3.5 w-3.5 -translate-y-1/2 text-[#52525b]" />
                 <Input
                   type="time"
                   value={time}
@@ -561,7 +561,7 @@ export function BookingCustomerColumn({
                 />
               </div>
               <div className="relative">
-                <Clock className="pointer-events-none absolute left-3 top-1/2 z-10 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
+                <Clock className="pointer-events-none absolute left-3 top-1/2 z-10 h-3.5 w-3.5 -translate-y-1/2 text-[#52525b]" />
                 <Input
                   value={duration}
                   onChange={(e) => setDuration(e.target.value)}
@@ -575,7 +575,7 @@ export function BookingCustomerColumn({
 
         <div>
           <div className="mb-2 flex items-center gap-1.5">
-            <StickyNote className="h-3 w-3 text-[#9a9a9a]" />
+            <StickyNote className="h-3 w-3 text-[#52525b]" />
             <Label>Notes (Optional)</Label>
           </div>
           <textarea

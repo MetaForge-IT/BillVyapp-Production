@@ -1,7 +1,7 @@
 import type { Invoice, InvoiceLineItem, Payment, Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma";
 import type { AuthContext } from "../auth/auth.types";
-import type { CheckoutInput, CollectPaymentInput, ConfirmOnlyInput, ListBillingQuery, RequestRefundInput } from "./billing.validators";
+import type { CheckoutInput, CollectPaymentInput, ConfirmOnlyInput, InvoicesSummaryQuery, ListBillingQuery, RequestRefundInput } from "./billing.validators";
 import { MAX_PAGE_LIMIT, toPaginatedResult } from "../../utils/pagination";
 import {
   APPOINTMENT_STATUS,
@@ -12,7 +12,6 @@ import {
 } from "./billing.constants";
 import { AppError } from "../../utils/errors";
 import {
-  resolveKpiSalonIds,
   resolveListSalonIds,
   salonIdFilter,
 } from "../../utils/salonScope";
@@ -24,7 +23,6 @@ import {
   formatWallClockTime12h,
   istCalendarDate,
   istDateKey,
-  istDayRange,
   istWallClockAsUtcTime,
   resolveDateInput,
 } from "../../utils/ist";
@@ -814,7 +812,7 @@ async function recordCouponRedemption(
 
 function applyListInvoiceDateFilter(
   where: Prisma.InvoiceWhereInput,
-  query: ListBillingQuery,
+  query: Pick<ListBillingQuery, "date" | "dateFrom" | "dateTo">,
 ): void {
   if (query.date) {
     const day = dateKeyToUtcDate(query.date);
@@ -1282,39 +1280,113 @@ export class BillingRepository {
     return toPaginatedResult(items, total, page, limit);
   }
 
-  async getInvoicesSummary(auth: AuthContext) {
-    const salonIds = await resolveKpiSalonIds(auth);
+  async getInvoicesSummary(auth: AuthContext, query: InvoicesSummaryQuery = {}) {
+    const salonIds = await resolveListSalonIds(auth, query.salonId);
     const salonWhere = salonIdFilter(salonIds);
 
-    const baseWhere: Prisma.InvoiceWhereInput = {
+    const periodWhere: Prisma.InvoiceWhereInput = {
       ...salonWhere,
       voidedAt: null,
       status: { in: ACTIVE_SALE_STATUSES },
     };
+    applyListInvoiceDateFilter(periodWhere, query);
 
-    const todayRange = istDayRange();
+    const todayKey = istDateKey();
+    const todayWhere: Prisma.InvoiceWhereInput = {
+      ...salonWhere,
+      voidedAt: null,
+      status: { in: ACTIVE_SALE_STATUSES },
+    };
+    applyListInvoiceDateFilter(todayWhere, { date: todayKey });
 
-    const [allTime, todayPayments] = await Promise.all([
+    const chartFrom =
+      query.date ??
+      query.dateFrom ??
+      addDaysToDateKey(todayKey, -29);
+    const chartTo = query.date ?? query.dateTo ?? todayKey;
+
+    const [periodAgg, todayAgg, dailyRows, methodRows] = await Promise.all([
       prisma.invoice.aggregate({
-        where: baseWhere,
+        where: periodWhere,
         _sum: { totalAmount: true },
         _count: { id: true },
       }),
-      prisma.payment.aggregate({
+      prisma.invoice.aggregate({
+        where: todayWhere,
+        _sum: { totalAmount: true },
+        _count: { id: true },
+      }),
+      prisma.invoice.groupBy({
+        by: ["invoiceDate"],
         where: {
-          paidAt: { gte: todayRange.gte, lt: todayRange.lt },
-          invoice: { ...salonWhere, voidedAt: null },
+          ...salonWhere,
+          voidedAt: null,
+          status: { in: ACTIVE_SALE_STATUSES },
+          invoiceDate: {
+            gte: dateKeyToUtcDate(chartFrom),
+            lt: dateKeyToUtcDate(addDaysToDateKey(chartTo, 1)),
+          },
+        },
+        _sum: { totalAmount: true },
+        _count: { id: true },
+        orderBy: { invoiceDate: "asc" },
+      }),
+      prisma.payment.groupBy({
+        by: ["paymentMethod"],
+        where: {
+          invoice: periodWhere,
         },
         _sum: { amount: true },
+        _count: { id: true },
       }),
     ]);
 
-    const totalRevenue = Number(allTime._sum.totalAmount ?? 0);
-    const todayRevenue = Math.round(Number(todayPayments._sum.amount ?? 0));
-    const totalReceipts = allTime._count.id;
+    const totalRevenue = Math.round(Number(periodAgg._sum.totalAmount ?? 0));
+    const todayRevenue = Math.round(Number(todayAgg._sum.totalAmount ?? 0));
+    const totalReceipts = periodAgg._count.id;
     const avgBill = totalReceipts > 0 ? Math.round(totalRevenue / totalReceipts) : 0;
 
-    return { totalRevenue, todayRevenue, totalReceipts, avgBill };
+    const dailyMap = new Map<string, { revenue: number; receipts: number }>();
+    for (const row of dailyRows) {
+      const key = formatDbDateKey(row.invoiceDate);
+      dailyMap.set(key, {
+        revenue: Math.round(Number(row._sum.totalAmount ?? 0)),
+        receipts: row._count.id,
+      });
+    }
+
+    const dailyTrend: Array<{ date: string; revenue: number; receipts: number }> = [];
+    let cursor = chartFrom;
+    // Safety: never expand more than 366 days for the chart series.
+    for (let i = 0; i < 366; i++) {
+      const hit = dailyMap.get(cursor);
+      dailyTrend.push({
+        date: cursor,
+        revenue: hit?.revenue ?? 0,
+        receipts: hit?.receipts ?? 0,
+      });
+      if (cursor === chartTo) break;
+      cursor = addDaysToDateKey(cursor, 1);
+    }
+
+    const byPaymentMethod = methodRows
+      .map((row) => ({
+        method: row.paymentMethod,
+        revenue: Math.round(Number(row._sum.amount ?? 0)),
+        count: row._count.id,
+      }))
+      .sort((a, b) => b.revenue - a.revenue);
+
+    return {
+      totalRevenue,
+      todayRevenue,
+      totalReceipts,
+      avgBill,
+      dateFrom: query.date ?? query.dateFrom ?? null,
+      dateTo: query.date ?? query.dateTo ?? null,
+      dailyTrend,
+      byPaymentMethod,
+    };
   }
 
   async listRefunds(auth: AuthContext) {

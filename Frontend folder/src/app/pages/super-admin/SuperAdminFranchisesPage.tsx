@@ -86,13 +86,13 @@ export function SuperAdminFranchisesPage() {
       <div>
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D4AF37]">Platform</p>
         <h1 className="text-2xl font-bold text-[#111118]">Franchises</h1>
-        <p className="text-sm text-[#6b6b6b]">
+        <p className="text-sm text-[#3f3f46]">
           Create a brand and its franchise admin together. That admin then adds shops and managers.
         </p>
       </div>
 
       <div className="rounded-2xl border border-black/[0.07] bg-white p-4 shadow-sm">
-        <p className="mb-3 text-[12px] font-bold uppercase tracking-wider text-[#6b6b6b]">
+        <p className="mb-3 text-[12px] font-bold uppercase tracking-wider text-[#3f3f46]">
           New franchise + admin
         </p>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -137,7 +137,7 @@ export function SuperAdminFranchisesPage() {
             <Plus className="h-4 w-4" /> {creating ? "Creating…" : "Create franchise + admin"}
           </button>
         </div>
-        <p className="mt-3 text-[11px] text-[#9a9a9a]">
+        <p className="mt-3 text-[11px] text-[#52525b]">
           No shop is created here. After login, the admin uses their dashboard to add shops (empty
           service menu) and managers for each shop.
         </p>
@@ -146,7 +146,7 @@ export function SuperAdminFranchisesPage() {
       <div className="overflow-hidden rounded-2xl border border-black/[0.07] bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-black/[0.06] bg-[#FAF8F2] text-left text-[#6b6b6b]">
+            <tr className="border-b border-black/[0.06] bg-[#FAF8F2] text-left text-[#3f3f46]">
               <th className="px-4 py-3 font-semibold">Franchise</th>
               <th className="px-4 py-3 font-semibold">Shops</th>
               <th className="px-4 py-3 font-semibold">Admins</th>
@@ -156,14 +156,14 @@ export function SuperAdminFranchisesPage() {
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={4} className="px-4 py-10 text-center text-[#9a9a9a]">
+                <td colSpan={4} className="px-4 py-10 text-center text-[#52525b]">
                   Loading…
                 </td>
               </tr>
             )}
             {!loading && rows.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-10 text-center text-[#9a9a9a]">
+                <td colSpan={4} className="px-4 py-10 text-center text-[#52525b]">
                   No franchises yet
                 </td>
               </tr>
@@ -178,18 +178,18 @@ export function SuperAdminFranchisesPage() {
                     <Building2 className="h-4 w-4 text-[#D4AF37]" />
                     {f.name}
                   </Link>
-                  <p className="pl-6 text-[11px] text-[#9a9a9a]">{f.slug}</p>
+                  <p className="pl-6 text-[11px] text-[#52525b]">{f.slug}</p>
                 </td>
                 <td className="px-4 py-3 font-medium">{f.shopCount}</td>
                 <td className="px-4 py-3">
                   {f.admins.length === 0 ? (
-                    <span className="text-[#9a9a9a]">—</span>
+                    <span className="text-[#52525b]">—</span>
                   ) : (
                     <div className="space-y-0.5">
                       {f.admins.map((a) => (
                         <p key={a.id} className="text-[12px]">
                           {a.fullName}{" "}
-                          <span className="text-[#9a9a9a]">· {a.email}</span>
+                          <span className="text-[#52525b]">· {a.email}</span>
                         </p>
                       ))}
                     </div>

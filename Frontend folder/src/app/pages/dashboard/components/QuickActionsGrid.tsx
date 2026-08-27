@@ -15,7 +15,7 @@ export function QuickActionsGrid() {
   return (
     <section aria-label="Quick actions">
       <SectionLabel>Quick Actions</SectionLabel>
-      <div className="flex gap-3 flex-wrap lg:flex-nowrap">
+      <div className="dashboard-quick-actions">
         {actions.map((action, i) => (
           <motion.button
             key={action.label}
@@ -30,17 +30,19 @@ export function QuickActionsGrid() {
               const [pathname, search] = action.href.split("?");
               navigate({ pathname, search: search ? `?${search}` : undefined });
             }}
-            className="group flex flex-1 min-w-[140px] items-center gap-3 rounded-2xl bg-white border border-black/[0.07] px-4 py-3.5 text-left shadow-[0_1px_8px_rgba(17,17,24,0.05)] hover:border-[#D4AF37]/35 hover:shadow-[0_4px_16px_rgba(17,17,24,0.08)] transition-all duration-200"
+            className="group flex min-w-0 items-center gap-2.5 rounded-2xl border border-black/[0.07] bg-white px-3 py-3 text-left shadow-[0_1px_8px_rgba(17,17,24,0.05)] transition-all duration-200 hover:border-[#D4AF37]/35 hover:shadow-[0_4px_16px_rgba(17,17,24,0.08)] sm:gap-3 sm:px-4 sm:py-3.5 lg:flex-1"
           >
-            {/* Icon */}
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#D4AF37]/08 border border-[#D4AF37]/15 group-hover:bg-[#D4AF37]/15 group-hover:border-[#D4AF37]/30 transition-all duration-200">
-              <action.icon className="h-[1.05rem] w-[1.05rem] text-[#9a9a9a] group-hover:text-[#D4AF37] transition-colors duration-200" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#D4AF37]/15 bg-[#D4AF37]/08 transition-all duration-200 group-hover:border-[#D4AF37]/30 group-hover:bg-[#D4AF37]/15">
+              <action.icon className="h-[1.05rem] w-[1.05rem] text-[#52525b] transition-colors duration-200 group-hover:text-[#D4AF37]" />
             </div>
 
-            {/* Label + description */}
             <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-semibold text-[#111118] leading-tight truncate">{action.label}</p>
-              <p className="text-[11px] text-[#9a9a9a] mt-0.5 truncate leading-tight">{action.description}</p>
+              <p className="truncate text-[12px] font-semibold leading-tight text-[#111118] sm:text-[13px]">
+                {action.label}
+              </p>
+              <p className="mt-0.5 truncate text-[10px] leading-tight text-[#52525b] sm:text-[11px]">
+                {action.description}
+              </p>
             </div>
           </motion.button>
         ))}

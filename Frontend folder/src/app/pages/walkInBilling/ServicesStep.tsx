@@ -53,14 +53,14 @@ export function ServicesStep({
       />
       <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-y-contain px-3 py-3 sm:gap-3 sm:px-4 md:px-5">
         {catalogLoading ? (
-          <div className="flex items-center justify-center gap-2 py-6 text-[12px] text-[#9a9a9a]">
+          <div className="flex items-center justify-center gap-2 py-6 text-[12px] text-[#52525b]">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading catalog…
           </div>
         ) : (
           <div className="flex shrink-0 flex-col gap-2 sm:gap-2.5">
             {basicByGroup.map(({ group, picks }: { group: BasicServiceGroup; picks: BasicServicePick[] }) => (
               <div key={group} className="w-full shrink-0">
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#52525b]">
                   {group}
                 </p>
                 {/* Always 6 equal tiles in one row — scales to phone / tablet / desktop */}
@@ -98,12 +98,12 @@ export function ServicesStep({
                             {pick.label}
                           </p>
                           {matched ? (
-                            <p className="w-full truncate text-[7px] font-bold leading-tight text-[#6b6b6b] sm:text-[8px] md:text-[9px]">
+                            <p className="w-full truncate text-[7px] font-bold leading-tight text-[#3f3f46] sm:text-[8px] md:text-[9px]">
                               ₹{matched.price.toLocaleString("en-IN")}
-                              <span className="ml-0.5 font-normal text-[#9a9a9a] sm:ml-1">{matched.duration}m</span>
+                              <span className="ml-0.5 font-normal text-[#52525b] sm:ml-1">{matched.duration}m</span>
                             </p>
                           ) : (
-                            <p className="text-[7px] text-[#9a9a9a] sm:text-[8px]">N/A</p>
+                            <p className="text-[7px] text-[#52525b] sm:text-[8px]">N/A</p>
                           )}
                         </div>
                       </button>
@@ -116,11 +116,11 @@ export function ServicesStep({
         )}
 
         <div className="relative shrink-0">
-          <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9a9a9a]">
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#52525b]">
             Search other services
           </p>
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#52525b]" />
             <Input
               value={serviceSearch}
               onChange={(e) => onServiceSearchChange(e.target.value)}
@@ -135,7 +135,7 @@ export function ServicesStep({
                 type="button"
                 aria-label="Clear search"
                 onClick={() => onServiceSearchChange("")}
-                className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-[#9a9a9a] transition-colors hover:bg-black/[0.05] hover:text-[#111118] sm:h-6 sm:w-6"
+                className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-[#52525b] transition-colors hover:bg-black/[0.05] hover:text-[#111118] sm:h-6 sm:w-6"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -150,7 +150,7 @@ export function ServicesStep({
                 className="absolute inset-x-0 top-full z-20 mt-1 max-h-40 space-y-1 overflow-y-auto rounded-xl border border-black/[0.07] bg-white p-2 shadow-lg sm:max-h-48"
               >
                 {searchResults.length === 0 ? (
-                  <p className="px-2 py-3 text-center text-[11px] text-[#9a9a9a]">No services found</p>
+                  <p className="px-2 py-3 text-center text-[11px] text-[#52525b]">No services found</p>
                 ) : (
                   searchResults.map((svc) => {
                     const qty = selectedQty(svc.id);
@@ -196,7 +196,7 @@ export function ServicesStep({
         {selectedServices.length > 0 && (
           <div className="shrink-0 rounded-xl border border-[#D4AF37]/25 bg-white p-2 sm:p-2.5">
             <div className="mb-1 flex items-center justify-between">
-              <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">
+              <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#52525b]">
                 Cart ({selectedServices.reduce((n, s) => n + s.qty, 0)})
               </p>
               <span className="text-[11px] font-bold text-[#111118]">

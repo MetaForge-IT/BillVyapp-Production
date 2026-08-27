@@ -32,6 +32,12 @@ export class MyFranchiseController {
     );
     res.json({ success: true, message: "Shop address updated", data });
   });
+
+  deleteShop = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const auth = (req as AuthenticatedRequest).auth;
+    const data = await myFranchiseService.deleteShop(auth, String(req.params.shopId));
+    res.json({ success: true, message: "Shop deleted", data });
+  });
 }
 
 export const myFranchiseController = new MyFranchiseController();

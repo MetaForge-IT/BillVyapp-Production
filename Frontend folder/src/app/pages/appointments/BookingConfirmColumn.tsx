@@ -83,7 +83,7 @@ export function BookingConfirmColumn({
               : "border-black/[0.07] bg-white",
           )}
         >
-          <p className="mb-3 flex items-center gap-1.5 text-[9.5px] font-bold uppercase tracking-[0.15em] text-[#9a9a9a]">
+          <p className="mb-3 flex items-center gap-1.5 text-[9.5px] font-bold uppercase tracking-[0.15em] text-[#52525b]">
             <User className="h-3 w-3 text-[#D4AF37]" /> Customer
           </p>
           {customerValid ? (
@@ -94,11 +94,11 @@ export function BookingConfirmColumn({
               <div>
                 <p className="text-[13px] font-bold text-[#111118]">{displayName}</p>
                 {displayPhone && (
-                  <p className="mt-0.5 text-[11px] text-[#9a9a9a]">{displayPhone}</p>
+                  <p className="mt-0.5 text-[11px] text-[#52525b]">{displayPhone}</p>
                 )}
               </div>
               <div className="ml-auto rounded-full border border-black/[0.06] bg-[#f4f2ed] px-2 py-1">
-                <p className="text-[10px] font-semibold text-[#9a9a9a]">{visitType}</p>
+                <p className="text-[10px] font-semibold text-[#52525b]">{visitType}</p>
               </div>
             </div>
           ) : (
@@ -107,7 +107,7 @@ export function BookingConfirmColumn({
         </div>
 
         <div className="rounded-2xl border border-black/[0.07] bg-white p-4">
-          <p className="mb-3 flex items-center gap-1.5 text-[9.5px] font-bold uppercase tracking-[0.15em] text-[#9a9a9a]">
+          <p className="mb-3 flex items-center gap-1.5 text-[9.5px] font-bold uppercase tracking-[0.15em] text-[#52525b]">
             <Calendar className="h-3 w-3 text-[#D4AF37]" /> Slot
           </p>
           {[
@@ -119,14 +119,14 @@ export function BookingConfirmColumn({
               key={label}
               className="flex items-center justify-between border-b border-black/[0.04] py-1.5 last:border-0"
             >
-              <span className="text-[10.5px] text-[#9a9a9a]">{label}</span>
+              <span className="text-[10.5px] text-[#52525b]">{label}</span>
               <span className="text-[11.5px] font-semibold text-[#111118]">{v}</span>
             </div>
           ))}
         </div>
 
         <div className="rounded-2xl border border-black/[0.07] bg-white p-4">
-          <p className="mb-3 flex items-center gap-1.5 text-[9.5px] font-bold uppercase tracking-[0.15em] text-[#9a9a9a]">
+          <p className="mb-3 flex items-center gap-1.5 text-[9.5px] font-bold uppercase tracking-[0.15em] text-[#52525b]">
             <Scissors className="h-3 w-3 text-[#D4AF37]" /> Selection ({totalSelectedCount})
           </p>
           {totalSelectedCount === 0 ? (
@@ -140,13 +140,13 @@ export function BookingConfirmColumn({
                   <div
                     className={cn(
                       "flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-gradient-to-br",
-                      s.tone ?? "from-[#9a9a9a] to-[#6b6b6b]",
+                      s.tone ?? "from-[#52525b] to-[#3f3f46]",
                     )}
                   >
                     <Scissors className="h-2.5 w-2.5 text-white/80" />
                   </div>
                   <span className="flex-1 truncate text-[11.5px] text-[#111118]">{s.name}</span>
-                  <span className="shrink-0 text-[10px] text-[#9a9a9a]">{s.duration}m</span>
+                  <span className="shrink-0 text-[10px] text-[#52525b]">{s.duration}m</span>
                   <span className="text-[11px] font-bold text-[#111118]">
                     ₹{s.price.toLocaleString("en-IN")}
                   </span>
@@ -163,7 +163,7 @@ export function BookingConfirmColumn({
                     <Sparkles className="h-2.5 w-2.5 text-white/80" />
                   </div>
                   <span className="flex-1 truncate text-[11.5px] text-[#111118]">{p.name}</span>
-                  <span className="shrink-0 text-[10px] text-[#9a9a9a]">{p.duration}m</span>
+                  <span className="shrink-0 text-[10px] text-[#52525b]">{p.duration}m</span>
                   <span className="text-[11px] font-bold text-[#111118]">
                     ₹{p.price.toLocaleString("en-IN")}
                   </span>
@@ -175,7 +175,7 @@ export function BookingConfirmColumn({
                     <Sparkles className="h-2.5 w-2.5 text-[#b8962e]" />
                   </div>
                   <span className="flex-1 truncate text-[11.5px] text-[#111118]">{p.name}</span>
-                  <span className="shrink-0 text-[10px] text-[#9a9a9a]">{p.category}</span>
+                  <span className="shrink-0 text-[10px] text-[#52525b]">{p.category}</span>
                   <span className="text-[11px] font-bold text-[#111118]">
                     ₹{p.price.toLocaleString("en-IN")}
                   </span>
@@ -183,7 +183,7 @@ export function BookingConfirmColumn({
               ))}
               {estimatedDuration > 0 && (
                 <div className="flex justify-between border-t border-black/[0.04] pt-2">
-                  <span className="text-[10px] text-[#9a9a9a]">Est. duration</span>
+                  <span className="text-[10px] text-[#52525b]">Est. duration</span>
                   <span className="flex items-center gap-1 text-[11px] font-bold text-[#111118]">
                     <Clock className="h-3 w-3 text-[#D4AF37]" /> ~{estimatedDuration} min
                   </span>
@@ -195,10 +195,10 @@ export function BookingConfirmColumn({
 
         {notes && (
           <div className="rounded-2xl border border-black/[0.07] bg-white p-4">
-            <p className="mb-2 flex items-center gap-1.5 text-[9.5px] font-bold uppercase tracking-[0.15em] text-[#9a9a9a]">
+            <p className="mb-2 flex items-center gap-1.5 text-[9.5px] font-bold uppercase tracking-[0.15em] text-[#52525b]">
               <StickyNote className="h-3 w-3 text-[#D4AF37]" /> Notes
             </p>
-            <p className="text-[12px] leading-relaxed text-[#6b6b6b]">{notes}</p>
+            <p className="text-[12px] leading-relaxed text-[#3f3f46]">{notes}</p>
           </div>
         )}
 
@@ -234,7 +234,7 @@ export function BookingConfirmColumn({
         )}
 
         {!canSave && (
-          <p className="-mt-2 text-center text-[11px] text-[#9a9a9a]">
+          <p className="-mt-2 text-center text-[11px] text-[#52525b]">
             {!customerValid
               ? "← Add a customer to continue"
               : "← Select at least one service"}
@@ -244,7 +244,7 @@ export function BookingConfirmColumn({
         <Button
           variant="outline"
           onClick={() => navigate(-1)}
-          className="h-10 w-full rounded-xl border-black/[0.1] text-[13px] font-medium text-[#9a9a9a]"
+          className="h-10 w-full rounded-xl border-black/[0.1] text-[13px] font-medium text-[#52525b]"
         >
           Cancel
         </Button>

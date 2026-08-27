@@ -8,6 +8,7 @@ import { accountingRepository } from "./accounting.repository";
 import type {
   CreateDayCloseInput,
   CreateExpenseInput,
+  ListExpensesQuery,
   UpdateExpenseInput,
   UpsertBudgetInput,
 } from "./accounting.validators";
@@ -16,8 +17,8 @@ const APPROVER_ROLES = new Set<string>(EXPENSE_DELETE_APPROVER_ROLES);
 const REQUESTOR_ROLES = new Set<string>(EXPENSE_DELETE_REQUESTOR_ROLES);
 
 export class AccountingService {
-  listExpenses(auth: AuthContext, filters: { from?: string; to?: string; category?: string }) {
-    return accountingRepository.listExpenses(auth.salonId, filters);
+  listExpenses(auth: AuthContext, filters: ListExpensesQuery) {
+    return accountingRepository.listExpenses(auth, filters);
   }
 
   createExpense(auth: AuthContext, input: CreateExpenseInput) {
@@ -73,8 +74,8 @@ export class AccountingService {
     return accountingRepository.createDayClose(auth, input);
   }
 
-  getOverview(auth: AuthContext, date?: string) {
-    return accountingRepository.getOverview(auth.salonId, date);
+  getOverview(auth: AuthContext, opts?: { date?: string; salonId?: string }) {
+    return accountingRepository.getOverview(auth, opts);
   }
 }
 

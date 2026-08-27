@@ -65,23 +65,32 @@ export function Pagination({
 
   const navBtnClass = (disabled: boolean) =>
     cn(
-      "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border text-[12px] font-semibold transition-all",
+      "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-[12px] font-semibold transition-all sm:h-8 sm:w-8",
       disabled
         ? "cursor-not-allowed border-[rgba(18,18,18,0.08)] bg-gray-100 text-gray-300"
         : "cursor-pointer border-[rgba(18,18,18,0.12)] bg-white text-[#121212] hover:border-[#D4AF37]/40 hover:bg-[#D4AF37]/5",
     );
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[rgba(18,18,18,0.08)] bg-[#FAF8F2]/40 px-3 py-3 sm:gap-4 sm:px-4">
-      <p className="text-[12px] font-medium text-[#6B6B6B]">
+    <div className="flex min-w-0 flex-col gap-2.5 border-t border-[rgba(18,18,18,0.08)] bg-[#FAF8F2]/40 px-2.5 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:px-4 sm:py-3">
+      <p className="min-w-0 truncate text-[11px] font-medium text-[#3f3f46] sm:text-[12px]">
         {totalRecords === 0
-          ? "Showing 0-0 of 0 records"
-          : `Showing ${start}-${end} of ${totalRecords} records`}
+          ? "Showing 0-0 of 0"
+          : (
+            <>
+              <span className="sm:hidden">
+                {start}-{end} / {totalRecords}
+              </span>
+              <span className="hidden sm:inline">
+                Showing {start}-{end} of {totalRecords} records
+              </span>
+            </>
+          )}
       </p>
 
-      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] font-medium text-[#6B6B6B]">Rows</span>
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 sm:justify-end sm:gap-3">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <span className="text-[11px] font-medium text-[#3f3f46]">Rows</span>
           <Select
             value={String(pageSize)}
             onValueChange={(value) => onPageSizeChange(Number(value))}
@@ -89,7 +98,7 @@ export function Pagination({
             <SelectTrigger
               size="sm"
               aria-label="Records per page"
-              className="h-8 min-w-[4.5rem] border-[rgba(18,18,18,0.12)] px-2.5 text-[12px] font-semibold shadow-none hover:border-[#D4AF37]/40"
+              className="h-9 min-w-[4.25rem] border-[rgba(18,18,18,0.12)] px-2 text-[12px] font-semibold shadow-none hover:border-[#D4AF37]/40 sm:h-8 sm:min-w-[4.5rem] sm:px-2.5"
             >
               <SelectValue />
             </SelectTrigger>
@@ -103,7 +112,7 @@ export function Pagination({
           </Select>
         </div>
 
-        <nav className="flex items-center gap-1" aria-label="Pagination">
+        <nav className="flex min-w-0 shrink-0 items-center gap-1" aria-label="Pagination">
           <button
             type="button"
             onClick={() => onPageChange(page - 1)}
@@ -111,15 +120,20 @@ export function Pagination({
             aria-label="Previous page"
             className={navBtnClass(isPrevDisabled)}
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-4 w-4 shrink-0" strokeWidth={2.25} />
           </button>
 
-          <div className="flex items-center gap-1">
+          {/* Phones: compact page indicator — keeps chevrons fully visible */}
+          <span className="flex h-9 min-w-[4.5rem] items-center justify-center rounded-xl border border-[rgba(18,18,18,0.12)] bg-white px-2 text-[11px] font-semibold tabular-nums text-[#121212] sm:hidden">
+            {page}/{totalPages}
+          </span>
+
+          <div className="hidden items-center gap-1 sm:flex">
             {pageItems.map((item, idx) =>
               item === "ellipsis" ? (
                 <span
                   key={`ellipsis-${idx}`}
-                  className="flex h-8 min-w-8 items-center justify-center px-1 text-[12px] font-semibold text-[#9a9a9a]"
+                  className="flex h-8 min-w-8 items-center justify-center px-1 text-[12px] font-semibold text-[#52525b]"
                   aria-hidden
                 >
                   …
@@ -151,7 +165,7 @@ export function Pagination({
             aria-label="Next page"
             className={navBtnClass(isNextDisabled)}
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} />
           </button>
         </nav>
       </div>

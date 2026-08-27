@@ -35,6 +35,7 @@ import { Badge } from "../components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Input } from "../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { Switch } from "../components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -111,6 +112,7 @@ export function Appointments() {
   }, []);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [showSearchFilters, setShowSearchFilters] = useState(false);
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterType, setFilterType] = useState(() => {
     if (typeof window === "undefined") return "all";
@@ -401,6 +403,12 @@ export function Appointments() {
       next.delete("appointment");
       return next;
     }, { replace: true });
+  };
+
+  const clearSearchFilters = () => {
+    setSearchQuery("");
+    setFilterStatus("all");
+    setFilterTypeAndUrl("all");
   };
 
   const clearAppointmentFocus = () => {
@@ -1223,32 +1231,36 @@ export function Appointments() {
             <Receipt className={cn("h-6 w-6 text-[#D4AF37]", billHandoffPending && "animate-pulse")} />
           </div>
           <p className="text-[14px] font-bold text-[#111118]">Opening checkout…</p>
-          <p className="text-[12px] text-[#9a9a9a]">Preparing walk-in bill</p>
+          <p className="text-[12px] text-[#52525b]">Preparing walk-in bill</p>
         </div>
       )}
 
       <div
         className={cn(
-          "flex h-[calc(100dvh-8rem)] min-h-0 flex-col gap-3 overflow-hidden transition-opacity duration-300 ease-out sm:gap-4",
+          "appointments-shell transition-opacity duration-300 ease-out",
           billHandoffActive
             ? "h-0 overflow-hidden opacity-0 pointer-events-none"
             : "opacity-100 delay-100",
         )}
       >
-      <div className="shrink-0 space-y-3 sm:space-y-4">
+      <div className="min-w-0 shrink-0 space-y-3 sm:space-y-4">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="whitespace-nowrap text-2xl sm:text-3xl font-bold bg-gradient-to-r from-[#1a1a1a] to-[#d4af37] bg-clip-text text-transparent">
+      <div className="flex min-w-0 items-center justify-between gap-2 sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-xl font-bold bg-gradient-to-r from-[#1a1a1a] to-[#d4af37] bg-clip-text text-transparent sm:text-3xl">
             Appointments
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm sm:text-base">Timeline · Calendar</p>
+          <p className="text-muted-foreground mt-0.5 text-xs sm:mt-1 sm:text-base">Timeline · Calendar</p>
         </div>
-        <div className="flex gap-2 flex-wrap shrink-0">
-          <Button size="lg" className="rounded-xl shadow-lg flex-1 sm:flex-none" onClick={() => navigate("/appointments/new")}>
-            <Plus className="h-5 w-5 mr-1" /> Create Appointment
-          </Button>
-        </div>
+        <Button
+          size="lg"
+          className="h-9 shrink-0 rounded-xl px-3 shadow-lg sm:h-11 sm:px-4"
+          onClick={() => navigate("/appointments/new")}
+        >
+          <Plus className="h-4 w-4 sm:mr-1 sm:h-5 sm:w-5" />
+          <span className="sm:hidden text-[12px] font-bold">New</span>
+          <span className="hidden sm:inline">Create Appointment</span>
+        </Button>
       </div>
 
       {/* Laptop/desktop only — tablets and phones prioritize working space. */}
@@ -1298,99 +1310,138 @@ export function Appointments() {
       </div>
 
       {/* Date nav + Search + Filters */}
-      <div className="shrink-0 rounded-2xl bg-white border border-[#D4AF37]/15 shadow-[0_2px_12px_rgba(212,175,55,0.06)] overflow-hidden">
+      <div className="min-w-0 shrink-0 overflow-hidden rounded-2xl border border-[#D4AF37]/15 bg-white shadow-[0_2px_12px_rgba(212,175,55,0.06)]">
         {/* Top row: date nav */}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 sm:px-5 sm:py-3.5 border-b border-gray-100">
-          <div className="flex flex-wrap items-center gap-2">
-            <button onClick={() => setViewDate(new Date(currentDate.getTime() - 86400000))}
-              className="h-8 w-8 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 flex items-center justify-center text-gray-500 hover:text-[#111118] transition-all">
+        <div className="flex min-w-0 items-center justify-between gap-2 border-b border-gray-100 px-2.5 py-2.5 sm:px-5 sm:py-3.5">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
+            <button type="button" onClick={() => setViewDate(new Date(currentDate.getTime() - 86400000))}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition-all hover:bg-gray-50 hover:text-[#111118]">
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <div className="flex items-center gap-2 px-4 py-1.5 rounded-xl bg-[#111118]">
-              <CalendarIcon className="h-3.5 w-3.5 text-[#D4AF37]" />
-              <span className="text-[13px] font-bold text-white">
+            <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#111118] px-2.5 py-1.5 sm:flex-none sm:gap-2 sm:px-4">
+              <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-[#D4AF37]" />
+              <span className="truncate text-[12px] font-bold text-white sm:text-[13px]">
                 {dateParam ? formatDate(currentDate) : "All dates"}
               </span>
             </div>
-            <button onClick={() => setViewDate(new Date(currentDate.getTime() + 86400000))}
-              className="h-8 w-8 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 flex items-center justify-center text-gray-500 hover:text-[#111118] transition-all">
+            <button type="button" onClick={() => setViewDate(new Date(currentDate.getTime() + 86400000))}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition-all hover:bg-gray-50 hover:text-[#111118]">
               <ChevronRight className="h-4 w-4" />
             </button>
-            <button onClick={() => setViewDate(new Date())}
-              className="h-8 px-4 rounded-xl border border-[#D4AF37]/30 bg-[#D4AF37]/08 text-[12px] font-bold text-[#9a7d20] hover:bg-[#D4AF37]/15 transition-all">
+            <button type="button" onClick={() => setViewDate(new Date())}
+              className="h-8 shrink-0 rounded-xl border border-[#D4AF37]/30 bg-[#D4AF37]/08 px-2.5 text-[11px] font-bold text-[#9a7d20] transition-all hover:bg-[#D4AF37]/15 sm:px-4 sm:text-[12px]">
               Today
             </button>
           </div>
         </div>
 
-        {/* Bottom row: search + filters */}
-        <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 px-3 py-3 sm:px-5">
-          {dateParam && (
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <span className="inline-flex items-center gap-2 rounded-xl border border-[#D4AF37]/35 bg-[#FFFBEB] px-3 py-1.5 text-[12px] font-semibold text-[#9a7d20]">
-                <CalendarIcon className="h-3.5 w-3.5" />
-                Showing {new Date(`${dateParam}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                <button type="button" onClick={clearDateFilter} className="text-[#9a9a9a] hover:text-[#111118]">
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </span>
+        {/* Bottom: search + filters (toggle on phones) */}
+        <div className="min-w-0 px-2.5 py-2.5 sm:px-5 sm:py-3">
+          {(dateParam || focusAppointmentId) && (
+            <div className="mb-2.5 flex min-w-0 flex-wrap items-center gap-2">
+              {dateParam && (
+                <span className="inline-flex max-w-full min-w-0 items-center gap-2 truncate rounded-xl border border-[#D4AF37]/35 bg-[#FFFBEB] px-3 py-1.5 text-[12px] font-semibold text-[#9a7d20]">
+                  <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">Showing {new Date(`${dateParam}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+                  <button type="button" onClick={clearDateFilter} className="shrink-0 text-[#52525b] hover:text-[#111118]">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+              )}
+              {focusAppointmentId && (
+                <span className="inline-flex items-center gap-2 rounded-xl border border-[#111118]/15 bg-[#111118] px-3 py-1.5 text-[12px] font-semibold text-[#D4AF37]">
+                  Focused booking
+                  <button type="button" onClick={clearAppointmentFocus} className="text-white/50 hover:text-white" aria-label="Clear focus">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+              )}
             </div>
           )}
-          {focusAppointmentId && (
-            <span className="inline-flex items-center gap-2 rounded-xl border border-[#111118]/15 bg-[#111118] px-3 py-1.5 text-[12px] font-semibold text-[#D4AF37]">
-              Focused booking
-              <button type="button" onClick={clearAppointmentFocus} className="text-white/50 hover:text-white" aria-label="Clear focus">
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </span>
-          )}
-          {/* Search */}
-          <div className="relative w-full sm:w-auto sm:flex-1 sm:max-w-xs">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
-            <input
-              placeholder="Search name or phone number"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="h-9 w-full pl-9 pr-4 rounded-xl border border-gray-200 text-[13px] bg-gray-50 focus:bg-white focus:outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/12 transition-all placeholder:text-gray-400"
-            />
+
+          <div className="flex items-center justify-between gap-3 md:hidden">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#D4AF37]/25 bg-[#D4AF37]/10">
+                <Filter className="h-4 w-4 text-[#D4AF37]" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[13px] font-bold text-[#111118]">Search &amp; filters</p>
+                <p className="text-[11px] text-[#52525b]">
+                  {showSearchFilters ? "Turn off to hide and reset" : "Turn on to search or filter"}
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <span className={`text-[11px] font-semibold ${showSearchFilters ? "text-[#9a7d20]" : "text-[#52525b]"}`}>
+                {showSearchFilters ? "On" : "Off"}
+              </span>
+              <Switch
+                checked={showSearchFilters}
+                onCheckedChange={(checked) => {
+                  setShowSearchFilters(checked);
+                  if (!checked) clearSearchFilters();
+                }}
+                className="data-[state=checked]:bg-[#D4AF37] data-[state=unchecked]:bg-[#e0dbd0]"
+                aria-label="Toggle search and filters"
+              />
+            </div>
           </div>
 
-          {/* Status filter — pill buttons */}
-          <div className="flex gap-1 p-1 rounded-xl bg-gray-100 border border-gray-200 overflow-x-auto table-scroll">
-            {([
-              { v: "all",         label: "All Status"  },
-              { v: "waiting",     label: "Waiting"     },
-              { v: "in-progress", label: "In Progress" },
-              { v: "completed",   label: "Completed"   },
-            ] as const).map(({ v, label }) => (
-              <button key={v} onClick={() => setFilterStatus(v)}
-                className={cn("h-7 px-3 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap",
-                  filterStatus === v ? "bg-[#111118] text-[#D4AF37] shadow-sm" : "text-gray-500 hover:text-[#111118]")}>
-                {label}
-              </button>
-            ))}
+          <div
+            className={cn(
+              "min-w-0 flex-col items-stretch gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3",
+              showSearchFilters ? "mt-3 flex md:mt-0" : "hidden md:flex",
+            )}
+          >
+            {/* Search */}
+            <div className="relative w-full min-w-0 sm:w-auto sm:max-w-xs sm:flex-1">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+              <input
+                placeholder="Search name or phone"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 pl-9 pr-4 text-[13px] transition-all placeholder:text-gray-400 focus:border-[#D4AF37] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/12"
+              />
+            </div>
+
+            {/* Status filter — wrap on phones, no sideways scroll */}
+            <div className="grid w-full min-w-0 grid-cols-2 gap-1 rounded-xl border border-gray-200 bg-gray-100 p-1 sm:flex sm:w-auto sm:overflow-visible">
+              {([
+                { v: "all",         label: "All", short: "All" },
+                { v: "waiting",     label: "Waiting", short: "Waiting" },
+                { v: "in-progress", label: "In Progress", short: "Active" },
+                { v: "completed",   label: "Completed", short: "Done" },
+              ] as const).map(({ v, label, short }) => (
+                <button key={v} type="button" onClick={() => setFilterStatus(v)}
+                  className={cn("h-8 rounded-lg px-2 text-[11px] font-bold transition-all sm:h-7 sm:px-3 sm:whitespace-nowrap",
+                    filterStatus === v ? "bg-[#111118] text-[#D4AF37] shadow-sm" : "text-gray-500 hover:text-[#111118]")}>
+                  <span className="sm:hidden">{short}</span>
+                  <span className="hidden sm:inline">{label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Type filter */}
+            <Select value={filterType} onValueChange={setFilterTypeAndUrl}>
+              <SelectTrigger className="h-9 w-full rounded-xl border-gray-200 bg-gray-50 text-[13px] font-medium focus:border-[#D4AF37] focus:ring-[#D4AF37]/12 sm:w-36">
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="appointment">Appointments</SelectItem>
+                <SelectItem value="walk-in">Walk-ins</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Result count */}
+            <span className="text-[11px] font-medium text-gray-400 sm:ml-auto">{filteredAppts.length} result{filteredAppts.length !== 1 ? "s" : ""}</span>
           </div>
-
-          {/* Type filter */}
-          <Select value={filterType} onValueChange={setFilterTypeAndUrl}>
-            <SelectTrigger className="h-9 w-36 rounded-xl border-gray-200 bg-gray-50 text-[13px] font-medium focus:border-[#D4AF37] focus:ring-[#D4AF37]/12">
-              <SelectValue placeholder="All Types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="appointment">Appointments</SelectItem>
-              <SelectItem value="walk-in">Walk-ins</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* Result count */}
-          <span className="text-[11px] text-gray-400 font-medium sm:ml-auto">{filteredAppts.length} result{filteredAppts.length !== 1 ? "s" : ""}</span>
         </div>
       </div>
       </div>
 
       {/* Main Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex min-h-0 min-w-0 max-w-full flex-1 flex-col gap-2.5 overflow-hidden sm:gap-3">
         <TabsList className={cn(SEGMENTED_PILL_LIST, "shrink-0")}>
           <TabsTrigger value="timeline" className={SEGMENTED_PILL_TRIGGER}>
             <List className="h-3.5 w-3.5" />
@@ -1403,14 +1454,14 @@ export function Appointments() {
         </TabsList>
 
         {/* Timeline tab — list scrolls, pagination pinned */}
-        <TabsContent value="timeline" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden data-[state=inactive]:hidden">
+        <TabsContent value="timeline" className="mt-0 flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden data-[state=inactive]:hidden">
 
           {filteredAppts.length === 0 && (
-            <Card className="shrink-0"><CardContent className="py-12 text-center text-muted-foreground">No appointments or walk-ins match your filters.</CardContent></Card>
+            <Card className="min-w-0 shrink-0"><CardContent className="py-12 text-center text-muted-foreground">No appointments or walk-ins match your filters.</CardContent></Card>
           )}
-          <Card className="flex min-h-0 flex-1 flex-col overflow-hidden shadow-lg">
-              <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
-                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <Card className="flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden shadow-lg">
+              <CardContent className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-0">
+                <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
                 {/* Tablet/phone: cards expose every field and action without a
                     horizontally scrolling seven-column table. */}
                 <div className="divide-y divide-black/[0.06] lg:hidden">
@@ -1428,7 +1479,7 @@ export function Appointments() {
                         id={`appt-card-${appointment.id}`}
                         key={appointment.id}
                         className={cn(
-                          "space-y-3 p-4 sm:p-5",
+                          "min-w-0 max-w-full space-y-2.5 p-3 sm:space-y-3 sm:p-5",
                           focusAppointmentId === appointment.id
                             ? "bg-[#FFFBEB] ring-2 ring-inset ring-[#D4AF37]/50"
                             : index % 2 === 0
@@ -1436,79 +1487,80 @@ export function Appointments() {
                               : "bg-[#FAFAFA]",
                         )}
                       >
-                        <div className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-3">
                           <button
                             type="button"
                             onClick={() => setCustomerInfoAppt(appointment)}
-                            className="group flex min-w-0 items-center gap-3 text-left"
+                            className="group flex min-w-0 flex-1 items-center gap-2.5 text-left sm:gap-3"
                           >
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#d4af37] to-[#c9a227] text-[12px] font-black text-[#111]">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#d4af37] to-[#c9a227] text-[11px] font-black text-[#111] sm:h-10 sm:w-10 sm:text-[12px]">
                               {appointment.customer.split(" ").map((name) => name[0]).join("").slice(0, 2)}
                             </div>
-                            <div className="min-w-0">
-                              <p className="truncate text-[15px] font-bold text-[#1a1a1a] group-hover:text-[#b8962e]">
+                            <div className="min-w-0 flex-1 overflow-hidden">
+                              <p className="truncate text-[14px] font-bold text-[#1a1a1a] group-hover:text-[#b8962e] sm:text-[15px]">
                                 {appointment.customer}
                               </p>
-                              <p className="mt-0.5 flex items-center gap-1.5 text-[12px] text-[#6b6b6b]">
-                                <Phone className="h-3.5 w-3.5 text-[#D4AF37]" />
-                                {appointment.phone}
+                              <p className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px] text-[#3f3f46] sm:text-[12px]">
+                                <Phone className="h-3.5 w-3.5 shrink-0 text-[#D4AF37]" />
+                                <span className="truncate">{appointment.phone}</span>
                               </p>
                             </div>
                           </button>
-                          <div className="flex shrink-0 flex-col items-end gap-1.5">
-                            <span className="rounded-lg bg-[#111118] px-2.5 py-1 font-mono text-[12px] font-bold text-white">
+                          <div className="flex shrink-0 flex-col items-end gap-1">
+                            <span className="rounded-lg bg-[#111118] px-2 py-1 font-mono text-[11px] font-bold text-white sm:px-2.5 sm:text-[12px]">
                               {appointment.time}
                             </span>
                             <span className={cn(
                               "rounded-full border px-2 py-0.5 text-[10px] font-bold capitalize",
                               appointment.type === "walk-in"
                                 ? "border-[#d4af37]/30 bg-[#f4f2ed] text-[#9a7a1e]"
-                                : "border-gray-200 bg-white text-[#6b6b6b]",
+                                : "border-gray-200 bg-white text-[#3f3f46]",
                             )}>
-                              {appointment.type}
+                              {appointment.type === "walk-in" ? "Walk-in" : "Appt"}
                             </span>
                           </div>
                         </div>
 
-                        <div className="rounded-xl border border-black/[0.06] bg-white/80 p-3">
-                          <div className="mb-2 flex items-center justify-between gap-3">
-                            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Services</span>
-                            <span className="flex items-center gap-1 text-[11px] font-semibold text-[#6b6b6b]">
+                        <div className="min-w-0 overflow-hidden rounded-xl border border-black/[0.06] bg-white/80 p-2.5 sm:p-3">
+                          <div className="mb-2 flex min-w-0 items-center justify-between gap-2">
+                            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#52525b]">Services</span>
+                            <span className="flex shrink-0 items-center gap-1 text-[11px] font-semibold text-[#3f3f46]">
                               <Clock className="h-3.5 w-3.5 text-[#D4AF37]" />
                               {appointment.duration} min
                             </span>
                           </div>
-                          <div className="flex flex-wrap gap-1.5">
+                          <div className="flex min-w-0 flex-wrap gap-1.5">
                             {services.length > 0 ? services.map((service, serviceIndex) => (
                               <span
                                 key={`${service}-${serviceIndex}`}
-                                className="rounded-lg border border-[#D4AF37]/20 bg-[#FFFBEB] px-2 py-1 text-[11px] font-semibold text-[#6f5815]"
+                                className="max-w-full truncate rounded-lg border border-[#D4AF37]/20 bg-[#FFFBEB] px-2 py-1 text-[11px] font-semibold text-[#6f5815]"
                               >
                                 {service}
                               </span>
                             )) : (
-                              <span className="text-[12px] text-[#9a9a9a]">No services</span>
+                              <span className="text-[12px] text-[#52525b]">No services</span>
                             )}
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
                           {notStarted && (
                             <>
-                              <span className="mr-auto text-[12px] font-semibold text-[#9a9a9a]">Waiting</span>
+                              <span className="mr-auto text-[12px] font-semibold text-[#52525b]">Waiting</span>
                               <button
                                 type="button"
                                 onClick={() => startAppointment(appointment.id)}
-                                className="flex h-10 items-center gap-1.5 rounded-xl bg-[#111] px-4 text-[12px] font-bold text-[#d4af37]"
+                                className="flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#111] px-3 text-[12px] font-bold text-[#d4af37] sm:flex-none sm:px-4"
                               >
                                 <PlayCircle className="h-4 w-4" /> Start
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setDeleteConfirm(appointment.id)}
-                                className="flex h-10 items-center gap-1.5 rounded-xl border border-gray-200 px-3 text-[12px] font-semibold text-[#6b6b6b]"
+                                className="flex h-10 items-center gap-1.5 rounded-xl border border-gray-200 px-3 text-[12px] font-semibold text-[#3f3f46]"
                               >
-                                <XCircle className="h-4 w-4" /> Cancel
+                                <XCircle className="h-4 w-4" />
+                                <span className="hidden min-[380px]:inline">Cancel</span>
                               </button>
                             </>
                           )}
@@ -1516,21 +1568,23 @@ export function Appointments() {
                             <>
                               <span className="mr-auto flex items-center gap-1.5 text-[12px] font-bold text-[#b8962e]">
                                 <span className="h-2 w-2 animate-pulse rounded-full bg-[#d4af37]" />
-                                In Progress
+                                <span className="hidden min-[360px]:inline">In Progress</span>
+                                <span className="min-[360px]:hidden">Active</span>
                               </span>
                               <button
                                 type="button"
                                 onClick={() => openBilling(appointment.id, appointment.customer, appointment.service)}
-                                className="flex h-10 items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#c9a227] px-4 text-[12px] font-bold text-[#111]"
+                                className="flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#c9a227] px-3 text-[12px] font-bold text-[#111] sm:flex-none sm:px-4"
                               >
                                 <Receipt className="h-4 w-4" /> Bill
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setDeleteConfirm(appointment.id)}
-                                className="flex h-10 items-center gap-1.5 rounded-xl border border-gray-200 px-3 text-[12px] font-semibold text-[#6b6b6b]"
+                                className="flex h-10 items-center gap-1.5 rounded-xl border border-gray-200 px-3 text-[12px] font-semibold text-[#3f3f46]"
                               >
-                                <XCircle className="h-4 w-4" /> Cancel
+                                <XCircle className="h-4 w-4" />
+                                <span className="hidden min-[380px]:inline">Cancel</span>
                               </button>
                             </>
                           )}
@@ -1566,13 +1620,13 @@ export function Appointments() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-[#FAF8F2]">
-                        <th className="text-left p-3 text-[11px] font-bold uppercase tracking-wider text-[#9a9a9a]">Time</th>
-                        <th className="text-left p-3 text-[11px] font-bold uppercase tracking-wider text-[#9a9a9a]">Customer</th>
-                        <th className="text-left p-3 text-[11px] font-bold uppercase tracking-wider text-[#9a9a9a]">Phone</th>
-                        <th className="text-left p-3 text-[11px] font-bold uppercase tracking-wider text-[#9a9a9a]">Services</th>
-                        <th className="text-left p-3 text-[11px] font-bold uppercase tracking-wider text-[#9a9a9a]">Duration</th>
-                        <th className="text-left p-3 text-[11px] font-bold uppercase tracking-wider text-[#9a9a9a]">Type</th>
-                        <th className="text-left p-3 text-[11px] font-bold uppercase tracking-wider text-[#9a9a9a]">Action</th>
+                        <th className="text-left p-3 text-[11px] font-bold uppercase tracking-wider text-[#52525b]">Time</th>
+                        <th className="text-left p-3 text-[11px] font-bold uppercase tracking-wider text-[#52525b]">Customer</th>
+                        <th className="text-left p-3 text-[11px] font-bold uppercase tracking-wider text-[#52525b]">Phone</th>
+                        <th className="text-left p-3 text-[11px] font-bold uppercase tracking-wider text-[#52525b]">Services</th>
+                        <th className="text-left p-3 text-[11px] font-bold uppercase tracking-wider text-[#52525b]">Duration</th>
+                        <th className="text-left p-3 text-[11px] font-bold uppercase tracking-wider text-[#52525b]">Type</th>
+                        <th className="text-left p-3 text-[11px] font-bold uppercase tracking-wider text-[#52525b]">Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1627,12 +1681,12 @@ export function Appointments() {
                             </td>
 
                             {/* Phone */}
-                            <td className="p-3 text-[12px] text-[#6b6b6b] whitespace-nowrap">{a.phone}</td>
+                            <td className="p-3 text-[12px] text-[#3f3f46] whitespace-nowrap">{a.phone}</td>
 
                             {/* Services — truncated text + popover on click */}
                             <td className="p-3" style={{ maxWidth: 220, minWidth: 140 }}>
                               {allServices.length === 0 ? (
-                                <span className="text-[12px] text-[#9a9a9a]">—</span>
+                                <span className="text-[12px] text-[#52525b]">—</span>
                               ) : (
                                 <div className="relative">
                                   {/* Collapsed view */}
@@ -1657,7 +1711,7 @@ export function Appointments() {
                                     <div className="relative z-10">
                                       <div className="absolute top-0 left-0 min-w-[200px] max-w-[280px] bg-white rounded-xl border border-gray-200 shadow-xl p-3 space-y-1.5" style={{ zIndex: 999 }}>
                                         <div className="flex items-center justify-between mb-1">
-                                          <p className="text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a]">All Services</p>
+                                          <p className="text-[10px] font-bold uppercase tracking-wider text-[#52525b]">All Services</p>
                                           <button
                                             type="button"
                                             onClick={() => setExpandedServices(prev => { const s = new Set(prev); s.delete(a.id); return s; })}
@@ -1680,14 +1734,14 @@ export function Appointments() {
                             </td>
 
                             {/* Duration */}
-                            <td className="p-3 text-[12px] text-[#6b6b6b] whitespace-nowrap">{a.duration} min</td>
+                            <td className="p-3 text-[12px] text-[#3f3f46] whitespace-nowrap">{a.duration} min</td>
 
                             {/* Type */}
                             <td className="p-3">
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize whitespace-nowrap ${
                                 a.type === "walk-in"
                                   ? "bg-[#f4f2ed] border-[#d4af37]/30 text-[#9a7a1e]"
-                                  : "bg-white border-gray-200 text-[#6b6b6b]"
+                                  : "bg-white border-gray-200 text-[#3f3f46]"
                               }`}>
                                 {a.type}
                               </span>
@@ -1697,7 +1751,7 @@ export function Appointments() {
                             <td className="p-3 whitespace-nowrap">
                               {notStarted && (
                                 <div className="flex items-center gap-2">
-                                  <span className="text-[11px] font-semibold text-[#9a9a9a] mr-1">Waiting</span>
+                                  <span className="text-[11px] font-semibold text-[#52525b] mr-1">Waiting</span>
                                   <button
                                     type="button"
                                     onClick={() => startAppointment(a.id)}
@@ -1708,7 +1762,7 @@ export function Appointments() {
                                   <button
                                     type="button"
                                     onClick={() => setDeleteConfirm(a.id)}
-                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-[11px] font-semibold text-[#9a9a9a] hover:border-gray-400 hover:text-[#111] transition-colors"
+                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-[11px] font-semibold text-[#52525b] hover:border-gray-400 hover:text-[#111] transition-colors"
                                   >
                                     <XCircle className="h-3.5 w-3.5" /> Cancel
                                   </button>
@@ -1730,7 +1784,7 @@ export function Appointments() {
                                   <button
                                     type="button"
                                     onClick={() => setDeleteConfirm(a.id)}
-                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-[11px] font-semibold text-[#9a9a9a] hover:border-gray-400 hover:text-[#111] transition-colors"
+                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-[11px] font-semibold text-[#52525b] hover:border-gray-400 hover:text-[#111] transition-colors"
                                   >
                                     <XCircle className="h-3.5 w-3.5" /> Cancel
                                   </button>
@@ -1789,45 +1843,45 @@ export function Appointments() {
         />
 
         {/* Calendar tab */}
-        <TabsContent value="calendar" className="mt-0 min-h-0 flex-1 overflow-y-auto overscroll-contain data-[state=inactive]:hidden">
+        <TabsContent value="calendar" className="mt-0 min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto overscroll-contain data-[state=inactive]:hidden">
           {/* Section header */}
-          <div className="relative overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-[0_2px_12px_rgba(17,17,24,0.04)]">
+          <div className="relative mb-3 min-w-0 max-w-full overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-[0_2px_12px_rgba(17,17,24,0.04)] sm:mb-4">
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#D4AF37]/60 to-transparent" />
-            <div className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/10">
+            <div className="flex min-w-0 flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5 sm:py-4">
+              <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/10 sm:h-10 sm:w-10">
                   <CalendarIcon className="h-4 w-4 text-[#D4AF37]" />
                 </div>
-                <div>
-                  <h2 className="text-[17px] font-bold text-[#111118]">Calendar</h2>
-                  <p className="text-[12px] text-[#9a9a9a]">Live appointments &amp; walk-ins by date</p>
+                <div className="min-w-0">
+                  <h2 className="truncate text-[15px] font-bold text-[#111118] sm:text-[17px]">Calendar</h2>
+                  <p className="truncate text-[11px] text-[#52525b] sm:text-[12px]">Live appointments &amp; walk-ins by date</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
                 <button
                   type="button"
                   onClick={prevMonth}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-black/[0.08] bg-white text-[#6b6b6b] transition-all hover:border-[#D4AF37]/30 hover:text-[#111118]"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-black/[0.08] bg-white text-[#3f3f46] transition-all hover:border-[#D4AF37]/30 hover:text-[#111118]"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
-                <div className="flex items-center gap-2 rounded-xl bg-[#111118] px-4 py-2">
-                  <CalendarIcon className="h-3.5 w-3.5 text-[#D4AF37]" />
-                  <span className="min-w-[130px] text-center text-[13px] font-bold text-white">
+                <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#111118] px-2.5 py-2 sm:flex-none sm:gap-2 sm:px-4">
+                  <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-[#D4AF37]" />
+                  <span className="truncate text-center text-[12px] font-bold text-white sm:min-w-[130px] sm:text-[13px]">
                     {monthNames[calMonth]} {calYear}
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={nextMonth}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-black/[0.08] bg-white text-[#6b6b6b] transition-all hover:border-[#D4AF37]/30 hover:text-[#111118]"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-black/[0.08] bg-white text-[#3f3f46] transition-all hover:border-[#D4AF37]/30 hover:text-[#111118]"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="ml-1 h-9 rounded-xl border-[#D4AF37]/30 text-[12px] font-semibold text-[#B8962E] hover:bg-[#D4AF37]/10"
+                  className="ml-0.5 h-9 shrink-0 rounded-xl border-[#D4AF37]/30 px-2.5 text-[11px] font-semibold text-[#B8962E] hover:bg-[#D4AF37]/10 sm:ml-1 sm:px-3 sm:text-[12px]"
                   onClick={() => {
                     const today = istDateParts();
                     setCalMonth(today.month);
@@ -1841,18 +1895,19 @@ export function Appointments() {
             </div>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+          <div className="grid min-w-0 max-w-full gap-3 sm:gap-4 lg:grid-cols-[1fr_320px]">
             {/* Calendar grid */}
-            <Card className="overflow-hidden rounded-2xl border border-black/[0.06] shadow-[0_2px_12px_rgba(17,17,24,0.04)]">
-              <CardContent className="p-4 sm:p-5">
-                <div className="mb-2 grid grid-cols-7 gap-1.5">
-                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(d => (
-                    <div key={d} className="py-2 text-center text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">
-                      {d}
+            <Card className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-black/[0.06] shadow-[0_2px_12px_rgba(17,17,24,0.04)]">
+              <CardContent className="min-w-0 p-2.5 sm:p-5">
+                <div className="mb-1.5 grid grid-cols-7 gap-0.5 sm:mb-2 sm:gap-1.5">
+                  {(["S", "M", "T", "W", "T", "F", "S"] as const).map((d, i) => (
+                    <div key={`${d}-${i}`} className="appointments-cal-weekday py-1.5 text-center font-bold uppercase text-[#52525b] sm:py-2">
+                      <span className="sm:hidden">{d}</span>
+                      <span className="hidden sm:inline">{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][i]}</span>
                     </div>
                   ))}
                 </div>
-                <div className="grid grid-cols-7 gap-1.5">
+                <div className="grid grid-cols-7 gap-0.5 sm:gap-1.5">
                   {calendarDays.map((day, i) => {
                     const today = istDateParts();
                     const isToday = day === today.day && calMonth === today.month && calYear === today.year;
@@ -1867,7 +1922,8 @@ export function Appointments() {
                         disabled={!valid}
                         onClick={() => valid && setSelectedCalDate(day)}
                         className={cn(
-                          "min-h-[88px] rounded-xl border p-2 text-left transition-all",
+                          "appointments-cal-cell text-left transition-all",
+                          "rounded-lg border sm:rounded-xl",
                           !valid && "pointer-events-none border-transparent bg-transparent opacity-0",
                           valid && !isSelected && !isToday && "border-black/[0.06] bg-white hover:border-[#D4AF37]/30 hover:bg-[#FFFBEB]",
                           isToday && !isSelected && "border-[#D4AF37]/40 bg-[#FFFBEB]",
@@ -1876,9 +1932,9 @@ export function Appointments() {
                       >
                         {valid && (
                           <>
-                            <div className="mb-1.5 flex items-center justify-between">
+                            <div className="mb-0.5 flex min-w-0 items-center justify-between gap-0.5 sm:mb-1.5">
                               <span className={cn(
-                                "flex h-7 w-7 items-center justify-center text-[12px] font-bold",
+                                "flex h-6 w-6 shrink-0 items-center justify-center text-[11px] font-bold sm:h-7 sm:w-7 sm:text-[12px]",
                                 isToday || isSelected
                                   ? "rounded-full bg-[#111118] text-[#D4AF37]"
                                   : "text-[#111118]",
@@ -1886,32 +1942,48 @@ export function Appointments() {
                                 {day}
                               </span>
                               {count > 0 && (
-                                <span className="rounded-full bg-[#111118] px-1.5 py-0.5 text-[9px] font-bold text-[#D4AF37]">
+                                <span className="max-w-full truncate rounded-full bg-[#111118] px-1 py-0.5 text-[8px] font-bold tabular-nums text-[#D4AF37] sm:px-1.5 sm:text-[9px]">
                                   {count}
                                 </span>
                               )}
                             </div>
-                            {count > 0 ? (
-                              <div className="space-y-1">
-                                <div className="flex gap-0.5">
-                                  {Array.from({ length: Math.min(count, 4) }).map((_, j) => (
-                                    <div
-                                      key={j}
-                                      className={cn(
-                                        "h-1 flex-1 rounded-full",
-                                        j < (dayStats?.appointments ?? 0) ? "bg-[#111118]" : "bg-[#D4AF37]/70",
-                                      )}
-                                    />
-                                  ))}
+                            <div className="appointments-cal-cell-detail">
+                              {count > 0 ? (
+                                <div className="min-w-0 space-y-1">
+                                  <div className="flex gap-0.5">
+                                    {Array.from({ length: Math.min(count, 4) }).map((_, j) => (
+                                      <div
+                                        key={j}
+                                        className={cn(
+                                          "h-1 min-w-0 flex-1 rounded-full",
+                                          j < (dayStats?.appointments ?? 0) ? "bg-[#111118]" : "bg-[#D4AF37]/70",
+                                        )}
+                                      />
+                                    ))}
+                                  </div>
+                                  <p className="truncate text-[9px] font-medium text-[#52525b]">
+                                    {(dayStats?.appointments ?? 0) > 0 && `${dayStats!.appointments} appt`}
+                                    {(dayStats?.appointments ?? 0) > 0 && (dayStats?.walkIns ?? 0) > 0 && " · "}
+                                    {(dayStats?.walkIns ?? 0) > 0 && `${dayStats!.walkIns} walk-in`}
+                                  </p>
                                 </div>
-                                <p className="text-[9px] font-medium text-[#9a9a9a]">
-                                  {(dayStats?.appointments ?? 0) > 0 && `${dayStats!.appointments} appt`}
-                                  {(dayStats?.appointments ?? 0) > 0 && (dayStats?.walkIns ?? 0) > 0 && " · "}
-                                  {(dayStats?.walkIns ?? 0) > 0 && `${dayStats!.walkIns} walk-in`}
-                                </p>
+                              ) : (
+                                <p className="text-[9px] text-[#d0d0d0]">—</p>
+                              )}
+                            </div>
+                            {/* Phone: tiny occupancy dots only */}
+                            {count > 0 && (
+                              <div className="mt-0.5 flex gap-0.5 sm:hidden">
+                                {Array.from({ length: Math.min(count, 3) }).map((_, j) => (
+                                  <div
+                                    key={j}
+                                    className={cn(
+                                      "h-1 min-w-0 flex-1 rounded-full",
+                                      j < (dayStats?.appointments ?? 0) ? "bg-[#111118]" : "bg-[#D4AF37]/70",
+                                    )}
+                                  />
+                                ))}
                               </div>
-                            ) : (
-                              <p className="text-[9px] text-[#d0d0d0]">—</p>
                             )}
                           </>
                         )}
@@ -1923,33 +1995,33 @@ export function Appointments() {
             </Card>
 
             {/* Selected day panel */}
-            <Card className="overflow-hidden rounded-2xl border border-black/[0.06] shadow-[0_2px_12px_rgba(17,17,24,0.04)]">
-              <CardHeader className="border-b border-black/[0.06] bg-[#faf9f7] px-5 py-4">
-                <CardTitle className="text-[13px] font-bold text-[#111118]">
+            <Card className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-black/[0.06] shadow-[0_2px_12px_rgba(17,17,24,0.04)]">
+              <CardHeader className="border-b border-black/[0.06] bg-[#faf9f7] px-3 py-3 sm:px-5 sm:py-4">
+                <CardTitle className="truncate text-[13px] font-bold text-[#111118]">
                   {selectedDayLabel ? selectedDayLabel : "Select a day"}
                 </CardTitle>
                 {selectedCalDate && (
-                  <p className="text-[11px] text-[#9a9a9a]">
+                  <p className="truncate text-[11px] text-[#52525b]">
                     {selectedDayApptCount > 0
                       ? `${selectedDayStats.appointmentsCount} appointment${selectedDayStats.appointmentsCount !== 1 ? "s" : ""} · ${selectedDayStats.walkInsCount} walk-in${selectedDayStats.walkInsCount !== 1 ? "s" : ""}`
                       : "No bookings on this day"}
                   </p>
                 )}
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className="min-w-0 p-0">
                 {!selectedCalDate ? (
-                  <div className="flex flex-col items-center justify-center gap-3 px-6 py-12 text-center">
+                  <div className="flex flex-col items-center justify-center gap-3 px-4 py-10 text-center sm:px-6 sm:py-12">
                     <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-dashed border-black/[0.1] bg-[#faf9f7]">
                       <CalendarIcon className="h-6 w-6 text-[#D4AF37]/40" />
                     </div>
-                    <p className="text-[13px] font-medium text-[#9a9a9a]">Click a date to view bookings</p>
+                    <p className="text-[13px] font-medium text-[#52525b]">Tap a date to view bookings</p>
                   </div>
                 ) : selectedDayApptCount === 0 ? (
-                  <div className="flex flex-col items-center justify-center gap-3 px-6 py-12 text-center">
+                  <div className="flex flex-col items-center justify-center gap-3 px-4 py-10 text-center sm:px-6 sm:py-12">
                     <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-black/[0.06] bg-[#faf9f7]">
-                      <CalendarIcon className="h-6 w-6 text-[#9a9a9a]/40" />
+                      <CalendarIcon className="h-6 w-6 text-[#52525b]/40" />
                     </div>
-                    <p className="text-[13px] font-medium text-[#9a9a9a]">No appointments or walk-ins this day</p>
+                    <p className="text-[13px] font-medium text-[#52525b]">No appointments or walk-ins this day</p>
                     <Button
                       size="sm"
                       className="mt-1 h-9 rounded-xl bg-[#111118] text-[12px] font-semibold text-[#D4AF37] hover:bg-[#1e1e1e]"
@@ -1959,11 +2031,11 @@ export function Appointments() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="divide-y divide-black/[0.04] max-h-[520px] overflow-y-auto">
+                  <div className="max-h-[min(420px,50dvh)] divide-y divide-black/[0.04] overflow-y-auto sm:max-h-[520px]">
                     {selectedDayAppts.map(a => (
                       <div
                         key={a.id}
-                        className="flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-[#faf9f7] cursor-pointer"
+                        className="flex min-w-0 cursor-pointer items-start gap-2.5 px-3 py-3 transition-colors hover:bg-[#faf9f7] sm:gap-3 sm:px-4 sm:py-3.5"
                         onClick={() => {
                           setActiveTab("timeline");
                           setViewDate(new Date(calYear, calMonth, selectedCalDate!));
@@ -1976,17 +2048,17 @@ export function Appointments() {
                         }}
                       >
                         <span className="shrink-0 rounded-md bg-[#111118] px-2 py-1 font-mono text-[10px] text-[#D4AF37]">{a.time}</span>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 overflow-hidden">
                           <p className="truncate text-[13px] font-semibold text-[#111118]">{a.customer}</p>
-                          <p className="mt-0.5 truncate text-[11px] text-[#9a9a9a]">{a.service}</p>
-                          <div className="mt-1.5 flex items-center gap-1.5">
+                          <p className="mt-0.5 truncate text-[11px] text-[#52525b]">{a.service}</p>
+                          <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5">
                             <Badge className={cn("border text-[9px] capitalize", statusColors[a.status])}>{a.status}</Badge>
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border capitalize ${
+                            <span className={`rounded-full border px-1.5 py-0.5 text-[9px] font-bold capitalize ${
                               a.type === "walk-in"
-                                ? "bg-[#f4f2ed] border-[#d4af37]/30 text-[#9a7a1e]"
-                                : "bg-white border-gray-200 text-[#6b6b6b]"
+                                ? "border-[#d4af37]/30 bg-[#f4f2ed] text-[#9a7a1e]"
+                                : "border-gray-200 bg-white text-[#3f3f46]"
                             }`}>
-                              {a.type === "walk-in" ? "Walk-in" : "Appointment"}
+                              {a.type === "walk-in" ? "Walk-in" : "Appt"}
                             </span>
                           </div>
                         </div>
@@ -2036,17 +2108,17 @@ export function Appointments() {
                   { label: "Status", value: customerInfoWalkin.status === "done" ? "Completed" : customerInfoWalkin.status },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                    <span className="text-[11px] font-semibold text-[#9a9a9a] uppercase tracking-wider">{label}</span>
+                    <span className="text-[11px] font-semibold text-[#52525b] uppercase tracking-wider">{label}</span>
                     <span className="text-[13px] font-semibold text-[#111] capitalize">{value}</span>
                   </div>
                 ))}
                 <div className="pt-1">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-[#9a9a9a] mb-2">Service</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-[#52525b] mb-2">Service</p>
                   <span className="px-2.5 py-1 rounded-full bg-[#f4f2ed] border border-[#e8e4d8] text-[11px] font-medium text-[#3d3d3d]">{customerInfoWalkin.service}</span>
                 </div>
                 {customerInfoWalkin.notes && (
                   <div className="pt-1">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-[#9a9a9a] mb-1">Notes</p>
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-[#52525b] mb-1">Notes</p>
                     <p className="text-[12px] text-[#3d3d3d] bg-[#faf9f7] rounded-lg px-3 py-2 border border-gray-100">{customerInfoWalkin.notes}</p>
                   </div>
                 )}
@@ -2084,7 +2156,7 @@ export function Appointments() {
           <DialogHeader>
             <DialogTitle className="text-[#111118]">Remove walk-in?</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-[#6b6b6b]">This will remove the walk-in from today&apos;s queue. This action cannot be undone.</p>
+          <p className="text-sm text-[#3f3f46]">This will remove the walk-in from today&apos;s queue. This action cannot be undone.</p>
           <DialogFooter className="gap-2">
             <Button variant="outline" className="rounded-xl" onClick={() => setWalkinDeleteConfirm(null)}>Keep</Button>
             <Button className="rounded-xl bg-red-600 hover:bg-red-700 text-white" onClick={() => walkinDeleteConfirm !== null && void cancelWalkin(walkinDeleteConfirm)}>
@@ -2143,14 +2215,14 @@ export function Appointments() {
                   { label: "Duration",          value: `${customerInfoAppt.duration} min` },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                    <span className="text-[11px] font-semibold text-[#9a9a9a] uppercase tracking-wider">{label}</span>
+                    <span className="text-[11px] font-semibold text-[#52525b] uppercase tracking-wider">{label}</span>
                     <span className="text-[13px] font-semibold text-[#111]">{value}</span>
                   </div>
                 ))}
 
                 {/* Services */}
                 <div className="pt-1">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-[#9a9a9a] mb-2">Services</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-[#52525b] mb-2">Services</p>
                   <div className="flex flex-wrap gap-1.5">
                     {[customerInfoAppt.service, ...((customerInfoAppt.extraServices ?? []).map(e => e.name))].filter(Boolean).map((svc, i) => (
                       <span key={i} className="px-2.5 py-1 rounded-full bg-[#f4f2ed] border border-[#e8e4d8] text-[11px] font-medium text-[#3d3d3d]">{svc}</span>
@@ -2160,7 +2232,7 @@ export function Appointments() {
 
                 {customerInfoAppt.notes && (
                   <div className="pt-1">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-[#9a9a9a] mb-1">Notes</p>
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-[#52525b] mb-1">Notes</p>
                     <p className="text-[12px] text-[#3d3d3d] bg-[#faf9f7] rounded-lg px-3 py-2 border border-gray-100">{customerInfoAppt.notes}</p>
                   </div>
                 )}
@@ -2259,7 +2331,7 @@ export function Appointments() {
                       </div>
                       <div>
                         <p className="text-[12px] font-bold text-[#111118]">Customer</p>
-                        <p className="text-[10px] text-[#9a9a9a]">Search existing or add new</p>
+                        <p className="text-[10px] text-[#52525b]">Search existing or add new</p>
                       </div>
                     </div>
 
@@ -2279,7 +2351,7 @@ export function Appointments() {
                             "flex items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-semibold transition-all",
                             directCustomerMode === m
                               ? "bg-[#111118] text-[#D4AF37] shadow-sm"
-                              : "text-[#9a9a9a] hover:text-[#111118]",
+                              : "text-[#52525b] hover:text-[#111118]",
                           )}
                         >
                           {m === "search" ? (
@@ -2294,7 +2366,7 @@ export function Appointments() {
                     {directCustomerMode === "search" ? (
                       <div className="space-y-2">
                         <div className="relative">
-                          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
+                          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#52525b]" />
                           <Input
                             value={directCustomerSearch}
                             onChange={e => {
@@ -2312,7 +2384,7 @@ export function Appointments() {
                                 setDirectCustomerSelected(false);
                                 setBillingTarget(t => ({ ...t!, name: "", phone: "" }));
                               }}
-                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#9a9a9a] hover:text-[#111118]"
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#52525b] hover:text-[#111118]"
                             >
                               <X className="h-3.5 w-3.5" />
                             </button>
@@ -2349,7 +2421,7 @@ export function Appointments() {
                                   </div>
                                   <div className="min-w-0 flex-1">
                                     <p className="truncate text-[12px] font-semibold text-[#111118]">{c.name}</p>
-                                    <p className="text-[10px] text-[#9a9a9a]">
+                                    <p className="text-[10px] text-[#52525b]">
                                       {c.phone} · {c.totalVisits} visits · ₹{c.totalSpend.toLocaleString("en-IN")}
                                     </p>
                                   </div>
@@ -2361,7 +2433,7 @@ export function Appointments() {
                               })}
                             </div>
                           ) : (
-                            <div className="rounded-xl border border-black/[0.06] bg-[#faf9f7] px-3 py-3 text-center text-[11px] text-[#9a9a9a]">
+                            <div className="rounded-xl border border-black/[0.06] bg-[#faf9f7] px-3 py-3 text-center text-[11px] text-[#52525b]">
                               No customer found — try a different search or add new
                             </div>
                           );
@@ -2390,7 +2462,7 @@ export function Appointments() {
                                 <p className="mt-0.5 truncate text-[12.5px] font-semibold tabular-nums tracking-wide text-[#3d3d3d]">
                                   {formatDisplayPhone(billingTarget.phone)}
                                   {c ? (
-                                    <span className="font-medium text-[#9a9a9a]">
+                                    <span className="font-medium text-[#52525b]">
                                       {` · ${c.favoriteService} · Last: ${c.lastVisit}`}
                                     </span>
                                   ) : null}
@@ -2403,7 +2475,7 @@ export function Appointments() {
                                   setDirectCustomerSelected(false);
                                   setBillingTarget(t => ({ ...t!, name: "", phone: "" }));
                                 }}
-                                className="shrink-0 rounded-lg p-1 text-[#9a9a9a] transition-colors hover:bg-white hover:text-[#111118]"
+                                className="shrink-0 rounded-lg p-1 text-[#52525b] transition-colors hover:bg-white hover:text-[#111118]"
                               >
                                 <X className="h-3.5 w-3.5" />
                               </button>
@@ -2414,7 +2486,7 @@ export function Appointments() {
                     ) : (
                       <div className="space-y-2.5">
                         <div className="relative">
-                          <User className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9a9a9a]" />
+                          <User className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#52525b]" />
                           <Input
                             value={billingTarget?.name || ""}
                             onChange={e => setBillingTarget(t => ({ ...t!, name: e.target.value }))}
@@ -2423,7 +2495,7 @@ export function Appointments() {
                           />
                         </div>
                         <div className="flex gap-2">
-                          <span className="inline-flex shrink-0 items-center rounded-xl border border-black/[0.08] bg-[#faf9f7] px-2.5 text-[12px] text-[#6b6b6b]">
+                          <span className="inline-flex shrink-0 items-center rounded-xl border border-black/[0.08] bg-[#faf9f7] px-2.5 text-[12px] text-[#3f3f46]">
                             +91
                           </span>
                           <Input
@@ -2436,7 +2508,7 @@ export function Appointments() {
                         {billingTarget?.name.trim() && (
                           <div className="flex items-center gap-2 rounded-xl border border-black/[0.06] bg-[#faf9f7] px-3 py-2">
                             <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#D4AF37]" />
-                            <p className="text-[11px] text-[#6b6b6b]">New customer — details will be saved with this bill</p>
+                            <p className="text-[11px] text-[#3f3f46]">New customer — details will be saved with this bill</p>
                           </div>
                         )}
                       </div>
@@ -2484,13 +2556,13 @@ export function Appointments() {
                 {/* Service search */}
                 <div className="border-b border-black/[0.06] bg-white px-4 pb-0 pt-3">
                   <div className="relative">
-                    <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9a9a]" />
+                    <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#52525b]" />
                     <input
                       type="text"
                       placeholder="Search service or product to add…"
                       value={billingServiceSearch}
                       onChange={e => setBillingServiceSearch(e.target.value)}
-                      className="h-10 w-full rounded-xl border border-black/[0.08] bg-white pl-10 pr-9 text-[12px] font-medium outline-none transition-colors placeholder:font-normal placeholder:text-[#9a9a9a] focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/10"
+                      className="h-10 w-full rounded-xl border border-black/[0.08] bg-white pl-10 pr-9 text-[12px] font-medium outline-none transition-colors placeholder:font-normal placeholder:text-[#52525b] focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/10"
                     />
                     {billingServiceSearch && (
                       <button
@@ -2568,16 +2640,16 @@ export function Appointments() {
                         <Receipt className="h-6 w-6 text-[#D4AF37]/50" />
                       </div>
                       <div>
-                        <p className="text-[13px] font-semibold text-[#6b6b6b]">No items in cart</p>
-                        <p className="mt-0.5 text-[11px] text-[#9a9a9a]">Search above to add services or products</p>
+                        <p className="text-[13px] font-semibold text-[#3f3f46]">No items in cart</p>
+                        <p className="mt-0.5 text-[11px] text-[#52525b]">Search above to add services or products</p>
                       </div>
                     </div>
                   ) : (
                     <div className="space-y-2 px-4 py-3">
                       <div className="flex items-center px-3 pb-1">
-                        <span className="flex-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a9a9a]">Item</span>
-                        <span className="w-24 text-center text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a9a9a]">Qty</span>
-                        <span className="w-20 text-right text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a9a9a]">Total</span>
+                        <span className="flex-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525b]">Item</span>
+                        <span className="w-24 text-center text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525b]">Qty</span>
+                        <span className="w-20 text-right text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525b]">Total</span>
                         <span className="w-8" />
                       </div>
 
@@ -2592,17 +2664,17 @@ export function Appointments() {
                               <p className="truncate text-[12px] font-semibold text-[#111118]">{item.name}</p>
                               <span className={cn(
                                 "shrink-0 rounded px-1 py-0.5 text-[8px] font-bold uppercase",
-                                item.type === "service" ? "bg-[#D4AF37]/12 text-[#9a7a1e]" : "bg-black/[0.06] text-[#6b6b6b]",
+                                item.type === "service" ? "bg-[#D4AF37]/12 text-[#9a7a1e]" : "bg-black/[0.06] text-[#3f3f46]",
                               )}>
                                 {item.type === "service" ? "Svc" : "Prd"}
                               </span>
                             </div>
-                            <p className="mt-0.5 text-[10px] text-[#9a9a9a]">&#x20b9;{item.price.toLocaleString()} / unit</p>
+                            <p className="mt-0.5 text-[10px] text-[#52525b]">&#x20b9;{item.price.toLocaleString()} / unit</p>
                           </div>
                           <div className="flex w-24 items-center justify-center gap-1">
                             <button
                               onClick={() => setBillingItems(prev => prev.map(i => i.name === item.name ? { ...i, qty: Math.max(1, i.qty - 1) } : i))}
-                              className="flex h-7 w-7 items-center justify-center rounded-lg border border-black/[0.08] bg-[#faf9f7] text-[#6b6b6b] transition-all hover:border-[#111118] hover:bg-[#111118] hover:text-white"
+                              className="flex h-7 w-7 items-center justify-center rounded-lg border border-black/[0.08] bg-[#faf9f7] text-[#3f3f46] transition-all hover:border-[#111118] hover:bg-[#111118] hover:text-white"
                             >
                               −
                             </button>
@@ -2619,7 +2691,7 @@ export function Appointments() {
                           </span>
                           <button
                             onClick={() => removeBillItem(item.name)}
-                            className="flex h-7 w-8 shrink-0 items-center justify-center rounded-lg text-[#9a9a9a] transition-colors hover:bg-red-50 hover:text-red-500"
+                            className="flex h-7 w-8 shrink-0 items-center justify-center rounded-lg text-[#52525b] transition-colors hover:bg-red-50 hover:text-red-500"
                           >
                             <X className="h-3.5 w-3.5" />
                           </button>
@@ -2694,7 +2766,7 @@ export function Appointments() {
                         <ArrowLeft className="h-4 w-4" />
                         Back to bill
                       </button>
-                      <span className="text-[11px] font-semibold text-[#9a9a9a]">
+                      <span className="text-[11px] font-semibold text-[#52525b]">
                         Grand total <span className="font-black text-[#111118] tabular-nums">&#x20b9;{billGrand.toLocaleString()}</span>
                       </span>
                     </div>
@@ -3032,7 +3104,7 @@ export function Appointments() {
                   <button
                     type="button"
                     onClick={clearBillingSelections}
-                    className="h-10 w-full rounded-xl border border-black/[0.1] bg-white text-[13px] font-medium text-[#9a9a9a] transition-colors hover:border-[#D4AF37]/30 hover:bg-[#FFFBEB] hover:text-[#9a7a1e]"
+                    className="h-10 w-full rounded-xl border border-black/[0.1] bg-white text-[13px] font-medium text-[#52525b] transition-colors hover:border-[#D4AF37]/30 hover:bg-[#FFFBEB] hover:text-[#9a7a1e]"
                   >
                     Cancel
                   </button>
@@ -3077,7 +3149,7 @@ export function Appointments() {
                 </div>
                 <div className="text-center">
                   <h2 className="text-xl font-black text-[#111118]">Appointment Confirmed</h2>
-                  <p className="text-sm text-[#6b6b6b] mt-1">Invoice generated with outstanding balance</p>
+                  <p className="text-sm text-[#3f3f46] mt-1">Invoice generated with outstanding balance</p>
                 </div>
                 <div className="w-full rounded-2xl bg-gradient-to-br from-[#111118] to-[#1e1e2a] p-5 shadow-2xl">
                   <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3">
@@ -3108,7 +3180,7 @@ export function Appointments() {
                     </div>
                   </div>
                 </div>
-                <p className="text-[12px] text-center text-[#6b6b6b]">
+                <p className="text-[12px] text-center text-[#3f3f46]">
                   Added to Pending Payments. Collect anytime from Pending Payments (sidebar).
                 </p>
                 <button
@@ -3185,7 +3257,7 @@ export function Appointments() {
                 <div className="relative z-10 w-full rounded-xl border border-[#D4AF37]/25 bg-[#fffdf7] px-3 py-2.5">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-[11px] font-semibold text-[#111118]">
-                      Rate visit <span className="font-medium text-[#9a9a9a]">(optional)</span>
+                      Rate visit <span className="font-medium text-[#52525b]">(optional)</span>
                     </p>
                     <p className="min-w-[2.5rem] text-right text-[11px] font-medium text-[#9a7d20]">
                       {feedbackRating > 0 ? `${feedbackRating}/5` : ""}
@@ -3278,11 +3350,11 @@ export function Appointments() {
                   <SalonReceiptBrandHeader />
                   <div className="border-b border-dashed border-[#D4AF37]/25 pb-3 mb-3 space-y-0.5">
                     {([["Invoice No.", receiptData?.invoiceNo], ["Date", receiptData?.date], ["Customer", receiptData?.customer], ["Billed By", billedByName || "—"], ["Payment", receiptData?.paymentMethod?.toUpperCase()]] as [string, string][]).map(([k, v]) => (
-                      <div key={k} className="flex justify-between gap-3 text-[11px]"><span className="text-[#9a9a9a]">{k}</span><span className="font-bold text-right">{v}</span></div>
+                      <div key={k} className="flex justify-between gap-3 text-[11px]"><span className="text-[#52525b]">{k}</span><span className="font-bold text-right">{v}</span></div>
                     ))}
                   </div>
                   <div className="border-b border-dashed border-[#D4AF37]/25 pb-3 mb-3">
-                    <div className="flex text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a] border-b border-black/[0.08] pb-1 mb-1">
+                    <div className="flex text-[10px] font-bold uppercase tracking-wider text-[#52525b] border-b border-black/[0.08] pb-1 mb-1">
                       <span className="flex-1">Description</span>
                       <span className="w-6 text-center">Qt</span>
                       <span className="w-14 text-right">Rate</span>
@@ -3300,28 +3372,28 @@ export function Appointments() {
                     ))}
                   </div>
                   <div className="border-b border-dashed border-[#D4AF37]/25 pb-3 mb-3 space-y-0.5">
-                    <div className="flex justify-between text-[11px]"><span className="text-[#9a9a9a]">Subtotal</span><span>&#x20b9;{receiptData?.subtotal.toLocaleString()}</span></div>
-                    {receiptData && receiptData.gst > 0 && <div className="flex justify-between text-[11px]"><span className="text-[#9a9a9a]">GST ({gstRate}%)</span><span>+&#x20b9;{receiptData.gst.toLocaleString()}</span></div>}
-                    {receiptData && Math.abs(receiptData.roundOff) > 0 && <div className="flex justify-between text-[11px]"><span className="text-[#9a9a9a]">Round Off</span><span>&#x20b9;{receiptData.roundOff.toFixed(2)}</span></div>}
+                    <div className="flex justify-between text-[11px]"><span className="text-[#52525b]">Subtotal</span><span>&#x20b9;{receiptData?.subtotal.toLocaleString()}</span></div>
+                    {receiptData && receiptData.gst > 0 && <div className="flex justify-between text-[11px]"><span className="text-[#52525b]">GST ({gstRate}%)</span><span>+&#x20b9;{receiptData.gst.toLocaleString()}</span></div>}
+                    {receiptData && Math.abs(receiptData.roundOff) > 0 && <div className="flex justify-between text-[11px]"><span className="text-[#52525b]">Round Off</span><span>&#x20b9;{receiptData.roundOff.toFixed(2)}</span></div>}
                     <div className="flex justify-between text-[13px] font-black border-t border-[#D4AF37]/30 pt-1.5 mt-1"><span>GRAND TOTAL</span><span className="text-[#9a7d20]">&#x20b9;{receiptData?.grandTotal.toLocaleString()}</span></div>
-                    <div className="flex justify-between text-[11px] font-semibold"><span className="text-[#9a9a9a]">Paid ({receiptData?.paymentMethod})</span><span>&#x20b9;{receiptData?.grandTotal.toLocaleString()}</span></div>
-                    <div className="flex justify-between text-[11px]"><span className="text-[#9a9a9a]">Balance Due</span><span className="font-bold">&#x20b9;0.00</span></div>
+                    <div className="flex justify-between text-[11px] font-semibold"><span className="text-[#52525b]">Paid ({receiptData?.paymentMethod})</span><span>&#x20b9;{receiptData?.grandTotal.toLocaleString()}</span></div>
+                    <div className="flex justify-between text-[11px]"><span className="text-[#52525b]">Balance Due</span><span className="font-bold">&#x20b9;0.00</span></div>
                   </div>
                   <div className="border-b border-dashed border-[#D4AF37]/25 pb-3 mb-3">
-                    <div className="flex justify-between text-[11px]"><span className="text-[#9a9a9a]">Loyalty Points Earned</span><span className="font-bold text-[#9a7d20]">+{receiptData?.loyaltyEarned} pts</span></div>
-                    <div className="flex justify-between text-[9px] text-[#9a9a9a]"><span>Redeem on next visit</span><span>1 pt = &#x20b9;0.50</span></div>
+                    <div className="flex justify-between text-[11px]"><span className="text-[#52525b]">Loyalty Points Earned</span><span className="font-bold text-[#9a7d20]">+{receiptData?.loyaltyEarned} pts</span></div>
+                    <div className="flex justify-between text-[9px] text-[#52525b]"><span>Redeem on next visit</span><span>1 pt = &#x20b9;0.50</span></div>
                   </div>
                   <div className="text-center space-y-1">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-[#D4AF37]">{RECEIPT_FOOTER.thankYou}</p>
-                    <p className="text-[9px] text-[#9a9a9a]">{RECEIPT_FOOTER.revisit}</p>
+                    <p className="text-[9px] text-[#52525b]">{RECEIPT_FOOTER.revisit}</p>
                     <div className="mx-auto mt-2 h-px w-16 bg-gradient-to-r from-transparent via-[#D4AF37]/40 to-transparent" />
                   </div>
                   </SalonReceiptPaper>
                 </div>
                 <div className="grid grid-cols-3 border-t border-black/[0.06] bg-white">
-                  <button type="button" onClick={() => window.print()} className="flex flex-col items-center gap-1 border-r border-black/[0.06] py-3 text-[11px] font-semibold text-[#6b6b6b] transition-colors hover:bg-[#faf9f7] hover:text-[#9a7d20]"><Receipt className="h-4 w-4 text-[#D4AF37]" /> Print</button>
-                  <button type="button" onClick={() => { const msg = encodeURIComponent(`Hi ${receiptData?.customer} 👋\n\nYour payment of *${formatInr(receiptData?.grandTotal ?? 0)}* at *${BRAND.clientName}* has been received.\n\n🧾 Invoice: ${receiptData?.invoiceNo}\n\nThank you! ✨`); window.open(`https://wa.me/?text=${msg}`, "_blank"); }} className="flex flex-col items-center gap-1 border-r border-black/[0.06] py-3 text-[11px] font-semibold text-[#6b6b6b] transition-colors hover:bg-[#faf9f7] hover:text-[#9a7d20]"><Send className="h-4 w-4 text-[#D4AF37]" /> WhatsApp</button>
-                  <button type="button" onClick={() => { const msg = encodeURIComponent(`Dear ${receiptData?.customer}, ${formatInr(receiptData?.grandTotal ?? 0)} received at ${BRAND.clientName}. Invoice: ${receiptData?.invoiceNo}. Thank you!`); window.open(`sms:?body=${msg}`, "_blank"); }} className="flex flex-col items-center gap-1 py-3 text-[11px] font-semibold text-[#6b6b6b] transition-colors hover:bg-[#faf9f7] hover:text-[#9a7d20]"><Phone className="h-4 w-4 text-[#D4AF37]" /> SMS</button>
+                  <button type="button" onClick={() => window.print()} className="flex flex-col items-center gap-1 border-r border-black/[0.06] py-3 text-[11px] font-semibold text-[#3f3f46] transition-colors hover:bg-[#faf9f7] hover:text-[#9a7d20]"><Receipt className="h-4 w-4 text-[#D4AF37]" /> Print</button>
+                  <button type="button" onClick={() => { const msg = encodeURIComponent(`Hi ${receiptData?.customer} 👋\n\nYour payment of *${formatInr(receiptData?.grandTotal ?? 0)}* at *${BRAND.clientName}* has been received.\n\n🧾 Invoice: ${receiptData?.invoiceNo}\n\nThank you! ✨`); window.open(`https://wa.me/?text=${msg}`, "_blank"); }} className="flex flex-col items-center gap-1 border-r border-black/[0.06] py-3 text-[11px] font-semibold text-[#3f3f46] transition-colors hover:bg-[#faf9f7] hover:text-[#9a7d20]"><Send className="h-4 w-4 text-[#D4AF37]" /> WhatsApp</button>
+                  <button type="button" onClick={() => { const msg = encodeURIComponent(`Dear ${receiptData?.customer}, ${formatInr(receiptData?.grandTotal ?? 0)} received at ${BRAND.clientName}. Invoice: ${receiptData?.invoiceNo}. Thank you!`); window.open(`sms:?body=${msg}`, "_blank"); }} className="flex flex-col items-center gap-1 py-3 text-[11px] font-semibold text-[#3f3f46] transition-colors hover:bg-[#faf9f7] hover:text-[#9a7d20]"><Phone className="h-4 w-4 text-[#D4AF37]" /> SMS</button>
                 </div>
                 <div className="border-t border-black/[0.06] bg-white px-4 py-3">
                   <button type="button" onClick={() => setReceiptOpen(false)} className="h-10 w-full rounded-xl bg-[#111118] text-[12px] font-bold text-[#D4AF37] transition-colors hover:bg-[#1a1a1a]">Close</button>

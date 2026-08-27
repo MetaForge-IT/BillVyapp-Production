@@ -3,11 +3,13 @@ import { sendCreated, sendNoContent, sendSuccess } from "../../utils/apiResponse
 import { asyncHandler } from "../../utils/asyncHandler";
 import type { AuthenticatedRequest } from "../auth/auth.controller";
 import { accountingService } from "./accounting.service";
-import type {
-  CreateDayCloseInput,
-  CreateExpenseInput,
-  UpdateExpenseInput,
-  UpsertBudgetInput,
+import {
+  accountingOverviewQuerySchema,
+  listExpensesQuerySchema,
+  type CreateDayCloseInput,
+  type CreateExpenseInput,
+  type UpdateExpenseInput,
+  type UpsertBudgetInput,
 } from "./accounting.validators";
 
 function parseIntParam(value: unknown, fallback: number): number {
@@ -18,11 +20,8 @@ function parseIntParam(value: unknown, fallback: number): number {
 export class AccountingController {
   listExpenses = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const auth = (req as AuthenticatedRequest).auth;
-    const expenses = await accountingService.listExpenses(auth, {
-      from: typeof req.query.from === "string" ? req.query.from : undefined,
-      to: typeof req.query.to === "string" ? req.query.to : undefined,
-      category: typeof req.query.category === "string" ? req.query.category : undefined,
-    });
+    const query = listExpensesQuerySchema.parse(req.query);
+    const expenses = await accountingService.listExpenses(auth, query);
     sendSuccess(res, { message: "Expenses retrieved", data: expenses });
   });
 
@@ -101,8 +100,8 @@ export class AccountingController {
 
   getOverview = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const auth = (req as AuthenticatedRequest).auth;
-    const date = typeof req.query.date === "string" ? req.query.date : undefined;
-    const overview = await accountingService.getOverview(auth, date);
+    const query = accountingOverviewQuerySchema.parse(req.query);
+    const overview = await accountingService.getOverview(auth, query);
     sendSuccess(res, { message: "Accounting overview retrieved", data: overview });
   });
 }

@@ -284,3 +284,10 @@ export async function updateMyFranchiseShop(
   );
   return data.data;
 }
+
+export async function deleteMyFranchiseShop(shopId: string) {
+  const { data } = await apiClient.delete<ApiEnvelope<{ id: string; isActive: false }>>(
+    `/my-franchise/shops/${shopId}`,
+  );
+  return data.data;
+}

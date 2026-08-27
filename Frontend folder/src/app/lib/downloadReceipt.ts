@@ -86,7 +86,7 @@ export function buildReceiptDocumentHtml(
     }
     .center { text-align: center; }
     .heavy { font-weight: 800; }
-    .muted { color: #9a9a9a; }
+    .muted { color: #52525b; }
     .gold { color: #9a7d20; }
     .dash { border-top: 1px dashed rgba(212,175,55,0.35); margin: 12px 0; }
     .row { display: flex; justify-content: space-between; gap: 12px; font-size: 11px; margin: 4px 0; }

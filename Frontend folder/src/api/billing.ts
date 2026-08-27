@@ -143,10 +143,26 @@ export interface InvoicesSummary {
   todayRevenue: number;
   totalReceipts: number;
   avgBill: number;
+  dateFrom?: string | null;
+  dateTo?: string | null;
+  dailyTrend?: Array<{ date: string; revenue: number; receipts: number }>;
+  byPaymentMethod?: Array<{ method: string; revenue: number; count: number }>;
 }
 
-export async function fetchInvoicesSummary(): Promise<InvoicesSummary> {
-  const { data } = await apiClient.get<ApiEnvelope<InvoicesSummary>>("/billing/invoices/summary");
+export async function fetchInvoicesSummary(params: {
+  salonId?: string;
+  date?: string;
+  dateFrom?: string;
+  dateTo?: string;
+} = {}): Promise<InvoicesSummary> {
+  const { data } = await apiClient.get<ApiEnvelope<InvoicesSummary>>("/billing/invoices/summary", {
+    params: {
+      salonId: params.salonId || undefined,
+      date: params.date || undefined,
+      dateFrom: params.dateFrom || undefined,
+      dateTo: params.dateTo || undefined,
+    },
+  });
   return data.data;
 }
 

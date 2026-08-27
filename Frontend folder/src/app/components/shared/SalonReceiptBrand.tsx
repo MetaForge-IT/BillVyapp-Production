@@ -126,9 +126,9 @@ export function SalonReceiptBrandHeader({ className }: { className?: string }) {
           {shop.tagline}
         </p>
       )}
-      {shop.address && <p className="text-[10px] text-[#9a9a9a]">{shop.address}</p>}
+      {shop.address && <p className="text-[10px] text-[#52525b]">{shop.address}</p>}
       {(shop.phone || shop.gstin) && (
-        <p className="text-[10px] text-[#9a9a9a]">
+        <p className="text-[10px] text-[#52525b]">
           {shop.phone ? `Ph: ${shop.phone}` : null}
           {shop.phone && shop.gstin ? " | " : null}
           {shop.gstin ? `GSTIN: ${shop.gstin}` : null}

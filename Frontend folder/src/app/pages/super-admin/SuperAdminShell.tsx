@@ -145,7 +145,7 @@ export function SuperAdminOverviewPage() {
       <div>
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D4AF37]">Platform</p>
         <h1 className="text-2xl font-bold text-[#111118]">Overview</h1>
-        <p className="text-sm text-[#6b6b6b]">All franchises, shops, staff, and revenue across BillVyapp</p>
+        <p className="text-sm text-[#3f3f46]">All franchises, shops, staff, and revenue across BillVyapp</p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((c) => (
@@ -155,7 +155,7 @@ export function SuperAdminOverviewPage() {
             className="rounded-2xl border border-black/[0.07] bg-white p-5 shadow-sm transition hover:border-[#D4AF37]/35"
           >
             <div className="flex items-center justify-between">
-              <p className="text-[12px] font-semibold text-[#6b6b6b]">{c.label}</p>
+              <p className="text-[12px] font-semibold text-[#3f3f46]">{c.label}</p>
               <c.icon className="h-4 w-4 text-[#D4AF37]" />
             </div>
             <p className="mt-3 text-3xl font-bold text-[#111118]">{loading ? "…" : c.value}</p>

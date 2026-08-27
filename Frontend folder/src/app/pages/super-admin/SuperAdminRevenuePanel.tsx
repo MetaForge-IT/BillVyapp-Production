@@ -28,8 +28,8 @@ const RANGES: Array<{ id: PlatformRevenueRange; label: string }> = [
   { id: "mtd", label: "Month" },
 ];
 
-const FRANCHISE_COLORS = ["#D4AF37", "#111118", "#9a7d20", "#6b6b6b", "#C9A227", "#3d3d4a"];
-const SHOP_COLORS = ["#D4AF37", "#b8962e", "#111118", "#6b6b6b", "#8a7a40", "#4a4a55", "#c4a84a"];
+const FRANCHISE_COLORS = ["#D4AF37", "#111118", "#9a7d20", "#3f3f46", "#C9A227", "#3d3d4a"];
+const SHOP_COLORS = ["#D4AF37", "#b8962e", "#111118", "#3f3f46", "#8a7a40", "#4a4a55", "#c4a84a"];
 
 function formatInr(n: number): string {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
@@ -66,7 +66,7 @@ function MoneyTooltip({
     "Revenue";
   return (
     <div className="rounded-xl border border-black/10 bg-white px-3 py-2 shadow-lg">
-      <p className="text-[11px] font-semibold text-[#6b6b6b]">{title}</p>
+      <p className="text-[11px] font-semibold text-[#3f3f46]">{title}</p>
       <p className="text-sm font-bold text-[#111118]">{formatInr(Number(row.value ?? 0))}</p>
     </div>
   );
@@ -149,7 +149,7 @@ export function SuperAdminRevenuePanel() {
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D4AF37]">Revenue</p>
           <h2 className="text-lg font-bold text-[#111118]">Per franchise & shop</h2>
-          <p className="text-[12px] text-[#6b6b6b]">
+          <p className="text-[12px] text-[#3f3f46]">
             Collected payments from invoices (paid / partially paid)
             {data ? ` · ${shortDate(data.from)} – ${shortDate(data.to)}` : ""}
           </p>
@@ -164,7 +164,7 @@ export function SuperAdminRevenuePanel() {
                 "rounded-lg px-3 py-1.5 text-[11px] font-semibold transition",
                 range === r.id
                   ? "bg-[#111118] text-[#D4AF37]"
-                  : "text-[#6b6b6b] hover:text-[#111118]",
+                  : "text-[#3f3f46] hover:text-[#111118]",
               )}
             >
               {r.label}
@@ -182,35 +182,35 @@ export function SuperAdminRevenuePanel() {
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-black/[0.07] bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <p className="text-[12px] font-semibold text-[#6b6b6b]">Collected</p>
+            <p className="text-[12px] font-semibold text-[#3f3f46]">Collected</p>
             <IndianRupee className="h-4 w-4 text-[#D4AF37]" />
           </div>
           <p className="mt-3 text-2xl font-bold text-[#111118]">
             {loading || !data ? "…" : formatInrCompact(data.totals.revenue)}
           </p>
-          <p className="mt-1 text-[11px] text-[#9a9a9a]">
+          <p className="mt-1 text-[11px] text-[#52525b]">
             {data ? `${data.totals.invoiceCount} invoices` : "—"}
           </p>
         </div>
         <div className="rounded-2xl border border-black/[0.07] bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <p className="text-[12px] font-semibold text-[#6b6b6b]">Billed</p>
+            <p className="text-[12px] font-semibold text-[#3f3f46]">Billed</p>
             <TrendingUp className="h-4 w-4 text-[#D4AF37]" />
           </div>
           <p className="mt-3 text-2xl font-bold text-[#111118]">
             {loading || !data ? "…" : formatInrCompact(data.totals.billed)}
           </p>
-          <p className="mt-1 text-[11px] text-[#9a9a9a]">Invoice totals before dues</p>
+          <p className="mt-1 text-[11px] text-[#52525b]">Invoice totals before dues</p>
         </div>
         <div className="rounded-2xl border border-black/[0.07] bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <p className="text-[12px] font-semibold text-[#6b6b6b]">Active shops</p>
+            <p className="text-[12px] font-semibold text-[#3f3f46]">Active shops</p>
             <Store className="h-4 w-4 text-[#D4AF37]" />
           </div>
           <p className="mt-3 text-2xl font-bold text-[#111118]">
             {loading || !data ? "…" : data.totals.shopCount}
           </p>
-          <p className="mt-1 text-[11px] text-[#9a9a9a]">
+          <p className="mt-1 text-[11px] text-[#52525b]">
             {data ? `${data.totals.franchiseCount} franchises` : "—"}
           </p>
         </div>
@@ -219,14 +219,14 @@ export function SuperAdminRevenuePanel() {
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-2xl border border-black/[0.07] bg-white p-5 shadow-sm">
           <h3 className="text-[13px] font-bold text-[#111118]">Revenue by franchise</h3>
-          <p className="mb-4 text-[11px] text-[#9a9a9a]">Collected amount per brand</p>
+          <p className="mb-4 text-[11px] text-[#52525b]">Collected amount per brand</p>
           <div className="h-[260px]">
             {loading ? (
-              <div className="flex h-full items-center justify-center text-[12px] text-[#9a9a9a]">
+              <div className="flex h-full items-center justify-center text-[12px] text-[#52525b]">
                 Loading chart…
               </div>
             ) : franchiseChart.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-[12px] text-[#9a9a9a]">
+              <div className="flex h-full items-center justify-center text-[12px] text-[#52525b]">
                 No franchise data
               </div>
             ) : (
@@ -235,7 +235,7 @@ export function SuperAdminRevenuePanel() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#eee" vertical={false} />
                   <XAxis
                     dataKey="label"
-                    tick={{ fill: "#9a9a9a", fontSize: 10 }}
+                    tick={{ fill: "#52525b", fontSize: 10 }}
                     axisLine={false}
                     tickLine={false}
                     interval={0}
@@ -245,7 +245,7 @@ export function SuperAdminRevenuePanel() {
                   />
                   <YAxis
                     tickFormatter={(v) => formatInrCompact(Number(v))}
-                    tick={{ fill: "#9a9a9a", fontSize: 10 }}
+                    tick={{ fill: "#52525b", fontSize: 10 }}
                     axisLine={false}
                     tickLine={false}
                     width={56}
@@ -264,14 +264,14 @@ export function SuperAdminRevenuePanel() {
 
         <div className="rounded-2xl border border-black/[0.07] bg-white p-5 shadow-sm">
           <h3 className="text-[13px] font-bold text-[#111118]">Revenue by shop</h3>
-          <p className="mb-4 text-[11px] text-[#9a9a9a]">Top shops by collected amount</p>
+          <p className="mb-4 text-[11px] text-[#52525b]">Top shops by collected amount</p>
           <div className="h-[260px]">
             {loading ? (
-              <div className="flex h-full items-center justify-center text-[12px] text-[#9a9a9a]">
+              <div className="flex h-full items-center justify-center text-[12px] text-[#52525b]">
                 Loading chart…
               </div>
             ) : shopChart.every((s) => s.revenue === 0) ? (
-              <div className="flex h-full items-center justify-center text-[12px] text-[#9a9a9a]">
+              <div className="flex h-full items-center justify-center text-[12px] text-[#52525b]">
                 No invoice payments in this range
               </div>
             ) : (
@@ -280,7 +280,7 @@ export function SuperAdminRevenuePanel() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#eee" vertical={false} />
                   <XAxis
                     dataKey="label"
-                    tick={{ fill: "#9a9a9a", fontSize: 10 }}
+                    tick={{ fill: "#52525b", fontSize: 10 }}
                     axisLine={false}
                     tickLine={false}
                     interval={0}
@@ -290,7 +290,7 @@ export function SuperAdminRevenuePanel() {
                   />
                   <YAxis
                     tickFormatter={(v) => formatInrCompact(Number(v))}
-                    tick={{ fill: "#9a9a9a", fontSize: 10 }}
+                    tick={{ fill: "#52525b", fontSize: 10 }}
                     axisLine={false}
                     tickLine={false}
                     width={56}
@@ -310,10 +310,10 @@ export function SuperAdminRevenuePanel() {
 
       <div className="rounded-2xl border border-black/[0.07] bg-white p-5 shadow-sm">
         <h3 className="text-[13px] font-bold text-[#111118]">Daily collected trend</h3>
-        <p className="mb-4 text-[11px] text-[#9a9a9a]">Platform-wide payments by invoice date</p>
+        <p className="mb-4 text-[11px] text-[#52525b]">Platform-wide payments by invoice date</p>
         <div className="h-[240px]">
           {loading ? (
-            <div className="flex h-full items-center justify-center text-[12px] text-[#9a9a9a]">
+            <div className="flex h-full items-center justify-center text-[12px] text-[#52525b]">
               Loading chart…
             </div>
           ) : (
@@ -328,14 +328,14 @@ export function SuperAdminRevenuePanel() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#eee" vertical={false} />
                 <XAxis
                   dataKey="label"
-                  tick={{ fill: "#9a9a9a", fontSize: 10 }}
+                  tick={{ fill: "#52525b", fontSize: 10 }}
                   axisLine={false}
                   tickLine={false}
                   minTickGap={24}
                 />
                 <YAxis
                   tickFormatter={(v) => formatInrCompact(Number(v))}
-                  tick={{ fill: "#9a9a9a", fontSize: 10 }}
+                  tick={{ fill: "#52525b", fontSize: 10 }}
                   axisLine={false}
                   tickLine={false}
                   width={56}
@@ -361,7 +361,7 @@ export function SuperAdminRevenuePanel() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-left text-[12px]">
-              <thead className="bg-[#faf9f7] text-[10px] uppercase tracking-wider text-[#9a9a9a]">
+              <thead className="bg-[#faf9f7] text-[10px] uppercase tracking-wider text-[#52525b]">
                 <tr>
                   <th className="px-5 py-2.5 font-semibold">Shop</th>
                   <th className="px-5 py-2.5 font-semibold">Franchise</th>
@@ -375,11 +375,11 @@ export function SuperAdminRevenuePanel() {
                   <tr key={shop.salonId} className="border-t border-black/[0.05]">
                     <td className="px-5 py-3">
                       <p className="font-semibold text-[#111118]">{shop.shopName}</p>
-                      {shop.city && <p className="text-[11px] text-[#9a9a9a]">{shop.city}</p>}
+                      {shop.city && <p className="text-[11px] text-[#52525b]">{shop.city}</p>}
                     </td>
-                    <td className="px-5 py-3 text-[#6b6b6b]">{shop.franchiseName}</td>
-                    <td className="px-5 py-3 text-right text-[#6b6b6b]">{shop.invoiceCount}</td>
-                    <td className="px-5 py-3 text-right text-[#6b6b6b]">{formatInr(shop.billed)}</td>
+                    <td className="px-5 py-3 text-[#3f3f46]">{shop.franchiseName}</td>
+                    <td className="px-5 py-3 text-right text-[#3f3f46]">{shop.invoiceCount}</td>
+                    <td className="px-5 py-3 text-right text-[#3f3f46]">{formatInr(shop.billed)}</td>
                     <td className="px-5 py-3 text-right font-semibold text-[#111118]">
                       {formatInr(shop.revenue)}
                     </td>

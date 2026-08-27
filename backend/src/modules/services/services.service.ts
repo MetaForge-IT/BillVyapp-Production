@@ -7,16 +7,16 @@ import type {
 } from "./services.validators";
 
 export class ServicesService {
-  listCatalog(auth: AuthContext) {
-    return servicesRepository.listCatalog(auth.salonId);
+  listCatalog(auth: AuthContext, salonId?: string) {
+    return servicesRepository.listCatalog(auth, salonId);
   }
 
   list(auth: AuthContext, query: ListServicesQuery) {
-    return servicesRepository.list(auth.salonId, query);
+    return servicesRepository.list(auth, query);
   }
 
   getById(auth: AuthContext, serviceId: string) {
-    return servicesRepository.getById(auth.salonId, serviceId);
+    return servicesRepository.getById(auth, serviceId);
   }
 
   create(auth: AuthContext, input: CreateServiceInput) {

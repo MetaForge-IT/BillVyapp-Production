@@ -5,19 +5,12 @@ import { cacheDelete, cacheGet, cacheSet } from "../../services/cache.service";
 import { logger } from "../../utils/logger";
 import {
   resolveAuthFranchiseId,
-  resolveKpiSalonIds,
   resolveListSalonIds,
 } from "../../utils/salonScope";
 import { dashboardRepository } from "./dashboard.repository";
 import type { ListDashboardQuery } from "./dashboard.validators";
 
 export type DashboardPayload = Awaited<ReturnType<typeof dashboardRepository.getDashboard>>;
-
-function salonIdsEqual(a: string[], b: string[]): boolean {
-  if (a.length !== b.length) return false;
-  const setB = new Set(b);
-  return a.every((id) => setB.has(id));
-}
 
 export class DashboardService {
   private snapshotKey(salonId: string): string {
@@ -48,24 +41,12 @@ export class DashboardService {
     const franchiseId = await resolveAuthFranchiseId(auth);
     const isFranchiseAdmin = auth.role === "admin" && Boolean(franchiseId);
 
+    // Admin "All shops" → all franchise salons; picking one shop → that salon only.
     const panelSalonIds = isFranchiseAdmin
       ? await resolveListSalonIds(auth, query.salonId)
       : [auth.salonId];
 
-    let data = await dashboardRepository.getDashboard(panelSalonIds);
-
-    // Franchise admin drilling into one shop: KPI cards stay combined across all shops.
-    if (isFranchiseAdmin && query.salonId) {
-      const kpiSalonIds = await resolveKpiSalonIds(auth);
-      if (!salonIdsEqual(kpiSalonIds, panelSalonIds)) {
-        const kpiData = await dashboardRepository.getDashboard(kpiSalonIds);
-        data = {
-          ...data,
-          businessKpis: kpiData.businessKpis,
-          kpiMetrics: kpiData.kpiMetrics,
-        };
-      }
-    }
+    const data = await dashboardRepository.getDashboard(panelSalonIds);
 
     await cacheSet(cacheKey, data, redisConfig.dashboardSnapshotTtlSeconds);
     return data;

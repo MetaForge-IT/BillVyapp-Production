@@ -117,7 +117,7 @@ export function MyProfile() {
               <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 border-2 border-white" />
               <button
                 type="button"
-                className="absolute -bottom-1 -left-1 flex h-7 w-7 items-center justify-center rounded-lg border border-black/[0.08] bg-white shadow-sm text-[#6b6b6b] hover:text-[#D4AF37] hover:border-[#D4AF37]/30 transition-colors"
+                className="absolute -bottom-1 -left-1 flex h-7 w-7 items-center justify-center rounded-lg border border-black/[0.08] bg-white shadow-sm text-[#3f3f46] hover:text-[#D4AF37] hover:border-[#D4AF37]/30 transition-colors"
                 aria-label="Change profile photo"
               >
                 <Camera className="h-3.5 w-3.5" />
@@ -126,13 +126,13 @@ export function MyProfile() {
 
             <div className="min-w-0 flex-1">
               <h2 className="text-xl font-bold text-[#111118] tracking-[-0.02em]">{displayName}</h2>
-              <p className="text-sm text-[#6b6b6b] mt-1">{roleInfo.description}</p>
+              <p className="text-sm text-[#3f3f46] mt-1">{roleInfo.description}</p>
               <div className="flex flex-wrap items-center gap-2 mt-3">
                 <span className={financeBadgeGold + " inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold"}>
                   <span className="h-1.5 w-1.5 rounded-full bg-[#D4AF37]" />
                   {roleInfo.label}
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-full border border-black/[0.08] bg-white px-2.5 py-1 text-[11px] font-medium text-[#6b6b6b]">
+                <span className="inline-flex items-center gap-1 rounded-full border border-black/[0.08] bg-white px-2.5 py-1 text-[11px] font-medium text-[#3f3f46]">
                   <Star className="h-3 w-3 text-[#D4AF37]" />
                   {roleInfo.emoji} Salon Staff
                 </span>
@@ -146,7 +146,7 @@ export function MyProfile() {
                   className="rounded-xl border border-black/[0.06] bg-white/80 px-3 py-2.5 text-center min-w-[88px]"
                 >
                   <p className="text-base font-bold text-[#111118] tabular-nums">{stat.value}</p>
-                  <p className="text-[9px] font-semibold uppercase tracking-wider text-[#9a9a9a] mt-0.5 leading-tight">
+                  <p className="text-[9px] font-semibold uppercase tracking-wider text-[#52525b] mt-0.5 leading-tight">
                     {stat.label}
                   </p>
                 </div>
@@ -166,7 +166,7 @@ export function MyProfile() {
               </div>
               <div>
                 <p className={financePanelTitle}>Personal Information</p>
-                <p className="text-[10px] text-[#9a9a9a] mt-0.5">Your contact and workplace details</p>
+                <p className="text-[10px] text-[#52525b] mt-0.5">Your contact and workplace details</p>
               </div>
             </div>
           </div>
@@ -180,7 +180,7 @@ export function MyProfile() {
                   <Icon className="h-4 w-4 text-[#D4AF37]" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a9a9a]">{label}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525b]">{label}</p>
                   <p className="text-[13px] font-medium text-[#111118] mt-0.5 truncate">{value}</p>
                 </div>
               </div>
@@ -208,7 +208,7 @@ export function MyProfile() {
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-semibold text-[#111118]">{item.label}</p>
-                    <p className="text-[11px] text-[#9a9a9a] mt-0.5">{item.desc}</p>
+                    <p className="text-[11px] text-[#52525b] mt-0.5">{item.desc}</p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-[#c4c4c4] group-hover:text-[#D4AF37] group-hover:translate-x-0.5 transition-all shrink-0" />
                 </button>
@@ -223,7 +223,7 @@ export function MyProfile() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] font-semibold text-[#111118]">Account secured</p>
-                <p className="text-[11px] text-[#6b6b6b] mt-1 leading-relaxed">
+                <p className="text-[11px] text-[#3f3f46] mt-1 leading-relaxed">
                   Your session is protected with JWT authentication.
                 </p>
                 <button

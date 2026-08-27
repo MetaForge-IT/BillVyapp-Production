@@ -126,7 +126,7 @@ export function PaymentResultDialog({
               </div>
               <div className="text-center">
                 <h2 className="text-lg font-black text-[#111118]">Bill Confirmed</h2>
-                <p className="mt-0.5 text-[12px] text-[#6b6b6b]">Outstanding balance recorded</p>
+                <p className="mt-0.5 text-[12px] text-[#3f3f46]">Outstanding balance recorded</p>
               </div>
               <div className="w-full rounded-xl bg-gradient-to-br from-[#111118] to-[#1e1e2a] p-4 shadow-xl">
                 <div className="mb-2 flex items-center justify-between border-b border-white/10 pb-2">
@@ -155,7 +155,7 @@ export function PaymentResultDialog({
                   </div>
                 </div>
               </div>
-              <p className="text-center text-[11px] text-[#6b6b6b]">
+              <p className="text-center text-[11px] text-[#3f3f46]">
                 Collect anytime from Pending Payments.
               </p>
               <button
@@ -237,7 +237,7 @@ export function PaymentResultDialog({
               <div className="relative z-10 w-full rounded-xl border border-[#D4AF37]/25 bg-[#fffdf7] px-3 py-2.5">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[11px] font-semibold text-[#111118]">
-                    Rate visit <span className="font-medium text-[#9a9a9a]">(optional)</span>
+                    Rate visit <span className="font-medium text-[#52525b]">(optional)</span>
                   </p>
                   <p className="min-w-[2.5rem] text-right text-[11px] font-medium text-[#9a7d20]">
                     {feedbackRating > 0 ? `${feedbackRating}/5` : ""}

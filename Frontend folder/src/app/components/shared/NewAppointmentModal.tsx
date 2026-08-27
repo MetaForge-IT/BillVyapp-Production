@@ -236,12 +236,12 @@ export function NewAppointmentModal({
               </div>
               <div>
                 <h2 className="text-2xl font-bold text-[#121212] tracking-tight">New Appointment</h2>
-                <p className="text-sm text-[#6B6B6B] mt-0.5">Book, bill & confirm in one step</p>
+                <p className="text-sm text-[#3f3f46] mt-0.5">Book, bill & confirm in one step</p>
               </div>
             </div>
             <button
               onClick={() => onOpenChange(false)}
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-[#6B6B6B] hover:bg-[#FAF8F2] hover:text-[#121212] transition-colors border border-[#EFEFEF]"
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-[#3f3f46] hover:bg-[#FAF8F2] hover:text-[#121212] transition-colors border border-[#EFEFEF]"
             >
               <X className="h-5 w-5" />
             </button>
@@ -268,7 +268,7 @@ export function NewAppointmentModal({
                   </div>
                   <p className="text-[10px] text-[#9B9B9B] mt-2">Enter phone number or customer name to search</p>
                   {customerSearch && (
-                    <div className="mt-3 rounded-xl border border-[#EFEFEF] bg-[#FAF8F2] px-3 py-2 text-[11px] text-[#6B6B6B]">
+                    <div className="mt-3 rounded-xl border border-[#EFEFEF] bg-[#FAF8F2] px-3 py-2 text-[11px] text-[#3f3f46]">
                       Customer search results can be loaded from the customer application for online appointments.
                     </div>
                   )}
@@ -284,14 +284,14 @@ export function NewAppointmentModal({
                         onClick={() => setMode(m)}
                         className={cn(
                           "rounded-lg py-2.5 text-sm font-medium transition-colors",
-                          mode === m ? "bg-[#121212] text-[#D4AF37] font-semibold" : "text-[#6B6B6B] hover:text-[#121212]"
+                          mode === m ? "bg-[#121212] text-[#D4AF37] font-semibold" : "text-[#3f3f46] hover:text-[#121212]"
                         )}
                       >
                         {m}
                       </button>
                     ))}
                   </div>
-                  <p className="text-[11px] text-[#6B6B6B] leading-5">
+                  <p className="text-[11px] text-[#3f3f46] leading-5">
                     {mode === "Online Appointment"
                       ? "Online appointments are pulled from the customer application when a matching customer is selected."
                       : "Walk-in bookings create a direct customer record in this salon workflow."}
@@ -341,7 +341,7 @@ export function NewAppointmentModal({
                           Phone Number <span className="text-red-500">*</span>
                         </label>
                         <div className="flex gap-2">
-                          <span className="inline-flex items-center px-3 rounded-xl border border-[#D4AF37]/25 bg-[#FAFAFA] text-sm text-[#6B6B6B] shrink-0">+91</span>
+                          <span className="inline-flex items-center px-3 rounded-xl border border-[#D4AF37]/25 bg-[#FAFAFA] text-sm text-[#3f3f46] shrink-0">+91</span>
                           <Input
                             placeholder="98765 00000"
                             value={phone.replace(/^\+91\s?/,"")}
@@ -375,7 +375,7 @@ export function NewAppointmentModal({
                               <option value="Female">Female</option>
                               <option value="Other">Other</option>
                             </select>
-                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#6B6B6B] pointer-events-none" />
+                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#3f3f46] pointer-events-none" />
                           </div>
                         </div>
                         <div>
@@ -417,7 +417,7 @@ export function NewAppointmentModal({
                       onClick={() => setGenderTab(g)}
                       className={cn(
                         "rounded-lg py-2.5 text-sm font-medium transition-colors",
-                        genderTab === g ? "bg-[#121212] text-[#D4AF37] font-semibold" : "text-[#6B6B6B] hover:text-[#121212]"
+                        genderTab === g ? "bg-[#121212] text-[#D4AF37] font-semibold" : "text-[#3f3f46] hover:text-[#121212]"
                       )}
                     >
                       {g}
@@ -434,7 +434,7 @@ export function NewAppointmentModal({
                         "text-sm font-medium pb-3 border-b-2 -mb-1 transition-colors",
                         activeTab === t
                           ? "border-[#121212] text-[#121212] font-semibold"
-                          : "border-transparent text-[#6B6B6B] hover:text-[#121212]"
+                          : "border-transparent text-[#3f3f46] hover:text-[#121212]"
                       )}
                     >
                       {t}
@@ -455,7 +455,7 @@ export function NewAppointmentModal({
                           <div className="flex items-center gap-2 flex-wrap">
                             <div className="min-w-0">
                               {(s.category || s.serviceGroup) && (
-                                <p className="text-[10px] font-semibold uppercase tracking-wide text-[#9a9a9a]">
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-[#52525b]">
                                   {[s.category, s.serviceGroup].filter(Boolean).join(" · ")}
                                 </p>
                               )}
@@ -469,7 +469,7 @@ export function NewAppointmentModal({
                               </Badge>
                             )}
                           </div>
-                          <p className="text-sm text-[#6B6B6B] mt-1">
+                          <p className="text-sm text-[#3f3f46] mt-1">
                             ₹{s.price.toFixed(2)}{" "}
                             <span className="text-[#D4AF37] font-semibold">· Member ₹{s.memberPrice.toFixed(2)}</span>
                           </p>
@@ -483,13 +483,13 @@ export function NewAppointmentModal({
                       </div>
                     ))}
                     {filteredServices.length === 0 && (
-                      <div className="flex items-center justify-center h-40 text-sm text-[#6B6B6B]">
+                      <div className="flex items-center justify-center h-40 text-sm text-[#3f3f46]">
                         No services found.
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center h-48 text-sm text-[#6B6B6B]">
+                  <div className="flex items-center justify-center h-48 text-sm text-[#3f3f46]">
                     No {activeTab.toLowerCase()} available.
                   </div>
                 )}
@@ -567,7 +567,7 @@ export function NewAppointmentModal({
                   </div>
                   {applyGST && (
                     <div className="mt-3 flex items-center gap-2">
-                      <span className="text-xs text-[#6B6B6B]">GST Rate (%)</span>
+                      <span className="text-xs text-[#3f3f46]">GST Rate (%)</span>
                       <div className="flex gap-1 ml-auto">
                         {[5, 12, 18, 28].map((r) => (
                           <button
@@ -575,7 +575,7 @@ export function NewAppointmentModal({
                             onClick={() => setGstRate(r)}
                             className={cn(
                               "px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors",
-                              gstRate === r ? "bg-[#121212] text-[#D4AF37]" : "bg-white border border-[#EFEFEF] text-[#6B6B6B] hover:border-[#D4AF37]/30"
+                              gstRate === r ? "bg-[#121212] text-[#D4AF37]" : "bg-white border border-[#EFEFEF] text-[#3f3f46] hover:border-[#D4AF37]/30"
                             )}
                           >{r}%</button>
                         ))}
@@ -604,7 +604,7 @@ export function NewAppointmentModal({
                   </div>
                   {applyLoyalty && (
                     <div className="mt-3 space-y-2">
-                      <p className="text-xs text-[#6B6B6B]">Redeem points (10 pts = ₹1, max 10% of bill)</p>
+                      <p className="text-xs text-[#3f3f46]">Redeem points (10 pts = ₹1, max 10% of bill)</p>
                       <Input
                         type="number"
                         placeholder="Enter points to redeem"
@@ -710,7 +710,7 @@ export function NewAppointmentModal({
                 <div>
                   <p className="text-xs font-bold text-[#9B9B9B] uppercase tracking-widest mb-3">Bill Summary</p>
                   <div className="rounded-xl border border-[#D4AF37]/20 bg-[#FAF8F2]/60 px-5 py-4 space-y-2">
-                    <div className="flex justify-between text-sm text-[#6B6B6B]">
+                    <div className="flex justify-between text-sm text-[#3f3f46]">
                       <span>Subtotal</span>
                       <span>₹{subtotal.toFixed(2)}</span>
                     </div>
@@ -733,7 +733,7 @@ export function NewAppointmentModal({
                       </div>
                     )}
                     {applyGST && (
-                      <div className="flex justify-between text-sm text-[#6B6B6B]">
+                      <div className="flex justify-between text-sm text-[#3f3f46]">
                         <span>GST ({gstRate}%)</span>
                         <span>+₹{gstAmount.toFixed(2)}</span>
                       </div>
@@ -767,7 +767,7 @@ export function NewAppointmentModal({
                 {/* Notify Customer */}
                 <div className="rounded-2xl border border-[#D4AF37]/30 bg-white p-6 shadow-sm">
                   <p className="text-xs font-bold text-[#9B9B9B] uppercase tracking-widest mb-4">Notify Customer</p>
-                  <p className="text-sm text-[#6B6B6B] mb-4 leading-relaxed">
+                  <p className="text-sm text-[#3f3f46] mb-4 leading-relaxed">
                     Choose how to send the appointment confirmation to the customer.
                   </p>
                   <div className="space-y-3">
@@ -896,14 +896,14 @@ export function NewAppointmentModal({
             </div>
 
             <h3 className="text-2xl font-bold text-[#121212] mb-1 tracking-tight">Appointment Confirmed!</h3>
-            <p className="text-[#6B6B6B] text-sm">
+            <p className="text-[#3f3f46] text-sm">
               <span className="font-semibold text-[#121212]">{name || "Customer"}</span>'s appointment has been successfully booked.
             </p>
 
             {notifyMethod !== "none" && phone && (
               <div className="mt-4 rounded-xl border border-[#D4AF37]/25 bg-[#FAF8F2] px-4 py-3 text-left flex items-center gap-2">
                 <MessageCircle className="h-4 w-4 text-[#D4AF37] shrink-0" />
-                <p className="text-xs text-[#6B6B6B] font-medium">
+                <p className="text-xs text-[#3f3f46] font-medium">
                   Confirmation sent via{" "}
                   <span className="text-[#121212] font-semibold">
                     {notifyMethod === "whatsapp" ? "WhatsApp" : notifyMethod === "sms" ? "SMS" : "WhatsApp & SMS"}

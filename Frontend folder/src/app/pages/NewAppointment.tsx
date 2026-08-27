@@ -681,7 +681,7 @@ export function NewAppointment({ mode = "appointment" }: { mode?: BookingMode })
             <p className="text-[15px] font-bold leading-tight text-[#111118]">
               {isWalkInPage ? "New Walk-In" : "Create Appointment"}
             </p>
-            <p className="mt-0.5 flex items-center gap-1 text-[10.5px] text-[#9a9a9a]">
+            <p className="mt-0.5 flex items-center gap-1 text-[10.5px] text-[#52525b]">
               <Sparkles className="h-2.5 w-2.5 text-[#D4AF37]" />
               {isWalkInPage ? "Quick check-in" : "Scheduled booking"}
             </p>
