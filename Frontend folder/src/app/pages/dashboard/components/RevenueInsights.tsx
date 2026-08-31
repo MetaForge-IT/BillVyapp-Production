@@ -8,12 +8,12 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import { BarChart3, Scissors, TrendingUp } from "lucide-react";
+import { SafeChartContainer } from "../../../components/shared/SafeChartContainer";
 import type { DashboardTrendPoint } from "../../../api/dashboard";
 import { DashboardCard, DashboardCardHeader, SectionLabel } from "./DashboardCard";
 import {
@@ -121,8 +121,7 @@ export function RevenueInsights() {
               {trendWithDates.length === 0 || !hasRevenueTrend ? (
                 <p className="py-16 text-center text-[12px] text-[#52525b]">No revenue data in the last 7 days</p>
               ) : (
-                <div className="dashboard-chart-h w-full min-w-0 max-w-full overflow-hidden">
-                  <ResponsiveContainer width="100%" height="100%" debounce={50}>
+                <SafeChartContainer className="dashboard-chart-h" height={160} minHeight={160}>
                     <AreaChart
                       data={trendWithDates}
                       margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
@@ -156,8 +155,7 @@ export function RevenueInsights() {
                         activeDot={{ r: 5, fill: "#D4AF37", strokeWidth: 0, cursor: "pointer" }}
                       />
                     </AreaChart>
-                  </ResponsiveContainer>
-                </div>
+                </SafeChartContainer>
               )}
             </div>
           </DashboardCard>
@@ -177,8 +175,7 @@ export function RevenueInsights() {
               {trendWithDates.length === 0 || !hasAppointmentTrend ? (
                 <p className="py-16 text-center text-[12px] text-[#52525b]">No appointments in the last 7 days</p>
               ) : (
-                <div className="dashboard-chart-h w-full min-w-0 max-w-full overflow-hidden">
-                  <ResponsiveContainer width="100%" height="100%" debounce={50}>
+                <SafeChartContainer className="dashboard-chart-h" height={160} minHeight={160}>
                     <BarChart
                       data={trendWithDates}
                       margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
@@ -205,8 +202,7 @@ export function RevenueInsights() {
                         ))}
                       </Bar>
                     </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                </SafeChartContainer>
               )}
             </div>
           </DashboardCard>

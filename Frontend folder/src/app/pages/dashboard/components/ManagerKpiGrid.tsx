@@ -9,6 +9,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { MetricCard } from "../../../components/shared/MetricCard";
+import { useMinWidth } from "../../../hooks/useMinWidth";
 import { dashboardFadeUpStagger } from "../motion";
 import { useDashboard } from "../useDashboard";
 
@@ -129,6 +130,9 @@ export function ManagerKpiGrid() {
       accent: "#111118",
     },
   ];
+
+  const showKpi = useMinWidth(768);
+  if (!showKpi) return null;
 
   return (
     <section aria-label="Manager operations indicators" className="dashboard-kpi-mobile-hide">

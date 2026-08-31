@@ -16,7 +16,7 @@ import { getApiErrorMessage } from "../../../../lib/api";
 import { Badge } from "../../../components/ui/badge";
 import {
   FinanceStatCard,
-  FinanceStatGrid,
+  RevenueReportKpiStrip,
   FinancePanel,
   financeBadge,
   financeBadgeGold,
@@ -111,11 +111,11 @@ export function MembershipTab({ onStatsChange }: { onStatsChange?: (stats: { act
         </button>
       </div>
 
-      <FinanceStatGrid cols={3}>
+      <RevenueReportKpiStrip cols={3}>
         <FinanceStatCard label="Active" value={active} icon={CheckCircle2} index={0} />
         <FinanceStatCard label="Exhausted" value={exhausted} icon={Ban} index={1} />
         <FinanceStatCard label="Expired" value={expired} icon={Clock} index={2} />
-      </FinanceStatGrid>
+      </RevenueReportKpiStrip>
 
       <div className="relative">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#52525b] pointer-events-none" />

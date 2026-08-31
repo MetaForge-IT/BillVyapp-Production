@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { MetricCard } from "../../../components/shared/MetricCard";
 import { KPI_DRILL_ROUTES } from "../../../components/shared/PageStatCard";
+import { useMinWidth } from "../../../hooks/useMinWidth";
 import { mapKpiMetrics } from "../data";
 import { dashboardFadeUpStagger } from "../motion";
 import { useDashboard } from "../useDashboard";
@@ -8,6 +9,9 @@ import { useDashboard } from "../useDashboard";
 export function KpiGrid() {
   const { data } = useDashboard();
   const kpiMetrics = mapKpiMetrics(data?.kpiMetrics ?? []);
+  const showKpi = useMinWidth(768);
+
+  if (!showKpi) return null;
 
   return (
     <section

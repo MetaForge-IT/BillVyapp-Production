@@ -6,12 +6,12 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import { IndianRupee, Store, TrendingUp } from "lucide-react";
+import { SafeChartContainer } from "../../components/shared/SafeChartContainer";
 import {
   fetchPlatformRevenue,
   type PlatformRevenue,
@@ -230,7 +230,7 @@ export function SuperAdminRevenuePanel() {
                 No franchise data
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <SafeChartContainer height="100%" minHeight={200}>
                 <BarChart data={franchiseChart} margin={{ top: 8, right: 8, left: 0, bottom: 24 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#eee" vertical={false} />
                   <XAxis
@@ -257,7 +257,7 @@ export function SuperAdminRevenuePanel() {
                     ))}
                   </Bar>
                 </BarChart>
-              </ResponsiveContainer>
+              </SafeChartContainer>
             )}
           </div>
         </div>
@@ -275,7 +275,7 @@ export function SuperAdminRevenuePanel() {
                 No invoice payments in this range
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <SafeChartContainer height="100%" minHeight={200}>
                 <BarChart data={shopChart} margin={{ top: 8, right: 8, left: 0, bottom: 24 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#eee" vertical={false} />
                   <XAxis
@@ -302,7 +302,7 @@ export function SuperAdminRevenuePanel() {
                     ))}
                   </Bar>
                 </BarChart>
-              </ResponsiveContainer>
+              </SafeChartContainer>
             )}
           </div>
         </div>
@@ -317,7 +317,7 @@ export function SuperAdminRevenuePanel() {
               Loading chart…
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height="100%">
+            <SafeChartContainer height="100%" minHeight={200}>
               <AreaChart data={trendChart} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="saRevenueFill" x1="0" y1="0" x2="0" y2="1">
@@ -349,7 +349,7 @@ export function SuperAdminRevenuePanel() {
                   fill="url(#saRevenueFill)"
                 />
               </AreaChart>
-            </ResponsiveContainer>
+            </SafeChartContainer>
           )}
         </div>
       </div>

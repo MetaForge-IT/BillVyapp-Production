@@ -196,6 +196,7 @@ export function LoginPage() {
       if (response.data) {
         setPhoneHint(readPhoneHint(response.data));
         setOtpMessage(response.data.message);
+        setDevOtpHint(response.data.otp?.trim() || null);
         setOtp("");
       }
       setOtpResendState("sent");

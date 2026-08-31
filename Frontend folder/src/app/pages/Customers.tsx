@@ -23,6 +23,7 @@ import {
 } from "../../api/messaging";
 import { Pagination } from "../components/shared/Pagination";
 import { PageStatCard } from "../components/shared/PageStatCard";
+import { PanelKpiStrip } from "./finance/finance-ui";
 import { FilterSelect } from "../components/shared/FilterSelect";
 import { DEFAULT_PAGE_SIZE } from "../hooks/useTablePagination";
 import {
@@ -969,8 +970,8 @@ export function Customers() {
         </div>
       )}
 
-      {/* Stat cards — tablet + desktop; phones keep list space. */}
-      <div className="hidden shrink-0 gap-3 md:grid md:grid-cols-2 lg:grid-cols-4">
+      {/* Stat cards — tablet scroll + desktop grid; hidden on phones. */}
+      <PanelKpiStrip cols={4}>
         <PageStatCard
           label="Today's Revenue"
           value={todayRevenue == null ? "—" : `₹${todayRevenue.toLocaleString("en-IN")}`}
@@ -1006,7 +1007,7 @@ export function Customers() {
           index={3}
           onClick={() => { setShowSearchFilters(true); setFilterBirthday("thismonth"); }}
         />
-      </div>
+      </PanelKpiStrip>
 
       {/* Search + Filters — visible only when toggle is on */}
       <div className="shrink-0 rounded-2xl border border-black/[0.07] bg-white shadow-sm px-4 py-3">
