@@ -2,8 +2,9 @@ import { Link } from "react-router";
 import { useEffect, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
-import { Area, AreaChart, ResponsiveContainer } from "recharts";
+import { Area, AreaChart } from "recharts";
 import { cn } from "../ui/utils";
+import { SafeChartContainer } from "./SafeChartContainer";
 
 function parseNumeric(value: string): number | null {
   const n = parseFloat(value.replace(/[^0-9.]/g, ""));
@@ -111,8 +112,8 @@ export function MetricCard({
         <p className="mt-1 text-[11px] text-[#52525b]">{comparison}</p>
 
         {/* Sparkline */}
-        <div className="mt-auto h-8">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="mt-auto h-8 min-w-0 w-full">
+          <SafeChartContainer height={32} minHeight={32}>
             <AreaChart data={sparkline}>
               <defs>
                 <linearGradient id={`sg-${label.replace(/\s/g, "")}`} x1="0" y1="0" x2="0" y2="1">
@@ -130,7 +131,7 @@ export function MetricCard({
                 animationDuration={1000}
               />
             </AreaChart>
-          </ResponsiveContainer>
+          </SafeChartContainer>
         </div>
       </div>
     </motion.div>

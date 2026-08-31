@@ -92,6 +92,7 @@ export function FinanceReceiptsModule() {
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
       <div className="shrink-0">
         <SegmentedPillNav
+          iconOnlyMobile
           items={visibleTabs.map(({ id, label, shortLabel, icon }) => ({
             id,
             label,

@@ -6,7 +6,7 @@ import { useAdvances } from "../../../context/AdvancesContext";
 import { Badge } from "../../../components/ui/badge";
 import {
   FinanceStatCard,
-  FinanceStatGrid,
+  RevenueReportKpiStrip,
   FinancePanel,
   financeBadgeGold,
   financeAvatarWrap,
@@ -31,11 +31,11 @@ export function AdvanceTab() {
 
   return (
     <div className="space-y-4">
-      <FinanceStatGrid cols={3}>
+      <RevenueReportKpiStrip cols={3}>
         <FinanceStatCard label="Advance Held" value={fmt(totalHeld)} sub="Current balance" icon={Wallet} index={0} />
         <FinanceStatCard label="Total Collected" value={fmt(totalReceived)} sub="Lifetime" icon={TrendingUp} index={1} />
         <FinanceStatCard label="Utilized" value={fmt(utilized)} sub="Redeemed so far" icon={IndianRupee} index={2} />
-      </FinanceStatGrid>
+      </RevenueReportKpiStrip>
 
       <FinancePanel
         title="Advance Payment Register"

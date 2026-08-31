@@ -38,6 +38,7 @@ export function FinanceStatCard({
   onClick,
   href,
   className,
+  compact = false,
 }: {
   label: string;
   value: string | number;
@@ -47,30 +48,56 @@ export function FinanceStatCard({
   onClick?: () => void;
   href?: string;
   className?: string;
+  /** Tighter card for Revenue Report KPI strips (tablet/desktop). */
+  compact?: boolean;
 }) {
   const content = (
     <>
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#D4AF37]/60 to-transparent" />
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none bg-[radial-gradient(ellipse_80%_60%_at_50%_0%,rgba(212,175,55,0.06),transparent)]" />
-      <div className="relative p-3.5 flex items-start justify-between text-left w-full">
-        <div>
-          <p className="text-[10px] font-semibold text-[#3f3f46] uppercase tracking-[0.18em]">
+      <div
+        className={cn(
+          "relative flex items-start justify-between text-left w-full",
+          compact ? "p-2.5" : "p-3.5",
+        )}
+      >
+        <div className="min-w-0 flex-1 pr-2">
+          <p
+            className={cn(
+              "font-semibold text-[#3f3f46] uppercase tracking-[0.18em] truncate",
+              compact ? "text-[9px] tracking-[0.14em]" : "text-[10px]",
+            )}
+          >
             {label}
           </p>
-          <p className="mt-1 text-2xl font-bold text-[#111118] leading-none tabular-nums">
+          <p
+            className={cn(
+              "mt-0.5 font-bold text-[#111118] leading-none tabular-nums truncate",
+              compact ? "text-lg" : "mt-1 text-2xl",
+            )}
+          >
             {value}
           </p>
-          {sub && <p className="mt-1 text-[11px] text-[#52525b]">{sub}</p>}
+          {sub && (
+            <p className={cn("text-[#52525b] truncate", compact ? "mt-0.5 text-[10px]" : "mt-1 text-[11px]")}>
+              {sub}
+            </p>
+          )}
         </div>
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0 bg-[#D4AF37]/10 border border-[#D4AF37]/20">
-          <Icon className="h-4 w-4 text-[#D4AF37]" />
+        <div
+          className={cn(
+            "flex items-center justify-center rounded-lg shrink-0 bg-[#D4AF37]/10 border border-[#D4AF37]/20",
+            compact ? "h-7 w-7" : "h-9 w-9",
+          )}
+        >
+          <Icon className={cn("text-[#D4AF37]", compact ? "h-3.5 w-3.5" : "h-4 w-4")} />
         </div>
       </div>
     </>
   );
 
   const cardClass = cn(
-    "group relative overflow-hidden rounded-xl bg-white border border-black/[0.07] shadow-sm hover:shadow-[0_12px_32px_rgba(17,17,24,0.08)] transition-all duration-300",
+    "group relative flex h-full min-h-[5.75rem] w-full overflow-hidden rounded-xl bg-white border border-black/[0.07] shadow-sm hover:shadow-[0_12px_32px_rgba(17,17,24,0.08)] transition-all duration-300",
     (onClick || href) && "cursor-pointer",
     className,
   );
@@ -82,9 +109,11 @@ export function FinanceStatCard({
     whileHover: { y: -3, transition: { duration: 0.2 } } as const,
   };
 
+  const shellClass = "h-full min-w-0 w-full";
+
   if (href) {
     return (
-      <motion.div {...motionProps}>
+      <motion.div {...motionProps} className={shellClass}>
         <Link to={href} className={cn(cardClass, "block")}>
           {content}
         </Link>
@@ -101,7 +130,7 @@ export function FinanceStatCard({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.08, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
         whileHover={{ y: -3, transition: { duration: 0.2 } }}
-        className={cardClass}
+        className={cn(cardClass, shellClass)}
       >
         {content}
       </motion.button>
@@ -114,7 +143,7 @@ export function FinanceStatCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.08, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       whileHover={{ y: -3, transition: { duration: 0.2 } }}
-      className={cardClass}
+      className={cn(cardClass, shellClass)}
     >
       {content}
     </motion.div>
@@ -138,6 +167,35 @@ export function FinanceStatGrid({
         : "grid-cols-2 md:grid-cols-3 lg:grid-cols-4";
   return <div className={cn("grid gap-3", colClass, className)}>{children}</div>;
 }
+
+/** Shared KPI row — horizontal scroll on tablet, equal columns on desktop; hidden on phones via CSS. */
+export function PanelKpiStrip({
+  children,
+  cols = 4,
+  className,
+}: {
+  children: ReactNode;
+  cols?: 2 | 3 | 4;
+  className?: string;
+}) {
+  return (
+    <div className={cn("panel-kpi-strip shrink-0 min-w-0", className)}>
+      <div
+        className={cn(
+          "panel-kpi-grid",
+          cols === 4 && "panel-kpi-grid--4",
+          cols === 3 && "panel-kpi-grid--3",
+          cols === 2 && "panel-kpi-grid--2",
+        )}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** @deprecated Use PanelKpiStrip */
+export const RevenueReportKpiStrip = PanelKpiStrip;
 
 export function FinancePanel({
   title,

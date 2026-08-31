@@ -29,7 +29,7 @@ import {
 } from "../../../components/shared/PaymentMethodPicker";
 import {
   FinanceStatCard,
-  FinanceStatGrid,
+  RevenueReportKpiStrip,
   FinancePanel,
   financeBadge,
   financeBadgeGold,
@@ -188,11 +188,11 @@ export function PendingTab() {
 
   return (
     <div className="space-y-4">
-      <FinanceStatGrid cols={3}>
+      <RevenueReportKpiStrip cols={3}>
         <FinanceStatCard label="Total Due" value={fmt(totalDue)} sub="Outstanding balance" icon={IndianRupee} index={0} />
         <FinanceStatCard label="Overdue" value={overdueCount} sub="Past due date" icon={AlertTriangle} index={1} />
         <FinanceStatCard label="Partial Paid" value={partialCount} sub="Part payment received" icon={Clock} index={2} />
-      </FinanceStatGrid>
+      </RevenueReportKpiStrip>
 
       <FinancePanel
         title="Pending Invoice Register"

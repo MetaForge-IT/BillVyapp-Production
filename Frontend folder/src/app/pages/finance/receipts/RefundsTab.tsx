@@ -12,7 +12,7 @@ import { Badge } from "../../../components/ui/badge";
 import { Dialog, DialogContent } from "../../../components/ui/dialog";
 import {
   FinanceStatCard,
-  FinanceStatGrid,
+  RevenueReportKpiStrip,
   FinancePanel,
   financeBadge,
   financeBadgeGold,
@@ -104,7 +104,7 @@ export function RefundsTab({ onLoaded }: { onLoaded?: (refunds: RefundRecord[]) 
 
   return (
     <div className="space-y-4">
-      <FinanceStatGrid cols={3}>
+      <RevenueReportKpiStrip cols={3}>
         <FinanceStatCard
           label="Total Refunded"
           value={fmt(totalApproved)}
@@ -126,7 +126,7 @@ export function RefundsTab({ onLoaded }: { onLoaded?: (refunds: RefundRecord[]) 
           icon={Ban}
           index={2}
         />
-      </FinanceStatGrid>
+      </RevenueReportKpiStrip>
 
       <FinancePanel
         title="Refund Ledger"

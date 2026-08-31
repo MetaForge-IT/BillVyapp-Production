@@ -35,7 +35,7 @@ import { downloadReceiptBill } from "../lib/downloadReceipt";
 import { receiptLinesForDisplay } from "../lib/receiptLineItems";
 import {
   FinanceStatCard,
-  FinanceStatGrid,
+  RevenueReportKpiStrip,
   financeBadge,
   financeBadgeGold,
   financeFilterBar,
@@ -342,8 +342,7 @@ export function Receipts() {
 
       {/* ── Stat cards (admin Revenue Report only) ── */}
       {!isManager && (
-        <div className="shrink-0">
-          <FinanceStatGrid>
+        <RevenueReportKpiStrip cols={4}>
             <FinanceStatCard
               label={periodRevenueLabel}
               value={`₹${totalRevenue.toLocaleString()}`}
@@ -380,8 +379,7 @@ export function Receipts() {
               icon={Receipt}
               index={3}
             />
-          </FinanceStatGrid>
-        </div>
+        </RevenueReportKpiStrip>
       )}
 
       {/* ── Filter bar — search toggled on phones, always open from md up ── */}
