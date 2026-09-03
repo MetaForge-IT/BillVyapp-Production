@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
@@ -10,15 +11,18 @@ import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from "../components/ui/table";
 import {
-  Tag, Plus, Pencil, Trash2, Search, Send, Copy, Percent, IndianRupee, Users, Ticket,
+  Tag, Plus, Pencil, Trash2, Search, Send, Copy, Percent, IndianRupee, Users, Ticket, Store,
 } from "lucide-react";
 import { useCoupons, type Coupon, type CouponType, type CouponStatus } from "../context/CouponsContext";
 import { sendCouponWhatsApp } from "../../api/messaging";
+import { fetchMyFranchise } from "../../api/franchises";
 import { getApiErrorMessage } from "../../lib/api";
+import { FilterSelect } from "../components/shared/FilterSelect";
 import { toast } from "../components/ui/hot-toast";
 import { Pagination } from "../components/shared/Pagination";
 import { useTablePagination } from "../hooks/useTablePagination";
 import { istDateKey } from "../../lib/istDate";
+import { isAdmin, useRole } from "../context/RoleContext";
 
 const todayISO = istDateKey();
 
@@ -49,7 +53,24 @@ function statusBadge(status: CouponStatus, validTill: string) {
 }
 
 export function CouponsSection() {
-  const { coupons, addCoupon, updateCoupon, deleteCoupon } = useCoupons();
+  const { role } = useRole();
+  const admin = isAdmin(role);
+  const { coupons, loading, salonFilter, setSalonFilter, addCoupon, updateCoupon, deleteCoupon } = useCoupons();
+  const franchiseQuery = useQuery({
+    queryKey: ["my-franchise"],
+    queryFn: fetchMyFranchise,
+    enabled: admin,
+  });
+  const franchiseShops = franchiseQuery.data?.shops ?? [];
+  const showShopColumn = admin && salonFilter === "all" && franchiseShops.length > 1;
+  const shopSelectOptions = useMemo(
+    () =>
+      franchiseShops.map((shop) => ({
+        value: shop.id,
+        label: shop.displayName?.trim() || shop.name,
+      })),
+    [franchiseShops],
+  );
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -173,6 +194,23 @@ export function CouponsSection() {
         </Button>
       </div>
 
+      {admin && franchiseShops.length > 1 && (
+        <div className="grid shrink-0 grid-cols-2 gap-2 sm:max-w-xs">
+          <FilterSelect
+            compact
+            icon={Store}
+            value={salonFilter}
+            onValueChange={setSalonFilter}
+            active={salonFilter !== "all"}
+            className="min-w-0"
+            options={[
+              { value: "all", label: `All Shops (${franchiseShops.length})` },
+              ...shopSelectOptions,
+            ]}
+          />
+        </div>
+      )}
+
       {/* Stats — compact on phones */}
       <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
         {[
@@ -295,6 +333,7 @@ export function CouponsSection() {
 
               <p className="text-[11px] text-[#3f3f46]">
                 {c.validFrom} → {c.validTill}
+                {showShopColumn && c.salonName ? ` · ${c.salonName}` : ""}
               </p>
 
               <div className="flex gap-1.5">
@@ -347,6 +386,9 @@ export function CouponsSection() {
               <TableRow className="border-black/[0.06] bg-[#faf9f7] hover:bg-[#faf9f7]">
                 <TableHead className="text-[10px] font-bold uppercase tracking-wider text-[#52525b]">Code</TableHead>
                 <TableHead className="text-[10px] font-bold uppercase tracking-wider text-[#52525b]">Title</TableHead>
+                {showShopColumn ? (
+                  <TableHead className="text-[10px] font-bold uppercase tracking-wider text-[#52525b]">Shop</TableHead>
+                ) : null}
                 <TableHead className="text-[10px] font-bold uppercase tracking-wider text-[#52525b]">Discount</TableHead>
                 <TableHead className="text-[10px] font-bold uppercase tracking-wider text-[#52525b]">Validity</TableHead>
                 <TableHead className="text-[10px] font-bold uppercase tracking-wider text-[#52525b]">Usage</TableHead>
@@ -378,6 +420,11 @@ export function CouponsSection() {
                       <p className="mt-0.5 line-clamp-1 text-[11px] text-[#52525b]">{c.description}</p>
                     )}
                   </TableCell>
+                  {showShopColumn ? (
+                    <TableCell className="max-w-[9rem] truncate text-[12px] font-semibold text-[#9a7d20]">
+                      {c.salonName ?? "—"}
+                    </TableCell>
+                  ) : null}
                   <TableCell>
                     <span className="flex items-center gap-1 text-[13px] font-semibold text-[#111118]">
                       {c.type === "percentage" ? (
@@ -437,7 +484,7 @@ export function CouponsSection() {
               ))}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-12 text-center">
+                  <TableCell colSpan={showShopColumn ? 8 : 7} className="py-12 text-center">
                     <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl border border-dashed border-black/[0.1] bg-[#faf9f7]">
                       <Tag className="h-5 w-5 text-[#D4AF37]/35" />
                     </div>

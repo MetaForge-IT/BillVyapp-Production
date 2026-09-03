@@ -20,6 +20,7 @@ export const queryKeys = {
       paymentMethod?: string;
     }) => ["billing", "invoices", params ?? { page: 1, limit: 200 }] as const,
     invoicesSummary: (params?: {
+      period?: string;
       salonId?: string;
       date?: string;
       dateFrom?: string;

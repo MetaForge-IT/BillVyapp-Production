@@ -95,6 +95,7 @@ model Salon {
   expenses                 Expense[]
   budgetPeriods            BudgetPeriod[]
   dayCloses                DayClose[]
+  campaigns                Campaign[]
 
   @@index([franchiseId])
   @@map("salons")
@@ -171,6 +172,7 @@ model User {
   expensesDeleteRequested    Expense[]  @relation("ExpenseDeleteRequestedBy")
   expensesDeleteRejected     Expense[]  @relation("ExpenseDeleteRejectedBy")
   dayClosesClosed            DayClose[] @relation("DayCloseClosedBy")
+  campaignsCreated           Campaign[] @relation("CampaignCreatedBy")
 
   @@unique([salonId, email])
   @@index([franchiseId])
@@ -341,6 +343,7 @@ model Customer {
   planEnrollments     CustomerPlanEnrollment[]
   walletTransactions  WalletTransaction[]
   advances            CustomerAdvance[]
+  campaignSends       CampaignSend[]
 
   @@unique([salonId, phoneNormalized])
   @@index([salonId, status])
@@ -519,6 +522,7 @@ model Service {
   favoriteFor        CustomerPreference[]
   salonPlanServices  SalonPlanService[]
   productLinks       ServiceProductLink[]
+  campaignServices   CampaignService[]
 
   @@unique([salonId, serviceCode])
   @@index([salonId, categoryId, gender, isActive])
@@ -980,6 +984,7 @@ model Coupon {
   deletedBy User? @relation("CouponDeletedBy", fields: [deletedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   redemptions CouponRedemption[]
+  campaigns   Campaign[]
 
   @@unique([salonId, codeUpper])
   @@index([salonId, status])
@@ -1200,4 +1205,66 @@ model DayClose {
   @@unique([salonId, closingDate])
   @@index([salonId, closingDate(sort: Desc)])
   @@map("day_closes")
+}
+
+// ─── Marketing campaigns ─────────────────────────────────────────────────────
+
+model Campaign {
+  id             String    @id @default(uuid()) @db.Char(36)
+  salonId        String    @map("salon_id") @db.Char(36)
+  title          String    @db.VarChar(200)
+  description    String?   @db.Text
+  offerType      String    @map("offer_type") @db.VarChar(20)
+  offerValue     Decimal   @map("offer_value") @db.Decimal(10, 2)
+  applicableScope String   @default("all_services") @map("applicable_scope") @db.VarChar(30)
+  validFrom      DateTime  @map("valid_from") @db.Date
+  validTill      DateTime  @map("valid_till") @db.Date
+  status         String    @default("draft") @db.VarChar(20)
+  couponId       String?   @map("coupon_id") @db.Char(36)
+  generateCoupon Boolean   @default(true) @map("generate_coupon")
+  sentCount      Int       @default(0) @map("sent_count")
+  failedCount    Int       @default(0) @map("failed_count")
+  sentAt         DateTime? @map("sent_at") @db.DateTime(3)
+  createdById    String?   @map("created_by") @db.Char(36)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  salon     Salon              @relation(fields: [salonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  coupon    Coupon?            @relation(fields: [couponId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  createdBy User?              @relation("CampaignCreatedBy", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  services  CampaignService[]
+  sends     CampaignSend[]
+
+  @@index([salonId, status])
+  @@index([salonId, createdAt(sort: Desc)])
+  @@map("campaigns")
+}
+
+model CampaignService {
+  campaignId String @map("campaign_id") @db.Char(36)
+  serviceId  String @map("service_id") @db.Char(36)
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  service  Service  @relation(fields: [serviceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([campaignId, serviceId])
+  @@map("campaign_services")
+}
+
+model CampaignSend {
+  id                BigInt    @id @default(autoincrement())
+  campaignId        String    @map("campaign_id") @db.Char(36)
+  customerId        String    @map("customer_id") @db.Char(36)
+  phone             String    @db.VarChar(20)
+  status            String    @default("queued") @db.VarChar(20)
+  whatsappMessageId String?   @map("whatsapp_message_id") @db.VarChar(120)
+  errorMessage      String?   @map("error_message") @db.VarChar(500)
+  sentAt            DateTime? @map("sent_at") @db.DateTime(3)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([campaignId, status])
+  @@map("campaign_sends")
 }

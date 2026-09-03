@@ -245,6 +245,35 @@ export class NotificationService {
     );
   }
 
+  async sendCampaignOffer(payload: {
+    phone: string;
+    offerLabel: string;
+    validUntil: string;
+  }): Promise<void> {
+    // Prefer Sparklebot-hosted public URL; fall back to local multipart upload.
+    const headerImageUrl = whatsappConfig.campaignHeaderImageUrl?.trim() || undefined;
+    const headerImageFilePath = headerImageUrl
+      ? undefined
+      : whatsappConfig.campaignHeaderImagePath?.trim() || undefined;
+
+    if (!headerImageFilePath && !headerImageUrl) {
+      throw new Error(
+        "Campaign offer template requires WHATSAPP_CAMPAIGN_HEADER_IMAGE_URL or WHATSAPP_CAMPAIGN_HEADER_IMAGE_PATH",
+      );
+    }
+
+    await this.sendNamedTemplate(
+      payload.phone,
+      WHATSAPP_TEMPLATES.CAMPAIGN_OFFER,
+      [payload.offerLabel, payload.validUntil],
+      {
+        throwOnError: true,
+        headerImageUrl,
+        headerImageFilePath,
+      },
+    );
+  }
+
   async sendStaffNewBooking(payload: StaffBookingWhatsAppPayload): Promise<void> {
     await this.sendNamedTemplate(payload.staffPhone, WHATSAPP_TEMPLATES.STAFF_NEW_BOOKING, [
       payload.staffName,
@@ -258,7 +287,11 @@ export class NotificationService {
     phone: string,
     templateName: string,
     fields: string[],
-    options?: { throwOnError?: boolean },
+    options?: {
+      throwOnError?: boolean;
+      headerImageUrl?: string;
+      headerImageFilePath?: string;
+    },
   ): Promise<void> {
     if (!whatsappConfig.enabled) {
       if (options?.throwOnError) {
@@ -282,6 +315,8 @@ export class NotificationService {
         templateName,
         templateLanguage: whatsappConfig.defaultTemplateLanguage,
         fields,
+        headerImageUrl: options?.headerImageUrl,
+        headerImageFilePath: options?.headerImageFilePath,
       });
       if (result?.messageId) {
         logger.info("WhatsApp template accepted", {

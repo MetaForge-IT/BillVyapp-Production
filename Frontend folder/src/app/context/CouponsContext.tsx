@@ -15,6 +15,8 @@ export type CouponStatus = "active" | "expired" | "disabled";
 
 export interface Coupon {
   id: string;
+  salonId?: string;
+  salonName?: string | null;
   code: string;
   title: string;
   description: string;
@@ -34,6 +36,8 @@ export interface Coupon {
 interface CouponsContextType {
   coupons: Coupon[];
   loading: boolean;
+  salonFilter: string;
+  setSalonFilter: (value: string) => void;
   refreshCoupons: () => Promise<void>;
   addCoupon: (c: Omit<Coupon, "id" | "usedCount" | "sentTo">) => void;
   updateCoupon: (id: string, patch: Partial<Coupon>) => void;
@@ -50,17 +54,21 @@ function mapCoupon(api: ApiCoupon): Coupon {
 export function CouponsProvider({ children }: { children: ReactNode }) {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
+  const [salonFilter, setSalonFilter] = useState("all");
 
   const refreshCoupons = useCallback(async () => {
+    setLoading(true);
     try {
-      const data = await fetchCoupons();
+      const data = await fetchCoupons({
+        salonId: salonFilter !== "all" ? salonFilter : undefined,
+      });
       setCoupons(data.map(mapCoupon));
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Failed to load coupons"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [salonFilter]);
 
   useEffect(() => {
     void refreshCoupons();
@@ -107,8 +115,18 @@ export function CouponsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ coupons, loading, refreshCoupons, addCoupon, updateCoupon, deleteCoupon, recordSend }),
-    [coupons, loading, refreshCoupons, addCoupon, updateCoupon, deleteCoupon, recordSend],
+    () => ({
+      coupons,
+      loading,
+      salonFilter,
+      setSalonFilter,
+      refreshCoupons,
+      addCoupon,
+      updateCoupon,
+      deleteCoupon,
+      recordSend,
+    }),
+    [coupons, loading, salonFilter, refreshCoupons, addCoupon, updateCoupon, deleteCoupon, recordSend],
   );
 
   return (

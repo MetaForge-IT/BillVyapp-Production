@@ -26,6 +26,7 @@ import {
   ShoppingCart,
   FileText,
   Plug,
+  Megaphone,
 } from "lucide-react";
 
 export interface NavChildItem {
@@ -81,6 +82,7 @@ export const enterpriseNavigation: NavSection[] = [
         roles: ["manager"],
       },
       { label: "Expenses", href: "/expenses", icon: Receipt, roles: ["admin", "manager"] },
+      { label: "Campaigns", href: "/campaigns", icon: Megaphone, roles: ["admin"] },
     ],
   },
   {

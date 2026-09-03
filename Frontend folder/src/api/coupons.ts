@@ -5,6 +5,8 @@ export type CouponStatus = "active" | "expired" | "disabled";
 
 export interface ApiCoupon {
   id: string;
+  salonId?: string;
+  salonName?: string | null;
   code: string;
   title: string;
   description: string;
@@ -33,6 +35,8 @@ export interface CreateCouponPayload {
   usageLimit?: number;
   applicableTo?: string;
   status?: CouponStatus;
+  /** Franchise admin: assign coupon to a shop. */
+  salonId?: string;
 }
 
 interface ApiEnvelope<T> {
@@ -41,9 +45,12 @@ interface ApiEnvelope<T> {
   data: T;
 }
 
-export async function fetchCoupons(status?: CouponStatus): Promise<ApiCoupon[]> {
+export async function fetchCoupons(params?: {
+  status?: CouponStatus;
+  salonId?: string;
+}): Promise<ApiCoupon[]> {
   const { data } = await apiClient.get<ApiEnvelope<ApiCoupon[]>>("/coupons", {
-    params: status ? { status } : undefined,
+    params: params?.status || params?.salonId ? params : undefined,
   });
   return data.data;
 }

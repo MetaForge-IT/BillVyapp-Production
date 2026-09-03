@@ -246,13 +246,13 @@ export function AdminFranchisePanel() {
 
       <div className="grid items-stretch gap-4 xl:grid-cols-2">
         {/* Add manager */}
-        <DashboardCard>
+        <DashboardCard className="flex h-full min-h-0 flex-col">
           <DashboardCardHeader
             icon={UserPlus}
             title="Add Manager"
             badge={`${franchise.managers.length} managers`}
           />
-          <div className="space-y-3 p-4">
+          <div className="flex min-h-0 flex-1 flex-col space-y-3 p-4">
             <p className="text-[12px] text-[#3f3f46]">
               Create a shop manager for <span className="font-semibold text-[#111118]">{franchise.name}</span>.
               Pick the correct branch (e.g. Hyderabad) — that shop is saved on their account and shown in their sidebar.
@@ -306,14 +306,14 @@ export function AdminFranchisePanel() {
               {savingManager ? "Saving…" : "Add Manager"}
             </button>
 
-            <div className="border-t border-black/[0.05] pt-3">
-              <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-[#52525b]">
+            <div className="flex min-h-0 flex-1 flex-col border-t border-black/[0.05] pt-3">
+              <p className="mb-2 shrink-0 text-[11px] font-bold uppercase tracking-wider text-[#52525b]">
                 Current managers
               </p>
               {franchise.managers.length === 0 ? (
                 <p className="text-[12px] text-[#52525b]">No managers yet</p>
               ) : (
-                <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
+                <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain pr-1">
                   {franchise.managers.map((m) => {
                     const branchLabel = [m.shopLabel, m.shopCity].filter(Boolean).join(" · ");
                     const addressLine = [m.shopAddress, m.shopState, m.shopPincode]
@@ -355,13 +355,13 @@ export function AdminFranchisePanel() {
         </DashboardCard>
 
         {/* Shops — create + edit addresses */}
-        <DashboardCard>
+        <DashboardCard className="flex h-full min-h-0 flex-col">
           <DashboardCardHeader
             icon={MapPin}
             title="Shops & Addresses"
             badge={`${franchise.shops.length} shops`}
           />
-          <div className="space-y-3 p-4">
+          <div className="flex min-h-0 flex-1 flex-col space-y-3 p-4">
             <p className="text-[12px] text-[#3f3f46]">
               Add a new branch for <span className="font-semibold text-[#111118]">{franchise.name}</span>{" "}
               or update an existing shop address. Everything is saved to the database.
@@ -440,13 +440,14 @@ export function AdminFranchisePanel() {
               </button>
             </div>
 
-            <p className="text-[11px] font-bold uppercase tracking-wider text-[#52525b]">
-              Existing shops
-            </p>
-            {franchise.shops.length === 0 ? (
-              <p className="py-4 text-center text-[12px] text-[#52525b]">No shops yet — create one above</p>
-            ) : (
-              <div className="max-h-[320px] space-y-3 overflow-y-auto pr-1">
+            <div className="flex min-h-0 flex-1 flex-col">
+              <p className="mb-2 shrink-0 text-[11px] font-bold uppercase tracking-wider text-[#52525b]">
+                Existing shops
+              </p>
+              {franchise.shops.length === 0 ? (
+                <p className="py-4 text-center text-[12px] text-[#52525b]">No shops yet — create one above</p>
+              ) : (
+                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-1">
                 {franchise.shops.map((shop) => {
                   const draft = addressDrafts[shop.id] ?? {
                     address: "",
@@ -557,6 +558,7 @@ export function AdminFranchisePanel() {
                 })}
               </div>
             )}
+            </div>
           </div>
         </DashboardCard>
       </div>

@@ -23,6 +23,7 @@ const Customers = lazyNamed(() => import("./pages/Customers"), "Customers");
 const Services = lazyNamed(() => import("./pages/Services"), "Services");
 const Finance = lazyNamed(() => import("./pages/Finance"), "Finance");
 const Expenses = lazyNamed(() => import("./pages/Expenses"), "Expenses");
+const Campaigns = lazyNamed(() => import("./pages/Campaigns"), "Campaigns");
 const Inventory = lazyNamed(() => import("./pages/Inventory"), "Inventory");
 const Memberships = lazyNamed(() => import("./pages/Memberships"), "Memberships");
 const Feedback = lazyNamed(() => import("./pages/Feedback"), "Feedback");
@@ -115,7 +116,7 @@ export const router = createBrowserRouter([
       { path: "reports", Component: () => <Navigate to="/dashboard" replace /> },
       { path: "reports/summary", Component: () => <Navigate to="/dashboard" replace /> },
       { path: "revenue", Component: () => <Navigate to="/dashboard" replace /> },
-      { path: "marketing", Component: () => <Navigate to="/dashboard" replace /> },
+      { path: "marketing", Component: () => <Navigate to="/campaigns" replace /> },
       { path: "settings", Component: () => <Navigate to="/dashboard" replace /> },
       { path: "ceo-dashboard", Component: () => <Navigate to="/dashboard" replace /> },
       { path: "ai-insights", Component: () => <Navigate to="/dashboard" replace /> },
@@ -133,6 +134,7 @@ export const router = createBrowserRouter([
       { path: "customers/new", Component: NewCustomer },
       { path: "finance", element: <RequireRole roles={["admin", "manager"]}><Finance /></RequireRole> },
       { path: "expenses", element: <RequireRole roles={["admin", "manager"]}><Expenses /></RequireRole> },
+      { path: "campaigns", element: <RequireRole roles={["admin"]}><Campaigns /></RequireRole> },
       { path: "billing", Component: () => <Navigate to="/finance?tab=receipts" replace /> },
       { path: "billing/new", Component: () => <Navigate to="/finance?tab=receipts" replace /> },
       { path: "billing/save", Component: () => <Navigate to="/finance?tab=receipts" replace /> },

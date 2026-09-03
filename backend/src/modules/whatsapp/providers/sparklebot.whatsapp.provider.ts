@@ -1,4 +1,7 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { whatsappConfig } from "../../../config/whatsapp.config";
+import { logger } from "../../../utils/logger";
 import { normalizePhoneToE164Digits } from "../../../utils/phone";
 import type { WhatsAppProvider } from "../whatsapp.provider";
 import type {
@@ -7,6 +10,9 @@ import type {
   SendWhatsAppTextInput,
   WhatsAppDeliveryResult,
 } from "../whatsapp.types";
+
+const MAX_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 1_200;
 
 /**
  * Sparklebot WhatsApp Business API (thestarrkuts tenant).
@@ -42,39 +48,48 @@ export class SparklebotWhatsAppProvider implements WhatsAppProvider {
       throw new Error(`Invalid WhatsApp phone number: ${input.to}`);
     }
 
-    const body: Record<string, string> = {
-      phone_number: phone,
-      template_name: input.templateName,
-      template_language: input.templateLanguage || whatsappConfig.otpTemplateLanguage,
-    };
-
-    input.fields.forEach((value, index) => {
-      body[`field_${index + 1}`] = value;
-    });
-
-    if (input.headerImageUrl) body.header_image_url = input.headerImageUrl;
-    if (input.headerDocumentUrl) body.header_document_url = input.headerDocumentUrl;
-    if (input.headerVideoUrl) body.header_video_url = input.headerVideoUrl;
-    if (input.headerField1) body.header_field_1 = input.headerField1;
-    if (input.headerText) body.header_text = input.headerText;
-
     const url = this.templateUrl();
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${whatsappConfig.accessToken}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(body),
-    });
+    const requestBody = await buildSparklebotBody(phone, input);
+    let lastError: unknown;
 
-    const responseText = await response.text();
-    if (!response.ok) {
-      throw new Error(`Sparklebot WhatsApp failed (${response.status}): ${responseText}`);
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+      try {
+        const headers: Record<string, string> = {
+          Authorization: `Bearer ${whatsappConfig.accessToken}`,
+          Accept: "application/json",
+        };
+        if (!(requestBody instanceof FormData)) {
+          headers["Content-Type"] = "application/json";
+        }
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers,
+          body: requestBody instanceof FormData ? requestBody : JSON.stringify(requestBody),
+        });
+
+        const responseText = await response.text();
+        if (!response.ok) {
+          throw new Error(`Sparklebot WhatsApp failed (${response.status}): ${responseText}`);
+        }
+
+        return parseSparklebotSuccess(responseText, this.name);
+      } catch (error) {
+        lastError = error;
+        const message = error instanceof Error ? error.message : "unknown";
+        const retryable = isRetryableWhatsAppError(error);
+        if (!retryable || attempt >= MAX_ATTEMPTS) break;
+
+        logger.warn("Sparklebot send retrying after transient error", {
+          attempt,
+          templateName: input.templateName,
+          reason: message,
+        });
+        await sleep(RETRY_DELAY_MS * attempt);
+      }
     }
 
-    return parseSparklebotSuccess(responseText, this.name);
+    throw lastError instanceof Error ? lastError : new Error("Sparklebot WhatsApp send failed");
   }
 
   private templateUrl(): string {
@@ -91,9 +106,74 @@ export class SparklebotWhatsAppProvider implements WhatsAppProvider {
   }
 }
 
+async function buildSparklebotBody(
+  phone: string,
+  input: SendWhatsAppTemplateInput,
+): Promise<Record<string, string> | FormData> {
+  const fields: Record<string, string> = {
+    phone_number: phone,
+    template_name: input.templateName,
+    template_language: input.templateLanguage || whatsappConfig.otpTemplateLanguage,
+  };
+
+  input.fields.forEach((value, index) => {
+    fields[`field_${index + 1}`] = value;
+  });
+
+  if (input.headerDocumentUrl) fields.header_document_url = input.headerDocumentUrl;
+  if (input.headerVideoUrl) fields.header_video_url = input.headerVideoUrl;
+  if (input.headerField1) fields.header_field_1 = input.headerField1;
+  if (input.headerText) fields.header_text = input.headerText;
+
+  if (input.headerImageFilePath) {
+    const absolute = path.isAbsolute(input.headerImageFilePath)
+      ? input.headerImageFilePath
+      : path.resolve(process.cwd(), input.headerImageFilePath);
+    const bytes = await readFile(absolute);
+    const filename = path.basename(absolute);
+    const form = new FormData();
+    for (const [key, value] of Object.entries(fields)) {
+      form.append(key, value);
+    }
+    form.append("header_image_file", new Blob([bytes], { type: mimeForFilename(filename) }), filename);
+    return form;
+  }
+
+  if (input.headerImageUrl) {
+    fields.header_image_url = input.headerImageUrl;
+  }
+
+  return fields;
+}
+
+function mimeForFilename(filename: string): string {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+  if (lower.endsWith(".webp")) return "image/webp";
+  return "image/png";
+}
+
 function formatSparklebotPhone(raw: string): string | null {
   // Sparklebot expects digits with country code, e.g. 919581169963 (no +)
   return normalizePhoneToE164Digits(raw);
+}
+
+function isRetryableWhatsAppError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = error.message.toLowerCase();
+  if (msg.includes("fetch failed")) return true;
+  if (msg.includes("network")) return true;
+  if (msg.includes("timeout")) return true;
+  if (msg.includes("econnreset") || msg.includes("econnrefused") || msg.includes("enotfound")) {
+    return true;
+  }
+  // Do not retry template validation / 4xx business errors.
+  if (msg.includes("sparklebot whatsapp failed (4")) return false;
+  return false;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 type SparklebotApiResponse = {

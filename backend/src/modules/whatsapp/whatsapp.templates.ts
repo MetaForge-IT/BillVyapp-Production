@@ -10,7 +10,7 @@ export const WHATSAPP_TEMPLATES = {
   THANK_YOU_VISIT: "starrkuts_thank_you_visit",
   APPT_UPCOMING: "starrkuts_appt_upcoming",
   LOYALTY_POINTS: "starrkuts_loyalty_points",
-  MEMBER_OFFER: "starrkuts_member_offer",
+  CAMPAIGN_OFFER: "starrkuts_campaign_offer",
   BIRTHDAY_OFFER: "starrkuts_birthday_offer",
   PAYMENT_RECEIVED: "starrkuts_payment_received",
   /** Due reminder (approved name) */
