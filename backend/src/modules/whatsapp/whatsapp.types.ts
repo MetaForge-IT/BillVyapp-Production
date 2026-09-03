@@ -18,6 +18,8 @@ export interface SendWhatsAppTemplateInput {
   /** Body variables in order → field_1, field_2, … */
   fields: string[];
   headerImageUrl?: string;
+  /** Absolute/relative path — Sparklebot multipart `header_image_file` (preferred for IMAGE templates). */
+  headerImageFilePath?: string;
   headerDocumentUrl?: string;
   headerVideoUrl?: string;
   headerField1?: string;

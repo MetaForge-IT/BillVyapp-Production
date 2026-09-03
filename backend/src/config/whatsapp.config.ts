@@ -56,6 +56,21 @@ export const whatsappConfig = {
 
   defaultTemplateLanguage: optionalEnv("WHATSAPP_TEMPLATE_LANGUAGE", "en_IN"),
 
+  /**
+   * Public HTTPS URL for starrkuts_campaign_offer IMAGE header (optional).
+   * Prefer local file upload via campaignHeaderImagePath when available.
+   */
+  campaignHeaderImageUrl: optionalEnv("WHATSAPP_CAMPAIGN_HEADER_IMAGE_URL", ""),
+
+  /**
+   * Local file for campaign offer IMAGE header — uploaded to Sparklebot as header_image_file.
+   * Defaults to backend/uploads/whatsapp/campaign-offer-header.png
+   */
+  campaignHeaderImagePath: optionalEnv(
+    "WHATSAPP_CAMPAIGN_HEADER_IMAGE_PATH",
+    "uploads/whatsapp/campaign-offer-header.png",
+  ),
+
   companyName: env.companyName,
 
   get isConfigured(): boolean {

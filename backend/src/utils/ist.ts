@@ -50,6 +50,42 @@ export function addDaysToDateKey(dateKey: string, days: number): string {
   return formatDateKeyInTimeZone(utc, "UTC");
 }
 
+export type RevenueReportPeriod = "today" | "month" | "quarter" | "year";
+
+/**
+ * Inclusive IST calendar range for Revenue Report periods (period-to-date through today).
+ * Quarter starts: Jan 1, Apr 1, Jul 1, Oct 1.
+ */
+export function resolveRevenuePeriodRange(
+  period: RevenueReportPeriod,
+  todayKey: string = istDateKey(),
+): { dateFrom: string; dateTo: string } {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(todayKey);
+  if (!match) {
+    throw new Error(`Invalid date key: ${todayKey}`);
+  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+
+  if (period === "today") {
+    return { dateFrom: todayKey, dateTo: todayKey };
+  }
+  if (period === "month") {
+    return {
+      dateFrom: `${year}-${String(month).padStart(2, "0")}-01`,
+      dateTo: todayKey,
+    };
+  }
+  if (period === "quarter") {
+    const quarterStartMonth = Math.floor((month - 1) / 3) * 3 + 1;
+    return {
+      dateFrom: `${year}-${String(quarterStartMonth).padStart(2, "0")}-01`,
+      dateTo: todayKey,
+    };
+  }
+  return { dateFrom: `${year}-01-01`, dateTo: todayKey };
+}
+
 /**
  * Absolute start of the IST calendar day containing `date`
  * (IST midnight as a UTC instant — for DateTime range filters like paidAt).

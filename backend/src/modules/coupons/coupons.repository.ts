@@ -1,6 +1,7 @@
-import type { Coupon } from "@prisma/client";
+import type { Coupon, Salon } from "@prisma/client";
 import { prisma } from "../../config/prisma";
 import { AppError, ConflictError } from "../../utils/errors";
+import { salonIdFilter } from "../../utils/salonScope";
 import type { AuthContext } from "../auth/auth.types";
 import {
   COUPON_ERROR_CODES,
@@ -10,9 +11,11 @@ import {
 } from "./coupons.constants";
 import type { CreateCouponInput, UpdateCouponInput } from "./coupons.validators";
 
-function mapCoupon(coupon: Coupon) {
+function mapCoupon(coupon: Coupon & { salon?: Pick<Salon, "id" | "name" | "displayName"> }) {
   return {
     id: coupon.id,
+    salonId: coupon.salonId,
+    salonName: coupon.salon?.displayName ?? coupon.salon?.name ?? null,
     code: coupon.code,
     title: coupon.title,
     description: coupon.description ?? "",
@@ -32,21 +35,31 @@ function mapCoupon(coupon: Coupon) {
 }
 
 export class CouponsRepository {
-  async list(salonId: string, status?: string) {
+  async list(salonIds: string[], status?: string) {
     const coupons = await prisma.coupon.findMany({
       where: {
-        salonId,
+        ...salonIdFilter(salonIds),
         deletedAt: null,
         ...(status ? { status } : {}),
+      },
+      include: {
+        salon: { select: { id: true, name: true, displayName: true } },
       },
       orderBy: [{ status: "asc" }, { createdAt: "desc" }],
     });
     return coupons.map(mapCoupon);
   }
 
-  async getById(salonId: string, couponId: string) {
+  async getById(salonIds: string[], couponId: string) {
     const coupon = await prisma.coupon.findFirst({
-      where: { id: couponId, salonId, deletedAt: null },
+      where: {
+        id: couponId,
+        ...salonIdFilter(salonIds),
+        deletedAt: null,
+      },
+      include: {
+        salon: { select: { id: true, name: true, displayName: true } },
+      },
     });
     if (!coupon) {
       throw new AppError(404, "Coupon not found", { code: COUPON_ERROR_CODES.NOT_FOUND });
@@ -54,10 +67,10 @@ export class CouponsRepository {
     return mapCoupon(coupon);
   }
 
-  async create(auth: AuthContext, input: CreateCouponInput) {
+  async create(auth: AuthContext, salonId: string, input: CreateCouponInput) {
     const codeUpper = input.code.trim().toUpperCase();
     const existing = await prisma.coupon.findFirst({
-      where: { salonId: auth.salonId, codeUpper, deletedAt: null },
+      where: { salonId, codeUpper, deletedAt: null },
     });
     if (existing) {
       throw new ConflictError("A coupon with this code already exists");
@@ -65,7 +78,7 @@ export class CouponsRepository {
 
     const coupon = await prisma.coupon.create({
       data: {
-        salonId: auth.salonId,
+        salonId,
         code: input.code.trim(),
         codeUpper,
         title: input.title,
@@ -81,14 +94,21 @@ export class CouponsRepository {
         status: input.status ?? COUPON_STATUS.ACTIVE,
         createdById: auth.userId,
       },
+      include: {
+        salon: { select: { id: true, name: true, displayName: true } },
+      },
     });
 
     return mapCoupon(coupon);
   }
 
-  async update(auth: AuthContext, couponId: string, input: UpdateCouponInput) {
+  async update(auth: AuthContext, salonIds: string[], couponId: string, input: UpdateCouponInput) {
     const existing = await prisma.coupon.findFirst({
-      where: { id: couponId, salonId: auth.salonId, deletedAt: null },
+      where: {
+        id: couponId,
+        ...salonIdFilter(salonIds),
+        deletedAt: null,
+      },
     });
     if (!existing) {
       throw new AppError(404, "Coupon not found", { code: COUPON_ERROR_CODES.NOT_FOUND });
@@ -98,7 +118,7 @@ export class CouponsRepository {
       const codeUpper = input.code.trim().toUpperCase();
       const duplicate = await prisma.coupon.findFirst({
         where: {
-          salonId: auth.salonId,
+          salonId: existing.salonId,
           codeUpper,
           deletedAt: null,
           NOT: { id: couponId },
@@ -127,14 +147,21 @@ export class CouponsRepository {
         status: input.status,
         updatedById: auth.userId,
       },
+      include: {
+        salon: { select: { id: true, name: true, displayName: true } },
+      },
     });
 
     return mapCoupon(coupon);
   }
 
-  async softDelete(auth: AuthContext, couponId: string) {
+  async softDelete(auth: AuthContext, salonIds: string[], couponId: string) {
     const existing = await prisma.coupon.findFirst({
-      where: { id: couponId, salonId: auth.salonId, deletedAt: null },
+      where: {
+        id: couponId,
+        ...salonIdFilter(salonIds),
+        deletedAt: null,
+      },
     });
     if (!existing) {
       throw new AppError(404, "Coupon not found", { code: COUPON_ERROR_CODES.NOT_FOUND });

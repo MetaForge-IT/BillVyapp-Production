@@ -139,17 +139,20 @@ export async function fetchInvoices(
 }
 
 export interface InvoicesSummary {
+  period?: "today" | "month" | "quarter" | "year";
+  dateFrom?: string;
+  dateTo?: string;
+  revenue: number;
+  expenses: number;
+  profit: number;
   totalRevenue: number;
   todayRevenue: number;
   totalReceipts: number;
   avgBill: number;
-  dateFrom?: string | null;
-  dateTo?: string | null;
-  dailyTrend?: Array<{ date: string; revenue: number; receipts: number }>;
-  byPaymentMethod?: Array<{ method: string; revenue: number; count: number }>;
 }
 
 export async function fetchInvoicesSummary(params: {
+  period?: "today" | "month" | "quarter" | "year";
   salonId?: string;
   date?: string;
   dateFrom?: string;
@@ -157,6 +160,7 @@ export async function fetchInvoicesSummary(params: {
 } = {}): Promise<InvoicesSummary> {
   const { data } = await apiClient.get<ApiEnvelope<InvoicesSummary>>("/billing/invoices/summary", {
     params: {
+      period: params.period || undefined,
       salonId: params.salonId || undefined,
       date: params.date || undefined,
       dateFrom: params.dateFrom || undefined,

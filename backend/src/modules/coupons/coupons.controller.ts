@@ -9,7 +9,8 @@ export class CouponsController {
   list = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const auth = (req as AuthenticatedRequest).auth;
     const status = typeof req.query.status === "string" ? req.query.status : undefined;
-    const coupons = await couponsService.list(auth, status);
+    const salonId = typeof req.query.salonId === "string" ? req.query.salonId : undefined;
+    const coupons = await couponsService.list(auth, status, salonId);
     sendSuccess(res, { message: "Coupons retrieved", data: coupons });
   });
 

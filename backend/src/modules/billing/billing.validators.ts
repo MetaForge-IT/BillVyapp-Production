@@ -136,8 +136,10 @@ export const listBillingQuerySchema = paginationQuerySchema.extend({
 
 export type ListBillingQuery = z.infer<typeof listBillingQuerySchema>;
 
-/** Admin revenue report summary — same date/shop filters as invoice list (no pagination). */
+/** Admin revenue report summary — period preset or explicit date range. */
 export const invoicesSummaryQuerySchema = z.object({
+  /** Revenue Report period preset (defaults to month). Ignored when dateFrom/dateTo set. */
+  period: z.enum(["today", "month", "quarter", "year"]).optional(),
   salonId: z.string().uuid().optional(),
   date: z.string().date().optional(),
   dateFrom: z.string().date().optional(),

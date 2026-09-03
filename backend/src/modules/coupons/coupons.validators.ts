@@ -2,6 +2,7 @@ import { z } from "zod";
 import { COUPON_STATUS, COUPON_TYPE } from "./coupons.constants";
 
 const couponBaseSchema = z.object({
+  salonId: z.string().uuid().optional(),
   code: z.string().trim().min(1).max(30),
   title: z.string().trim().min(1).max(200),
   description: z.string().trim().max(2000).optional(),

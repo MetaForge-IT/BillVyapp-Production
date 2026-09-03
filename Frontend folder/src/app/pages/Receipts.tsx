@@ -9,12 +9,11 @@ import {
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from "../components/ui/table";
-import { Input } from "../components/ui/input";
 import { Switch } from "../components/ui/switch";
 import {
-  Receipt, Search, Mail, Eye, IndianRupee, FileCheck,
+  Receipt, Search, Mail, Eye, IndianRupee,
   Printer, Download, Send, Check, X, Paperclip, User,
-  Banknote, CreditCard, Smartphone, Wallet, TrendingUp, CalendarDays, Filter,
+  Banknote, CreditCard, Smartphone, Wallet, TrendingUp, TrendingDown, CalendarDays, Filter,
   RotateCcw, RefreshCw, Loader2, Store,
 } from "lucide-react";
 import { useReceipts, type ReceiptRecord } from "../context/ReceiptsContext";
@@ -28,7 +27,7 @@ import { FilterSelect } from "../components/shared/FilterSelect";
 import { DEFAULT_PAGE_SIZE } from "../hooks/useTablePagination";
 import { fetchReceiptRecords } from "../lib/billingQueries";
 import { queryKeys } from "../lib/queryKeys";
-import { istDateKey, addDaysToDateKey } from "../../lib/istDate";
+import { istDateKey, resolveRevenuePeriodRange, type RevenueReportPeriod } from "../../lib/istDate";
 import { BRAND, RECEIPT_FOOTER } from "../config/brand";
 import { SalonReceiptBrandHeader, SalonReceiptPaper, useReceiptShopInfo } from "../components/shared/SalonReceiptBrand";
 import { downloadReceiptBill } from "../lib/downloadReceipt";
@@ -69,13 +68,18 @@ function paymentMethodLabel(method: ReceiptRecord["paymentMethod"] | undefined):
   return methodLabel[method] ?? "Unknown";
 }
 
-const DATE_OPTIONS = [
-  { value: "all", label: "All Time" },
+const DATE_OPTIONS: Array<{ value: RevenueReportPeriod; label: string }> = [
   { value: "today", label: "Today" },
-  { value: "week", label: "Last 7 Days" },
   { value: "month", label: "This Month" },
-  { value: "custom", label: "Custom Range" },
+  { value: "quarter", label: "This Quarter" },
+  { value: "year", label: "This Year" },
 ];
+const PERIOD_LABEL: Record<RevenueReportPeriod, string> = {
+  today: "Today",
+  month: "This month",
+  quarter: "This quarter",
+  year: "This year",
+};
 const METHOD_OPTIONS = [
   { value: "all",    label: "All Methods" },
   { value: "cash",   label: "Cash" },
@@ -83,6 +87,10 @@ const METHOD_OPTIONS = [
   { value: "upi",    label: "UPI" },
   { value: "wallet", label: "Wallet" },
 ];
+
+function isRevenuePeriod(value: string): value is RevenueReportPeriod {
+  return value === "today" || value === "month" || value === "quarter" || value === "year";
+}
 
 /* ── component ───────────────────────────────────────────── */
 export function Receipts() {
@@ -99,9 +107,7 @@ export function Receipts() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showSearchFilters, setShowSearchFilters] = useState(false);
   const [methodFilter, setMethodFilter] = useState("all");
-  const [dateFilter,   setDateFilter]   = useState("month");
-  const [customFrom, setCustomFrom] = useState("");
-  const [customTo, setCustomTo] = useState("");
+  const [dateFilter,   setDateFilter]   = useState<RevenueReportPeriod>("month");
   const [listPage, setListPage] = useState(1);
   const [listPageSize, setListPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [viewReceipt,  setViewReceipt]  = useState<ReceiptRecord | null>(null);
@@ -123,7 +129,7 @@ export function Receipts() {
 
   useEffect(() => {
     setListPage(1);
-  }, [debouncedSearch, listPageSize, shopFilter, methodFilter, dateFilter, dateParam, customFrom, customTo]);
+  }, [debouncedSearch, listPageSize, shopFilter, methodFilter, dateFilter, dateParam]);
 
   const franchiseQuery = useQuery({
     queryKey: ["my-franchise"],
@@ -132,19 +138,15 @@ export function Receipts() {
   });
   const franchiseShops = franchiseQuery.data?.shops ?? [];
 
+  const periodRange = useMemo(
+    () => resolveRevenuePeriodRange(dateFilter, TODAY),
+    [dateFilter, TODAY],
+  );
+
   const dateQueryParams = useMemo(() => {
     if (dateParam) return { date: dateParam };
-    if (dateFilter === "today") return { date: TODAY };
-    if (dateFilter === "week") return { dateFrom: addDaysToDateKey(TODAY, -6), dateTo: TODAY };
-    if (dateFilter === "month") return { dateFrom: `${TODAY.slice(0, 7)}-01`, dateTo: TODAY };
-    if (dateFilter === "custom" && customFrom && customTo) {
-      const from = customFrom <= customTo ? customFrom : customTo;
-      const to = customFrom <= customTo ? customTo : customFrom;
-      return { dateFrom: from, dateTo: to };
-    }
-    if (dateFilter === "custom" && customFrom) return { dateFrom: customFrom, dateTo: customFrom };
-    return {};
-  }, [dateParam, dateFilter, TODAY, customFrom, customTo]);
+    return { dateFrom: periodRange.dateFrom, dateTo: periodRange.dateTo };
+  }, [dateParam, periodRange]);
 
   const salonIdParam =
     isFranchiseAdmin && shopFilter !== "all" ? shopFilter : undefined;
@@ -161,10 +163,14 @@ export function Receipts() {
     queryKey: queryKeys.billing.invoices(invoiceParams),
     queryFn: () => fetchReceiptRecords(invoiceParams),
   });
-  const summaryParams = {
-    salonId: salonIdParam,
-    ...dateQueryParams,
-  };
+  const summaryParams = useMemo(
+    () => ({
+      period: dateFilter,
+      salonId: salonIdParam,
+      ...(dateParam ? { dateFrom: dateParam, dateTo: dateParam } : {}),
+    }),
+    [dateFilter, salonIdParam, dateParam],
+  );
   const summaryQuery = useQuery({
     queryKey: queryKeys.billing.invoicesSummary(summaryParams),
     queryFn: () => fetchInvoicesSummary(summaryParams),
@@ -186,26 +192,17 @@ export function Receipts() {
 
   const paginatedReceipts = receipts;
 
-  const totalRevenue = summaryQuery.data?.totalRevenue ?? 0;
-  const todayRevenue = summaryQuery.data?.todayRevenue ?? 0;
-  const avgBill = summaryQuery.data?.avgBill ?? 0;
+  const periodRevenue = summaryQuery.data?.revenue ?? summaryQuery.data?.totalRevenue ?? 0;
+  const periodExpenses = summaryQuery.data?.expenses ?? 0;
+  const periodProfit = summaryQuery.data?.profit ?? periodRevenue - periodExpenses;
   const totalReceiptsCount = summaryQuery.data?.totalReceipts ?? receiptsTotal;
-
-  const rangeLabel = useMemo(() => {
-    if (dateParam) return dateParam;
-    if (dateFilter === "today") return "Today";
-    if (dateFilter === "week") return "Last 7 days";
-    if (dateFilter === "month") return "This month";
-    if (dateFilter === "custom" && (customFrom || customTo)) {
-      const from = customFrom || customTo;
-      const to = customTo || customFrom;
-      return from === to ? from! : `${from} → ${to}`;
-    }
-    return "All time";
-  }, [dateParam, dateFilter, customFrom, customTo]);
-
-  const periodRevenueLabel =
-    dateFilter === "all" && !dateParam ? "Total Revenue" : "Period Revenue";
+  const periodLabel = dateParam
+    ? new Date(`${dateParam}T00:00:00`).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : PERIOD_LABEL[dateFilter];
 
   const reportRefreshing =
     receiptsQuery.isFetching || (!isManager && summaryQuery.isFetching);
@@ -225,16 +222,13 @@ export function Receipts() {
   const hasActiveFilter =
     search ||
     methodFilter !== "all" ||
-    dateFilter !== "all" ||
+    dateFilter !== "month" ||
     Boolean(dateParam) ||
-    Boolean(customFrom || customTo) ||
     (isFranchiseAdmin && shopFilter !== "all");
   const clearFilters = () => {
     setSearch("");
     setMethodFilter("all");
     setDateFilter("month");
-    setCustomFrom("");
-    setCustomTo("");
     if (isFranchiseAdmin) setShopFilter("all");
     if (dateParam) {
       setSearchParams((prev) => {
@@ -344,38 +338,30 @@ export function Receipts() {
       {!isManager && (
         <RevenueReportKpiStrip cols={4}>
             <FinanceStatCard
-              label={periodRevenueLabel}
-              value={`₹${totalRevenue.toLocaleString()}`}
-              sub={rangeLabel}
+              label="Revenue"
+              value={`₹${periodRevenue.toLocaleString("en-IN")}`}
+              sub={periodLabel}
               icon={IndianRupee}
               index={0}
             />
             <FinanceStatCard
-              label="Today's Revenue"
-              value={`₹${todayRevenue.toLocaleString()}`}
-              sub="Filter today's bills"
-              icon={TrendingUp}
+              label="Expenses"
+              value={`₹${periodExpenses.toLocaleString("en-IN")}`}
+              sub={periodLabel}
+              icon={Wallet}
               index={1}
-              onClick={() => {
-                setShowSearchFilters(true);
-                setDateFilter("today");
-                setCustomFrom("");
-                setCustomTo("");
-                setMethodFilter("all");
-                setSearch("");
-              }}
             />
             <FinanceStatCard
-              label="Avg. Bill Value"
-              value={`₹${avgBill.toLocaleString()}`}
-              sub={`In ${rangeLabel.toLowerCase()}`}
-              icon={FileCheck}
+              label="Profit"
+              value={`₹${periodProfit.toLocaleString("en-IN")}`}
+              sub="Revenue − Expenses"
+              icon={periodProfit >= 0 ? TrendingUp : TrendingDown}
               index={2}
             />
             <FinanceStatCard
               label="Receipts"
               value={totalReceiptsCount}
-              sub={`Paid · ₹${totalRevenue.toLocaleString()}`}
+              sub={periodLabel}
               icon={Receipt}
               index={3}
             />
@@ -460,14 +446,7 @@ export function Receipts() {
             <FilterSelect
               value={dateFilter}
               onValueChange={(value) => {
-                setDateFilter(value);
-                if (value !== "custom") {
-                  setCustomFrom("");
-                  setCustomTo("");
-                } else if (!customFrom && !customTo) {
-                  setCustomFrom(addDaysToDateKey(TODAY, -6));
-                  setCustomTo(TODAY);
-                }
+                if (isRevenuePeriod(value)) setDateFilter(value);
                 if (dateParam) {
                   setSearchParams((prev) => {
                     const next = new URLSearchParams(prev);
@@ -477,8 +456,11 @@ export function Receipts() {
                 }
               }}
               icon={CalendarDays}
-              active={dateFilter !== "all"}
-              options={DATE_OPTIONS}
+              active={dateFilter !== "month"}
+              options={DATE_OPTIONS.map((opt) => ({
+                value: opt.value,
+                label: opt.label,
+              }))}
             />
             <FilterSelect
               value={methodFilter}
@@ -498,32 +480,6 @@ export function Receipts() {
               </button>
             )}
           </div>
-
-          {dateFilter === "custom" && (
-            <div className="flex w-full flex-col gap-2 min-[420px]:flex-row min-[420px]:items-center">
-              <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-black/[0.08] bg-white px-3 py-1.5">
-                <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-[#52525b]">From</span>
-                <Input
-                  type="date"
-                  value={customFrom}
-                  max={customTo || TODAY}
-                  onChange={(e) => setCustomFrom(e.target.value)}
-                  className="h-8 border-0 bg-transparent px-0 text-[13px] shadow-none focus-visible:ring-0"
-                />
-              </label>
-              <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-black/[0.08] bg-white px-3 py-1.5">
-                <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-[#52525b]">To</span>
-                <Input
-                  type="date"
-                  value={customTo}
-                  min={customFrom || undefined}
-                  max={TODAY}
-                  onChange={(e) => setCustomTo(e.target.value)}
-                  className="h-8 border-0 bg-transparent px-0 text-[13px] shadow-none focus-visible:ring-0"
-                />
-              </label>
-            </div>
-          )}
         </div>
       </div>
 

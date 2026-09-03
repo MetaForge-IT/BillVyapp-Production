@@ -31,6 +31,28 @@ export function addDaysToDateKey(dateKey: string, days: number): string {
   return `${year}-${month}-${day}`;
 }
 
+export type RevenueReportPeriod = "today" | "month" | "quarter" | "year";
+
+/** Inclusive IST calendar range for Revenue Report periods (through today). */
+export function resolveRevenuePeriodRange(
+  period: RevenueReportPeriod,
+  todayKey: string = istDateKey(),
+): { dateFrom: string; dateTo: string } {
+  const [year, month] = todayKey.split("-").map(Number);
+  if (period === "today") return { dateFrom: todayKey, dateTo: todayKey };
+  if (period === "month") {
+    return { dateFrom: `${year}-${String(month).padStart(2, "0")}-01`, dateTo: todayKey };
+  }
+  if (period === "quarter") {
+    const quarterStartMonth = Math.floor((month - 1) / 3) * 3 + 1;
+    return {
+      dateFrom: `${year}-${String(quarterStartMonth).padStart(2, "0")}-01`,
+      dateTo: todayKey,
+    };
+  }
+  return { dateFrom: `${year}-01-01`, dateTo: todayKey };
+}
+
 /** Format an ISO/instant string or Date as IST calendar YYYY-MM-DD. */
 export function toIstDateKey(value: string | Date | null | undefined): string {
   if (!value) return istDateKey();

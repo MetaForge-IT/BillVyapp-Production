@@ -24,6 +24,7 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
   const location = useLocation();
   const { data, loading } = useDashboard();
   const { role, shopName, shopBranchLabel, shopAddress } = useRole();
+  const dashboardHref = role === "admin" || role === "manager" ? "/dashboard" : null;
   const kpis = data?.businessKpis;
 
   const quickStats = useMemo(() => {
@@ -112,7 +113,31 @@ export function EnterpriseSidebar({ onNavigate, collapsed = false }: { onNavigat
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         className="relative z-10 shrink-0 flex h-[7.5rem] w-full items-center justify-center px-2"
       >
-        {collapsed ? (
+        {dashboardHref ? (
+          <Link
+            to={dashboardHref}
+            onClick={onNavigate}
+            aria-label="Go to dashboard"
+            className="flex items-center justify-center rounded-lg outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/50"
+          >
+            {collapsed ? (
+              <img
+                src={BRAND.platformLogo}
+                alt={BRAND.appName}
+                className="h-10 w-10 object-contain object-center drop-shadow-[0_0_12px_rgba(212,175,55,0.4)]"
+              />
+            ) : (
+              <motion.img
+                src={BRAND.platformLogo}
+                alt={BRAND.appName}
+                className="h-auto w-full max-w-[200px] max-h-[60px] object-contain object-center drop-shadow-[0_2px_16px_rgba(212,175,55,0.4)]"
+                initial={{ scale: 0.92, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              />
+            )}
+          </Link>
+        ) : collapsed ? (
           <img
             src={BRAND.platformLogo}
             alt={BRAND.appName}

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Check,
   Banknote,
+  CalendarDays,
   CreditCard,
   Loader2,
   Pencil,
@@ -44,6 +45,7 @@ import { useTablePagination } from "../hooks/useTablePagination";
 import { toast } from "../components/ui/hot-toast";
 import { cn } from "../components/ui/utils";
 import { isAdmin, useRole } from "../context/RoleContext";
+import { istDateKey, resolveRevenuePeriodRange, type RevenueReportPeriod } from "../../lib/istDate";
 
 const SOURCE_ICON: Record<ExpenseSource, typeof Banknote> = {
   Cash: Banknote,
@@ -57,6 +59,24 @@ const CATEGORY_OPTIONS = [
   { value: "Payroll", label: "Payroll", description: "Salary, advance, incentives" },
   { value: "Transfer", label: "Transfer", description: "Cash to bank / internal moves" },
 ] as const satisfies ReadonlyArray<{ value: ExpenseCategory; label: string; description: string }>;
+
+const DATE_OPTIONS: Array<{ value: RevenueReportPeriod; label: string }> = [
+  { value: "today", label: "Today" },
+  { value: "month", label: "This Month" },
+  { value: "quarter", label: "This Quarter" },
+  { value: "year", label: "This Year" },
+];
+
+const PERIOD_LABEL: Record<RevenueReportPeriod, string> = {
+  today: "Today",
+  month: "This month",
+  quarter: "This quarter",
+  year: "This year",
+};
+
+function isRevenuePeriod(value: string): value is RevenueReportPeriod {
+  return value === "today" || value === "month" || value === "quarter" || value === "year";
+}
 
 function emptyForm(): ExpenseFormValues {
   return {
@@ -91,6 +111,14 @@ export function Expenses() {
   const [fieldError, setFieldError] = useState<string | undefined>();
   const [shopFilter, setShopFilter] = useState("all");
   const [formSalonId, setFormSalonId] = useState("");
+  const [periodFilter, setPeriodFilter] = useState<RevenueReportPeriod>("month");
+
+  const TODAY = istDateKey();
+  const periodRange = useMemo(
+    () => resolveRevenuePeriodRange(periodFilter, TODAY),
+    [periodFilter, TODAY],
+  );
+  const periodLabel = PERIOD_LABEL[periodFilter];
 
   const franchiseQuery = useQuery({
     queryKey: ["my-franchise"],
@@ -133,29 +161,36 @@ export function Expenses() {
     setShowForm(true);
   };
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const salonId = admin && shopFilter !== "all" ? shopFilter : undefined;
-    try {
-      const [rows, overview] = await Promise.all([
-        fetchExpenses({ salonId }),
-        fetchAccountingOverview(todayIsoDate(), { salonId }),
-      ]);
-      setExpenses(rows);
-      setIsClosed(overview.isClosed);
-    } catch (error) {
-      toast.error(getApiErrorMessage(error, "Failed to load expenses"));
-    } finally {
-      setLoading(false);
-    }
-  }, [admin, shopFilter]);
+  const load = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!opts?.silent) setLoading(true);
+      const salonId = admin && shopFilter !== "all" ? shopFilter : undefined;
+      try {
+        const [rows, overview] = await Promise.all([
+          fetchExpenses({
+            from: periodRange.dateFrom,
+            to: periodRange.dateTo,
+            salonId,
+          }),
+          fetchAccountingOverview(todayIsoDate(), { salonId }),
+        ]);
+        setExpenses(rows);
+        setIsClosed(overview.isClosed);
+      } catch (error) {
+        toast.error(getApiErrorMessage(error, "Failed to load expenses"));
+      } finally {
+        if (!opts?.silent) setLoading(false);
+      }
+    },
+    [admin, shopFilter, periodRange.dateFrom, periodRange.dateTo],
+  );
 
   useEffect(() => {
     void load();
   }, [load]);
 
   const totalAmount = expenses.reduce((s, e) => s + e.amount, 0);
-  const pagination = useTablePagination(expenses.length, [shopFilter]);
+  const pagination = useTablePagination(expenses.length, [shopFilter, periodFilter]);
   const pageRows = useMemo(() => pagination.paginate(expenses), [expenses, pagination]);
 
   const patchForm = <K extends keyof ExpenseFormValues>(key: K, value: ExpenseFormValues[K]) => {
@@ -190,17 +225,15 @@ export function Expenses() {
         ...(admin && formSalonId ? { salonId: formSalonId } : {}),
       };
       if (editingId) {
-        const updated = await updateExpense(editingId, result.value);
-        setExpenses((prev) => prev.map((e) => (e.id === editingId ? updated : e)));
+        await updateExpense(editingId, result.value);
         resetForm();
         toast.success("Expense updated");
       } else {
-        const created = await createExpense(payload);
-        setExpenses((prev) => [created, ...prev]);
+        await createExpense(payload);
         resetForm();
         toast.success("Expense saved");
-        void load();
       }
+      void load({ silent: true });
     } catch (error) {
       toast.error(
         getApiErrorMessage(error, editingId ? "Failed to update expense" : "Failed to save expense"),
@@ -216,15 +249,14 @@ export function Expenses() {
     try {
       if (admin) {
         await deleteExpense(expense.id);
-        setExpenses((prev) => prev.filter((e) => e.id !== expense.id));
         toast.success(
           expense.deleteRequested ? "Delete approved — expense removed" : "Expense deleted",
         );
       } else {
-        const updated = await requestExpenseDelete(expense.id);
-        setExpenses((prev) => prev.map((e) => (e.id === expense.id ? updated : e)));
+        await requestExpenseDelete(expense.id);
         toast.success("Requested to admin");
       }
+      void load({ silent: true });
     } catch (error) {
       toast.error(
         getApiErrorMessage(
@@ -241,9 +273,9 @@ export function Expenses() {
     if (isClosed || !admin) return;
     setActionId(expense.id);
     try {
-      const updated = await cancelExpenseDeleteRequest(expense.id);
-      setExpenses((prev) => prev.map((e) => (e.id === expense.id ? updated : e)));
+      await cancelExpenseDeleteRequest(expense.id);
       toast.success("Delete request rejected");
+      void load({ silent: true });
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Failed to reject delete request"));
     } finally {
@@ -328,14 +360,14 @@ export function Expenses() {
   };
 
   return (
-    <div className="flex h-[calc(100dvh-8rem)] min-h-0 flex-col gap-3 overflow-hidden sm:gap-4">
-      <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
+    <div className="flex h-[calc(100dvh-8rem)] min-h-0 flex-col gap-2 overflow-hidden sm:gap-4">
+      <div className="flex shrink-0 items-start justify-between gap-2 sm:gap-3">
+        <div className="min-w-0 flex-1">
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#D4AF37]">
             Finance
           </p>
-          <h1 className="text-2xl font-bold tracking-tight text-[#111118] sm:text-3xl">Expenses</h1>
-          <p className="mt-1 text-[12px] text-[#3f3f46] sm:text-[13px]">
+          <h1 className="text-xl font-bold tracking-tight text-[#111118] sm:text-3xl">Expenses</h1>
+          <p className="mt-0.5 hidden text-[12px] text-[#3f3f46] sm:mt-1 sm:block sm:text-[13px]">
             Track salon expenses — every entry needs a note.
           </p>
         </div>
@@ -343,27 +375,37 @@ export function Expenses() {
           type="button"
           disabled={isClosed}
           onClick={() => (showForm && !editingId ? resetForm() : openCreateForm())}
-          className="inline-flex h-10 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-[#111118] px-3.5 text-[12px] font-bold text-[#D4AF37] transition-opacity disabled:opacity-40 sm:h-11 sm:w-auto sm:px-4 sm:text-[13px]"
+          aria-label={showForm && !editingId ? "Close expense form" : "Add expense"}
+          className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[#111118] px-3 text-[11px] font-bold text-[#D4AF37] transition-opacity disabled:opacity-40 sm:h-11 sm:gap-2 sm:px-4 sm:text-[13px]"
         >
-          <Plus className="h-4 w-4" />
-          {showForm && !editingId ? "Close Form" : "Add Expense"}
+          <Plus className="h-4 w-4 shrink-0" />
+          <span className="hidden sm:inline">
+            {showForm && !editingId ? "Close Form" : "Add Expense"}
+          </span>
         </button>
       </div>
 
       {isClosed && (
-        <div className="shrink-0 rounded-xl border border-[#D4AF37]/30 bg-[#FAF8F2] px-3 py-2.5 text-[12px] text-[#3f3f46] sm:px-4 sm:py-3">
+        <div className="shrink-0 rounded-xl border border-[#D4AF37]/30 bg-[#FAF8F2] px-3 py-2 text-[11px] text-[#3f3f46] sm:py-2.5 sm:text-[12px] sm:px-4">
           Today is closed — expenses are read-only until the next open day.
         </div>
       )}
 
-      {admin && franchiseShops.length > 0 && (
-        <div className="shrink-0">
+      <div
+        className={cn(
+          "grid shrink-0 gap-2 sm:flex sm:flex-wrap sm:gap-3",
+          admin && franchiseShops.length > 0 ? "grid-cols-2" : "grid-cols-1",
+        )}
+      >
+        {admin && franchiseShops.length > 0 && (
           <FilterSelect
             value={shopFilter}
             onValueChange={setShopFilter}
             icon={Store}
             active={shopFilter !== "all"}
-            className="sm:max-w-xs"
+            compact
+            className="min-w-0 sm:max-w-xs"
+            triggerClassName="truncate sm:h-10 sm:text-[13px]"
             options={[
               { value: "all", label: `All Shops (${franchiseShops.length})` },
               ...franchiseShops.map((shop) => ({
@@ -372,20 +414,36 @@ export function Expenses() {
               })),
             ]}
           />
-        </div>
-      )}
+        )}
+        <FilterSelect
+          value={periodFilter}
+          onValueChange={(value) => {
+            if (isRevenuePeriod(value)) setPeriodFilter(value);
+          }}
+          icon={CalendarDays}
+          active={periodFilter !== "month"}
+          compact
+          className="min-w-0"
+          triggerClassName="truncate sm:h-10 sm:text-[13px]"
+          options={DATE_OPTIONS.map((opt) => ({
+            value: opt.value,
+            label: opt.label,
+          }))}
+        />
+      </div>
 
-      <div className="grid shrink-0 grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3">
-        <div className="rounded-2xl border border-black/[0.07] bg-white p-3 sm:p-4">
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#52525b]">Entries</p>
-          <p className="mt-1 text-xl font-black text-[#111118] sm:text-2xl">{expenses.length}</p>
-          <p className="mt-0.5 text-[10px] text-[#52525b]">
-            {shopFilter === "all" ? "All shops" : "Selected shop"}
+      <div className="grid shrink-0 grid-cols-2 gap-2 sm:gap-3">
+        <div className="rounded-xl border border-black/[0.07] bg-white p-2.5 sm:rounded-2xl sm:p-4">
+          <p className="truncate text-[9px] font-bold uppercase tracking-[0.1em] text-[#52525b] sm:text-[10px] sm:tracking-[0.12em]">
+            Entries · {periodLabel}
           </p>
+          <p className="mt-0.5 text-lg font-black text-[#111118] sm:mt-1 sm:text-2xl">{expenses.length}</p>
         </div>
-        <div className="rounded-2xl border border-black/[0.07] bg-white p-3 sm:col-span-2 sm:p-4">
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#52525b]">Total</p>
-          <p className="mt-1 truncate text-xl font-black tabular-nums text-[#111118] sm:text-2xl">
+        <div className="rounded-xl border border-black/[0.07] bg-white p-2.5 sm:rounded-2xl sm:p-4">
+          <p className="truncate text-[9px] font-bold uppercase tracking-[0.1em] text-[#52525b] sm:text-[10px] sm:tracking-[0.12em]">
+            Total · {periodLabel}
+          </p>
+          <p className="mt-0.5 truncate text-lg font-black tabular-nums text-[#111118] sm:mt-1 sm:text-2xl">
             ₹{totalAmount.toLocaleString("en-IN")}
           </p>
         </div>
@@ -583,7 +641,12 @@ export function Expenses() {
         ) : expenses.length === 0 ? (
           <div className="py-16 text-center">
             <Receipt className="mx-auto mb-2 h-8 w-8 text-[#D4AF37]/35" />
-            <p className="text-[13px] text-[#52525b]">No expenses yet</p>
+            <p className="text-[13px] text-[#52525b]">
+              No expenses for {periodLabel.toLowerCase()}.
+              {periodFilter === "today" || periodFilter === "month"
+                ? " Try a wider period such as This Quarter or This Year."
+                : null}
+            </p>
           </div>
         ) : (
           <>
