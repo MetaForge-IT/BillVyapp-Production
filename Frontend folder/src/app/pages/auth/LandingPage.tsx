@@ -999,7 +999,7 @@ export function LandingPage() {
             )}
           </div>
           <div className="pt-6 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-xs text-white/30">{BRAND.copyright}</p>
+            <p className="text-xs text-white">{BRAND.copyright}</p>
             <div className="flex items-center gap-1 text-xs text-white/30">
               <Bell className="h-3 w-3" />
               <Clock className="h-3 w-3" />

@@ -9,7 +9,7 @@ export const BRAND = {
   supportEmail: "support@billvyapp.com",
   website: "billvyapp.com",
   websiteUrl: "https://billvyapp.com",
-  copyright: `© ${new Date().getFullYear()} BillVyapp. Powered by Metaforge. All rights reserved.`,
+  copyright: `© ${new Date().getFullYear()} BillVyapp. STARR KUTS VENTURES PRIVATE LIMITED. All rights reserved.`,
 } as const;
 
 /**
